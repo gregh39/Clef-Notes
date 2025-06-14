@@ -12,7 +12,12 @@ import SwiftData
 struct Clef_NotesApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Student.self,
+            Song.self,
+            PracticeSession.self,
+            Play.self,
+            Note.self,
+            MediaReference.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
