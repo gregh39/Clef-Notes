@@ -60,7 +60,7 @@ class StudentPracticeViewModel {
         fetchSessions()
     }
 
-    func addSong(title: String, composer: String? = nil, goalPlays: Int) {
+    func addSong(title: String,  composer: String? = nil, goalPlays: Int? = nil) {
         let song = Song(title: title, composer: composer, goalPlays: goalPlays, studentID: student.id)
         song.student = student
         context.insert(song)
@@ -70,8 +70,9 @@ class StudentPracticeViewModel {
 
     func progress(for song: Song) -> Double {
         let total = Double(song.totalPlayCount)
-        let goal = Double(song.goalPlays)
-        return goal > 0 ? min(total / goal, 1.0) : 0.0
+        guard let goalPlays = song.goalPlays, goalPlays > 0 else { return 0.0 }
+        let goal = Double(goalPlays)
+        return min(total / goal, 1.0)
     }
     
     func reload() {

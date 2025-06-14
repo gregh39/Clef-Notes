@@ -1,3 +1,12 @@
+//
+//  AddSongSheet.swift
+//  Clef Notes
+//
+//  Created by Greg Holland on 6/13/25.
+//
+import SwiftUI
+import SwiftData
+
 struct AddSongSheet: View {
     @Binding var isPresented: Bool
     @Binding var title: String

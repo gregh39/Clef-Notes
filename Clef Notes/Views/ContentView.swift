@@ -45,8 +45,7 @@ struct ContentView: View {
             }
         } detail: {
             if let student = selectedStudent {
-                StudentDetailView(student: student)
-            } else {
+                StudentDetailView(student: student, context: modelContext)            } else {
                 Text("Select a student")
             }
         }

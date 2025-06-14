@@ -18,13 +18,13 @@ enum MediaType: String, Codable, CaseIterable {
 final class Song {
     var title: String
     var composer: String?
-    var goalPlays: Int
+    var goalPlays: Int?
     var studentID: UUID
     @Relationship var student: Student?
     @Relationship(deleteRule: .cascade) var plays: [Play] = []
     @Relationship(deleteRule: .cascade) var media: [MediaReference] = []
 
-    init(title: String, composer: String? = nil, goalPlays: Int, studentID: UUID) {
+    init(title: String, composer: String? = nil, goalPlays: Int? = nil, studentID: UUID) {
         self.title = title
         self.composer = composer
         self.goalPlays = goalPlays
@@ -35,4 +35,3 @@ final class Song {
         plays.reduce(0) { $0 + $1.count }
     }
 }
-

@@ -1,3 +1,12 @@
+//
+//  NotesSectionView.swift
+//  Clef Notes
+//
+//  Created by Greg Holland on 6/13/25.
+//
+import SwiftUI
+import SwiftData
+
 struct NotesSectionView: View {
     @Bindable var session: PracticeSession
     @Binding var editingNote: Note?

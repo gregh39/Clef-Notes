@@ -60,13 +60,35 @@ struct SongDetailView: View {
             List {
                 Section("Media") {
                     ForEach(song.media, id: \.persistentModelID) { media in
-                        VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text(media.type.rawValue.capitalized)
                                 .font(.headline)
-                            Text(media.url.absoluteString)
-                                .font(.subheadline)
-                                .foregroundColor(.blue)
+
+                            switch media.type {
+                            case .youtubeVideo:
+                                if let id = extractYouTubeID(from: media.url) {
+                                    YouTubePlayerView(videoID: id)
+                                } else {
+                                    Text(media.url.absoluteString)
+                                        .foregroundColor(.blue)
+                                }
+                            case .spotifyLink:
+                                if let embedURL = URL(string: media.url.absoluteString.replacingOccurrences(of: "open.spotify.com/", with: "open.spotify.com/embed/")) {
+                                    WebView(url: embedURL)
+                                        .frame(height: 80)
+                                        .cornerRadius(8)
+                                } else {
+                                    Text(media.url.absoluteString)
+                                        .foregroundColor(.blue)
+                                }
+                            case .appleMusicLink:
+                                Link("Open in Apple Music", destination: media.url)
+                            default:
+                                Text(media.url.absoluteString)
+                                    .foregroundColor(.blue)
+                            }
                         }
+                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -152,4 +174,42 @@ struct SongDetailView: View {
             }
         }
     }
+}
+
+import WebKit
+
+struct WebView: UIViewRepresentable {
+    let url: URL
+
+    func makeUIView(context: Context) -> WKWebView {
+        return WKWebView()
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        let request = URLRequest(url: url)
+        uiView.load(request)
+    }
+}
+
+struct YouTubePlayerView: View {
+    let videoID: String
+
+    var body: some View {
+        WebView(url: URL(string: "https://www.youtube.com/embed/\(videoID)")!)
+            .frame(height: 200)
+            .cornerRadius(8)
+    }
+}
+
+func extractYouTubeID(from url: URL) -> String? {
+    if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+       components.host?.contains("youtube.com") == true,
+       let queryItems = components.queryItems,
+       let v = queryItems.first(where: { $0.name == "v" })?.value {
+        return v
+    } else if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.host?.contains("youtu.be") == true {
+        return components.path.dropFirst().description
+    }
+    return nil
 }

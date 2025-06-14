@@ -1,3 +1,12 @@
+//
+//  PlaysSectionView.swift
+//  Clef Notes
+//
+//  Created by Greg Holland on 6/13/25.
+//
+import SwiftUI
+import SwiftData
+
 
 struct PlaysSectionView: View {
     @Bindable var session: PracticeSession

@@ -4,12 +4,13 @@
 //
 //  Created by Greg Holland on 6/13/25.
 //
-
+import SwiftUI
+import SwiftData
 
 @Observable
 class StudentDetailViewModel {
     let student: Student
-    let context: ModelContext
+    public let context: ModelContext
 
     @ObservationIgnored var practiceVM: StudentPracticeViewModel
 
@@ -77,5 +78,11 @@ class StudentDetailViewModel {
         try? context.save()
         practiceVM.reload()
         return session
+    }
+    
+    func deleteSong(_ song: Song) {
+        context.delete(song)
+        try? context.save()
+        practiceVM.reload()
     }
 }
