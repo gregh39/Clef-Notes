@@ -21,8 +21,8 @@ struct NotesSectionView: View {
             } else {
                 ForEach(session.notes, id: \.persistentModelID) { note in
                     VStack(alignment: .leading, spacing: 4) {
-                        if let songTitle = note.song?.title {
-                            Text(songTitle)
+                        if !note.songs.isEmpty {
+                            Text(note.songs.map { $0.title }.joined(separator: ", "))
                                 .font(.headline)
                         }
                         Text(note.text)

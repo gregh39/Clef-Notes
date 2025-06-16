@@ -8,10 +8,13 @@ import SwiftData
 import Foundation
 
 enum MediaType: String, Codable, CaseIterable {
-    case audioRecording
-    case youtubeVideo
-    case spotifyLink
-    case appleMusicLink
+    case audioRecording = "Audio"
+    case youtubeVideo = "YouTube"
+    case spotifyLink = "Spotify"
+    case appleMusicLink = "Apple Music"
+    case sheetMusic = "Sheet Music"
+    case localVideo = "Local Video"
+
 }
 
 @Model
@@ -33,5 +36,9 @@ final class Song {
 
     var totalPlayCount: Int {
         plays.reduce(0) { $0 + $1.count }
+    }
+    
+    var lastPlayedDate: Date? {
+        plays.map(\.session?.day).compactMap { $0 }.max()
     }
 }

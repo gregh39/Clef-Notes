@@ -8,6 +8,9 @@
 import Swift
 import SwiftUI
 import SwiftData
+import PhotosUI
+import AVKit
+
 
 struct SongDetailView: View {
     @Environment(\.modelContext) private var context
@@ -18,21 +21,19 @@ struct SongDetailView: View {
     @State private var newMediaType: MediaType = .youtubeVideo
     @State private var showingEditSheet = false
 
-    @Query private var allNotes: [Note]
+    @State private var notesForSong: [Note] = []
+
+    @State private var selectedVideoItem: PhotosPickerItem? = nil
+    @State private var videoFileURL: URL? = nil
 
     init(song: Song) {
         self.song = song
         _editedTitle = State(initialValue: song.title)
-        let songID = song.id
-        let predicate = #Predicate<Note> {
-            $0.song?.id == songID
-        }
-        _allNotes = Query(filter: predicate, sort: \.session?.day, order: .reverse)
     }
 
     var sortedPlays: [Play] {
         song.plays.sorted {
-            ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast)
+            $0.totalPlaysIncludingThis < $1.totalPlaysIncludingThis
         }
     }
 
@@ -43,10 +44,13 @@ struct SongDetailView: View {
                 ForEach(Array(Dictionary(grouping: sortedPlays, by: { $0.session })), id: \.key?.persistentModelID) { session, plays in
                     Section(header: Text(session?.day.formatted(date: .abbreviated, time: .omitted) ?? "Unknown Session")) {
                         ForEach(plays, id: \.persistentModelID) { play in
-                            VStack(alignment: .leading) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("Count: \(play.count)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                Text("Total: \(play.totalPlaysIncludingThis)")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             }
                         }
                     }
@@ -83,12 +87,25 @@ struct SongDetailView: View {
                                 }
                             case .appleMusicLink:
                                 Link("Open in Apple Music", destination: media.url)
+                            case .localVideo:
+                                VideoPlayer(player: AVPlayer(url: media.url))
+                                    .frame(height: 200)
+                                    .cornerRadius(8)
                             default:
                                 Text(media.url.absoluteString)
                                     .foregroundColor(.blue)
                             }
                         }
                         .padding(.vertical, 4)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                context.delete(media)
+                                try? context.save()
+                                notesForSong = notesForSong.filter { $0.id != media.id }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -99,11 +116,11 @@ struct SongDetailView: View {
             // Notes Tab
             List {
                 Section("Notes") {
-                    if allNotes.isEmpty {
+                    if notesForSong.isEmpty {
                         Text("No notes yet")
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(allNotes, id: \.persistentModelID) { note in
+                        ForEach(notesForSong, id: \.persistentModelID) { note in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(note.text)
                                 if let sessionDate = note.session?.day {
@@ -118,6 +135,14 @@ struct SongDetailView: View {
             }
             .tabItem {
                 Label("Notes", systemImage: "note.text")
+            }
+            .onAppear {
+                let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+                notesForSong = allNotes.filter { note in
+                    note.songs.contains(where: { $0.id == song.id })
+                }.sorted {
+                    ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast)
+                }
             }
         }
         .navigationTitle(song.title)
@@ -142,17 +167,34 @@ struct SongDetailView: View {
                     Section("Add Media") {
                         Picker("Type", selection: $newMediaType) {
                             ForEach(MediaType.allCases, id: \.self) { type in
-                                Text(type.rawValue.capitalized).tag(type)
+                                Text(type.rawValue).tag(type)
                             }
                         }
 
-                        TextField("Enter media URL", text: $newMediaURL)
-                            .keyboardType(.URL)
-                            .autocapitalization(.none)
+                        if newMediaType == .localVideo {
+                            PhotosPicker("Select Video", selection: $selectedVideoItem, matching: .videos)
+                            
+                            if let videoFileURL = videoFileURL {
+                                Text(videoFileURL.lastPathComponent)
+                                    .font(.footnote)
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            TextField("Enter media URL", text: $newMediaURL)
+                                .keyboardType(.URL)
+                                .autocapitalization(.none)
+                        }
 
                         Button("Add Media") {
-                            guard let url = URL(string: newMediaURL), !newMediaURL.isEmpty else { return }
-                            let media = MediaReference(type: newMediaType, url: url)
+                            let url: URL?
+                            if newMediaType == .localVideo {
+                                url = videoFileURL
+                            } else {
+                                url = URL(string: newMediaURL)
+                            }
+
+                            guard let finalURL = url else { return }
+                            let media = MediaReference(type: newMediaType, url: finalURL)
                             media.song = song
                             song.media.append(media)
                             context.insert(media)
@@ -160,7 +202,7 @@ struct SongDetailView: View {
                             newMediaURL = ""
                             newMediaType = .youtubeVideo
                         }
-                        .disabled(newMediaURL.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(newMediaType != .localVideo && newMediaURL.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
                 .navigationTitle("Edit Song")
@@ -169,6 +211,15 @@ struct SongDetailView: View {
                         Button("Done") {
                             showingEditSheet = false
                         }
+                    }
+                }
+            }
+            .onChange(of: selectedVideoItem) { newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+                        try? data.write(to: tempURL)
+                        videoFileURL = tempURL
                     }
                 }
             }
@@ -182,7 +233,9 @@ struct WebView: UIViewRepresentable {
     let url: URL
 
     func makeUIView(context: Context) -> WKWebView {
-        return WKWebView()
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        return WKWebView(frame: .zero, configuration: config)
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
@@ -195,7 +248,7 @@ struct YouTubePlayerView: View {
     let videoID: String
 
     var body: some View {
-        WebView(url: URL(string: "https://www.youtube.com/embed/\(videoID)")!)
+        WebView(url: URL(string: "https://www.youtube.com/embed/\(videoID)?playsinline=1&fs=0")!)
             .frame(height: 200)
             .cornerRadius(8)
     }

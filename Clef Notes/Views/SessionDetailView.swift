@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import AVFoundation
+import PhotosUI
 // Import AddSongSheet if it's in a separate file
 // If AddSongSheet is in the same file, ignore this line.
 
@@ -41,6 +42,10 @@ struct SessionDetailView: View {
     private let metronomePlayer = AVAudioPlayerNode()
     private let metronomeFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
 
+    // Audio recording state
+    @State private var audioRecorder: AVAudioRecorder?
+    @State private var isRecording = false
+
     private var noteTextBinding: Binding<String> {
         Binding(
             get: { editingNote?.text ?? "" },
@@ -48,12 +53,46 @@ struct SessionDetailView: View {
         )
     }
 
-    private var noteSongBinding: Binding<Song?> {
-        Binding(
-            get: { editingNote?.song },
-            set: { editingNote?.song = $0 }
-        )
+    private func startOrStopRecording() {
+        if isRecording {
+            audioRecorder?.stop()
+            if let url = audioRecorder?.url {
+                let recording = AudioRecording(fileURL: url)
+                recording.session = session
+                session.recordings.append(recording)
+                context.insert(recording)
+                try? context.save()
+            }
+            isRecording = false
+        } else {
+            let filename = UUID().uuidString + ".m4a"
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+            let settings: [String: Any] = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+                audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+                try session.setActive(true)
+                audioRecorder?.record()
+                isRecording = true
+            } catch {
+                print("Failed to start recording: \(error)")
+            }
+        }
     }
+    
+    func progress(for song: Song) -> Double {
+        let total = Double(song.totalPlayCount)
+        guard let goalPlays = song.goalPlays, goalPlays > 0 else { return 0.0 }
+        let goal = Double(goalPlays)
+        return min(total / goal, 1.0)
+    }
+
 
     private func playDrone() {
         let sampleRate = 44100.0
@@ -139,29 +178,95 @@ struct SessionDetailView: View {
     }
 
     var body: some View {
-        Form {
-            Section("Session Info") {
-                DatePicker("Date", selection: $session.day, displayedComponents: .date)
-                Stepper(value: $session.durationMinutes, in: 0...240) {
-                    Text("Duration: \(session.durationMinutes) minutes")
+        TabView {
+            Form {
+                Section("Session Info") {
+                    DatePicker("Date", selection: $session.day, displayedComponents: .date)
+                    Stepper(value: $session.durationMinutes, in: 0...240) {
+                        Text("Duration: \(session.durationMinutes) minutes")
+                    }
                 }
+                Section("Recording") {
+                    Button(action: startOrStopRecording) {
+                        Label(isRecording ? "Stop Recording" : "Start Recording", systemImage: isRecording ? "stop.circle" : "record.circle")
+                            .foregroundColor(isRecording ? .red : .accentColor)
+                    }
+                }
+
+                PlaysSectionView(session: session)
+                NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
+                // --- Recordings Section ---
+                if !session.recordings.isEmpty {
+                    Section("Recordings") {
+                        ForEach(session.recordings, id: \.persistentModelID) { recording in
+                            VStack(alignment: .leading) {
+                                Text(recording.title ?? recording.fileURL.lastPathComponent)
+                                    .font(.headline)
+                                Text(recording.dateRecorded.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                if let duration = recording.duration {
+                                    Text("Duration: \(Int(duration))s")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
+                                Button("Play") {
+                                    let player = try? AVAudioPlayer(contentsOf: recording.fileURL)
+                                    player?.play()
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                // --- End Recordings Section ---
+            }
+            .tabItem {
+                Label("Session", systemImage: "calendar")
             }
 
-            PlaysSectionView(session: session)
-            NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
-            TunerSectionView(isTunerOn: $isTunerOn) { newValue in
-                if newValue { playDrone() } else { stopDrone() }
-            }
-            MetronomeSectionView(isMetronomeOn: $isMetronomeOn, tempo: $tempo, toggleAction: { enabled in
-                if enabled { startMetronome() } else { stopMetronome() }
-            }, tempoChanged: {
-                if isMetronomeOn {
-                    stopMetronome()
-                    startMetronome()
+            NavigationStack {
+                List {
+                    Section("Songs") {
+                        ForEach(songs, id: \.persistentModelID) { song in
+                            NavigationLink(destination: SongDetailView(song: song)) {
+                                VStack(alignment: .leading) {
+                                    Text(song.title)
+                                    HStack {
+                                        Spacer()
+                                        Text("\(song.totalPlayCount)/\(song.goalPlays)")
+                                            .font(.subheadline)
+                                            .monospacedDigit()
+                                        Spacer()
+                                    }
+                                    ProgressView(value: progress(for: song))
+                                }
+                            }
+                        }
+                    }
                 }
-            })
+            }
+            .tabItem {
+                Label("Songs", systemImage: "music.note.list")
+            }
+
+            VStack {
+                MetronomeSectionView()
+                .padding()
+            }
+            .tabItem {
+                Label("Metronome", systemImage: "metronome")
+            }
+            VStack {
+                TunerTabView()
+                .padding()
+            }
+            .tabItem {
+                Label("Tuner", systemImage: "tuningfork")
+            }
+
         }
-        .navigationTitle("Session Details")
+        .navigationTitle(session.title ?? "Practice")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -273,14 +378,32 @@ struct SessionDetailView: View {
                         .lineLimit(3...6)
                     }
 
-                    Section("Tag a Song") {
-                        Picker("Song", selection: Binding(
-                            get: { note.song },
-                            set: { note.song = $0 }
+                    Section("Tag Songs") {
+                        Picker("Add Song", selection: Binding<Song?>(
+                            get: { nil },
+                            set: { selected in
+                                if let song = selected, !note.songs.contains(where: { $0.id == song.id }) {
+                                    note.songs.append(song)
+                                }
+                            }
                         )) {
-                            Text("None").tag(Optional<Song>.none)
+                            Text("Select a song").tag(Optional<Song>.none)
                             ForEach(songs, id: \.persistentModelID) { song in
                                 Text(song.title).tag(Optional(song))
+                            }
+                        }
+
+                        if !note.songs.isEmpty {
+                            ForEach(note.songs, id: \.persistentModelID) { taggedSong in
+                                HStack {
+                                    Text(taggedSong.title)
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        note.songs.removeAll { $0.id == taggedSong.id }
+                                    } label: {
+                                        Image(systemName: "minus.circle")
+                                    }
+                                }
                             }
                         }
                     }
@@ -304,4 +427,3 @@ struct SessionDetailView: View {
         }
     }
 }
-

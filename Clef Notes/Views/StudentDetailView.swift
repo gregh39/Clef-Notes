@@ -7,8 +7,6 @@
 import SwiftUI
 import SwiftData
 
-
-
 struct StudentDetailView: View {
     @Environment(\.modelContext) private var context
     let student: Student
@@ -21,20 +19,74 @@ struct StudentDetailView: View {
     // State for navigating to new session detail
     @State private var newSession: PracticeSession?
 
+    @State private var showingAddSessionSheet = false
+
+    enum SongSortOption: String, CaseIterable, Identifiable {
+        case title = "Title"
+        case playCount = "Play Count"
+        case recentlyPlayed = "Recently Played"
+
+        var id: String { rawValue }
+    }
+
+    @State private var selectedSort: SongSortOption = .title
+
     init(student: Student, context: ModelContext) {
         self.student = student
         self._viewModel = State(initialValue: StudentDetailViewModel(student: student, context: context))
     }
 
     var body: some View {
+        var sortedSongs: [Song] {
+            switch selectedSort {
+            case .title:
+                return viewModel.songs.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            case .playCount:
+                return viewModel.songs.sorted { $0.totalPlayCount > $1.totalPlayCount }
+            case .recentlyPlayed:
+                return viewModel.songs.sorted {
+                    ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast)
+                }
+            }
+        }
+
         NavigationStack {
             TabView {
                 List {
                     Section("Sessions") {
                         ForEach(viewModel.sessions, id: \.persistentModelID) { session in
                             NavigationLink(destination: SessionDetailView(session: session)) {
-                                Text(session.day.formatted(date: .abbreviated, time: .omitted))
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(session.title ?? "Practice")
+                                            .font(.headline)
+                                        if let location = session.location {
+                                            Text(location.rawValue)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        if let instructor = session.instructor {
+                                            Text("Instructor: \(instructor.name)")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    Text(session.day.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
                             }
+                            .contextMenu {
+                            }
+                        }
+                        .onDelete { indexSet in
+                            for index in indexSet {
+                                let session = viewModel.sessions[index]
+                                viewModel.context.delete(session)
+                            }
+                            try? viewModel.context.save()
+                            viewModel.practiceVM.reload()
                         }
                     }
                 }
@@ -44,15 +96,24 @@ struct StudentDetailView: View {
 
                 List {
                     Section("Songs") {
-                        ForEach(viewModel.songs, id: \.persistentModelID) { song in
+                        Picker("Sort by", selection: $selectedSort) {
+                            ForEach(SongSortOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        ForEach(sortedSongs, id: \.persistentModelID) { song in
                             NavigationLink(destination: SongDetailView(song: song)) {
                                 VStack(alignment: .leading) {
                                     Text(song.title)
                                     HStack {
                                         Spacer()
-                                        Text("\(song.totalPlayCount)/\(song.goalPlays)")
-                                            .font(.subheadline)
-                                            .monospacedDigit()
+                                        if let gP = song.goalPlays {
+                                            Text("\(song.totalPlayCount)/\(gP)")
+                                                .font(.subheadline)
+                                                .monospacedDigit()
+                                        }
                                         Spacer()
                                     }
                                     ProgressView(value: viewModel.practiceVM.progress(for: song))
@@ -71,6 +132,10 @@ struct StudentDetailView: View {
                 .tabItem {
                     Label("Songs", systemImage: "music.note.list")
                 }
+                StatsTabView(sessions: viewModel.sessions)
+                .tabItem {
+                    Label("Stats", systemImage: "chart.bar")
+                }
             }
             .navigationTitle(student.name)
             .toolbar {
@@ -83,7 +148,7 @@ struct StudentDetailView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        newSession = viewModel.addSession()
+                        showingAddSessionSheet = true
                     } label: {
                         Label("Add Session", systemImage: "calendar.badge.plus")
                     }
@@ -102,8 +167,28 @@ struct StudentDetailView: View {
                     appleMusicLink: $viewModel.appleMusicLink,
                     spotifyLink: $viewModel.spotifyLink,
                     localFileLink: $viewModel.localFileLink,
-                    addAction: viewModel.addSong,
+                    addAction: {
+                        let mediaSources: [(String, MediaType)] = [
+                            (viewModel.youtubeLink, .youtubeVideo),
+                            (viewModel.appleMusicLink, .appleMusicLink),
+                            (viewModel.spotifyLink, .spotifyLink),
+                            (viewModel.localFileLink, .audioRecording)
+                        ]
+
+                        viewModel.addSong(mediaSources: mediaSources)
+                    },
                     clearAction: viewModel.clearSongForm
+                )
+            }
+            .sheet(isPresented: $showingAddSessionSheet) {
+                AddSessionSheet(
+                    isPresented: $showingAddSessionSheet,
+                    student: student,
+                    context: context,
+                    onAdd: { session in
+                        viewModel.practiceVM.reload()
+                        newSession = session
+                    }
                 )
             }
             .navigationDestination(item: $newSession) { session in

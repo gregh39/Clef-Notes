@@ -8,14 +8,25 @@ import SwiftData
 import SwiftUI
 import Swift
 
+enum LessonLocation: String, Codable, CaseIterable {
+    case home = "Home"
+    case school = "School"
+    case privateLesson = "Private Lesson"
+    case clinic = "Clinic"
+}
+
 @Model
 final class PracticeSession: Hashable {
     var day: Date
     var durationMinutes: Int
     var studentID: UUID
+    var location: LessonLocation?
+    var title: String? = "Practice"
     @Relationship var student: Student?
+    @Relationship var instructor: Instructor?
     @Relationship(deleteRule: .cascade) var plays: [Play] = []
     @Relationship(deleteRule: .cascade) var notes: [Note] = []
+    @Relationship(deleteRule: .cascade) var recordings: [AudioRecording] = []
 
     init(day: Date, durationMinutes: Int, studentID: UUID) {
         self.day = day

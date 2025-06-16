@@ -41,25 +41,17 @@ class StudentDetailViewModel {
         localFileLink = ""
     }
 
-    func addSong() {
-        let goal = Int(goalPlays)
+    func addSong(mediaSources: [(String, MediaType)]) {
+        guard let goal = Int(goalPlays) else {
+            print("Invalid goalPlays value: \(goalPlays)")
+            return
+        }
         let current = Int(currentPlays) ?? 0
 
         let song = Song(title: title, goalPlays: goal, studentID: student.id)
-        song.student = student
 
-        if current > 0 {
-            let play = Play(count: current)
-            play.song = song
-            song.plays.append(play)
-        }
-
-        [youtubeLink: MediaType.youtubeVideo,
-         appleMusicLink: MediaType.appleMusicLink,
-         spotifyLink: MediaType.spotifyLink,
-         localFileLink: MediaType.audioRecording]
-        .forEach { (urlString, type) in
-            if let url = URL(string: urlString), !urlString.isEmpty {
+        for (link, type) in mediaSources {
+            if let url = URL(string: link), !link.isEmpty {
                 let media = MediaReference(type: type, url: url)
                 media.song = song
                 song.media.append(media)
@@ -67,7 +59,13 @@ class StudentDetailViewModel {
         }
 
         context.insert(song)
-        try? context.save()
+        for _ in 0..<current {
+            let play = Play(count: 1)
+            play.song = song
+            song.plays.append(play)
+        }
+
+        clearSongForm()
         practiceVM.reload()
     }
 
