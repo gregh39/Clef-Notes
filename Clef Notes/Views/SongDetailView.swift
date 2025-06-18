@@ -10,7 +10,7 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import AVKit
-
+import AVFoundation
 
 struct SongDetailView: View {
     @Environment(\.modelContext) private var context
@@ -26,6 +26,8 @@ struct SongDetailView: View {
     @State private var selectedVideoItem: PhotosPickerItem? = nil
     @State private var videoFileURL: URL? = nil
 
+    @State private var audioPlayerManager = AudioPlayerManager()
+
     init(song: Song) {
         self.song = song
         _editedTitle = State(initialValue: song.title)
@@ -35,6 +37,12 @@ struct SongDetailView: View {
         song.plays.sorted {
             $0.totalPlaysIncludingThis < $1.totalPlaysIncludingThis
         }
+    }
+
+    var taggedRecordings: [AudioRecording] {
+        let allRecordings = (try? context.fetch(FetchDescriptor<AudioRecording>())) ?? []
+        return allRecordings.filter { $0.songs.contains(where: { $0.id == song.id }) }
+            .sorted { ($0.dateRecorded ?? .distantPast) > ($1.dateRecorded ?? .distantPast) }
     }
 
     var body: some View {
@@ -108,6 +116,24 @@ struct SongDetailView: View {
                         }
                     }
                 }
+                
+
+
+                Section("Audio Recordings") {
+                    if taggedRecordings.isEmpty {
+                        Text("No audio recordings tagged with this song.")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(taggedRecordings, id: \.persistentModelID) { recording in
+                            AudioRecordingCell(
+                                recording: recording,
+                                audioPlayerManager: audioPlayerManager,
+                                onDelete: nil // Or provide a delete action if desired
+                            )
+                            .id(audioPlayerManager.currentlyPlayingID)
+                        }
+                    }
+                }
             }
             .tabItem {
                 Label("Media", systemImage: "link")
@@ -173,7 +199,7 @@ struct SongDetailView: View {
 
                         if newMediaType == .localVideo {
                             PhotosPicker("Select Video", selection: $selectedVideoItem, matching: .videos)
-                            
+
                             if let videoFileURL = videoFileURL {
                                 Text(videoFileURL.lastPathComponent)
                                     .font(.footnote)
@@ -266,3 +292,4 @@ func extractYouTubeID(from url: URL) -> String? {
     }
     return nil
 }
+

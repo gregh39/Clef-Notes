@@ -196,7 +196,7 @@ class TunerViewModel {
         let session = AVAudioSession.sharedInstance()
         do {
             // Configure the session for playback only.
-            try session.setCategory(.playback, mode: .default, options: .defaultToSpeaker)
+            try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
         } catch {
             // Use do-catch for better error reporting instead of try?

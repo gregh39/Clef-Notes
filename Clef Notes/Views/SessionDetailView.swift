@@ -9,8 +9,6 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 import PhotosUI
-// Import AddSongSheet if it's in a separate file
-// If AddSongSheet is in the same file, ignore this line.
 
 struct SessionDetailView: View {
     @Bindable var session: PracticeSession
@@ -31,20 +29,25 @@ struct SessionDetailView: View {
     @State private var newLocalFileLink = ""
 
     @State private var isTunerOn = false
-    private let audioEngine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
-    private let audioFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
-
     @State private var isMetronomeOn = false
-    @State private var tempo: Double = 60.0
-    @State private var metronomeTimer: Timer?
-    private let metronomeEngine = AVAudioEngine()
-    private let metronomePlayer = AVAudioPlayerNode()
-    private let metronomeFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
 
     // Audio recording state
     @State private var audioRecorder: AVAudioRecorder?
     @State private var isRecording = false
+    
+    // --- NEW: State for waveform ---
+    @State private var recordingTimer: Timer?
+    @State private var audioLevel: CGFloat = 0.0
+    // --- END NEW ---
+
+    // Use AudioManager to handle audio playback
+    @State private var audioPlayerManager = AudioPlayerManager()
+
+    // New state variables for recording metadata sheet
+    @State private var showingRecordingMetadataSheet = false
+    @State private var pendingRecordingURL: URL? = nil
+    @State private var newRecordingTitle = ""
+    @State private var selectedSongs: Set<PersistentIdentifier> = []
 
     private var noteTextBinding: Binding<String> {
         Binding(
@@ -52,38 +55,72 @@ struct SessionDetailView: View {
             set: { editingNote?.text = $0 }
         )
     }
-
+    
+    // --- MODIFIED FUNCTION ---
     private func startOrStopRecording() {
         if isRecording {
+            // --- Stop recording ---
             audioRecorder?.stop()
+            recordingTimer?.invalidate() // Stop the timer
+            
             if let url = audioRecorder?.url {
-                let recording = AudioRecording(fileURL: url)
-                recording.session = session
-                session.recordings.append(recording)
-                context.insert(recording)
-                try? context.save()
+                pendingRecordingURL = url
+                showingRecordingMetadataSheet = true
             }
             isRecording = false
+            withAnimation { audioLevel = 0.0 } // Animate waveform collapse
+            
         } else {
+            // --- Start recording ---
             let filename = UUID().uuidString + ".m4a"
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+            guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                print("Failed to get the documents directory.")
+                return
+            }
+            let url = documentsPath.appendingPathComponent(filename)
+            
             let settings: [String: Any] = [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
                 AVSampleRateKey: 44100,
                 AVNumberOfChannelsKey: 1,
                 AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
             ]
+            
             do {
-                let session = AVAudioSession.sharedInstance()
-                try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+                let audioSession = AVAudioSession.sharedInstance()
+                try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+                
                 audioRecorder = try AVAudioRecorder(url: url, settings: settings)
-                try session.setActive(true)
+                audioRecorder?.isMeteringEnabled = true // **IMPORTANT: Enable metering**
+                
+                try audioSession.setActive(true)
                 audioRecorder?.record()
                 isRecording = true
+                
+                // --- NEW: Start the timer to update the waveform ---
+                recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+                    audioRecorder?.updateMeters()
+                    // Get power in dB, convert to a 0-1 scale
+                    let power = audioRecorder?.averagePower(forChannel: 0) ?? -160.0
+                    let normalizedPower = CGFloat((160.0 + power) / 160.0)
+                    withAnimation(.linear(duration: 0.1)) {
+                        self.audioLevel = normalizedPower
+                    }
+                }
+                // --- END NEW ---
+                
             } catch {
                 print("Failed to start recording: \(error)")
             }
         }
+    }
+    // --- END MODIFIED FUNCTION ---
+    
+    // Clear recording metadata fields
+    private func clearRecordingMetadataFields() {
+        pendingRecordingURL = nil
+        newRecordingTitle = ""
+        selectedSongs = []
     }
     
     func progress(for song: Song) -> Double {
@@ -93,189 +130,176 @@ struct SessionDetailView: View {
         return min(total / goal, 1.0)
     }
 
-
-    private func playDrone() {
-        let sampleRate = 44100.0
-        let duration = 10.0 // seconds
-        let frequency = 440.0
-        let frameCount = AVAudioFrameCount(sampleRate * duration)
-
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat!, frameCapacity: frameCount) else { return }
-        buffer.frameLength = frameCount
-
-        let thetaIncrement = 2.0 * Double.pi * frequency / sampleRate
-        for frame in 0..<Int(frameCount) {
-            let sample = sin(thetaIncrement * Double(frame))
-            buffer.floatChannelData?.pointee[frame] = Float(sample)
-        }
-
-        audioEngine.attach(player)
-        audioEngine.connect(player, to: audioEngine.mainMixerNode, format: audioFormat)
-
-        do {
-            try audioEngine.start()
-            player.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
-            player.play()
-        } catch {
-            print("Audio Engine error: \(error)")
-        }
-    }
-
-    private func stopDrone() {
-        player.stop()
-        audioEngine.stop()
-    }
-
-    private func startMetronome() {
-        guard let format = metronomeFormat else { return }
-
-        let sampleRate = format.sampleRate
-        let duration = 0.05 // 50ms click
-        let frequency = 660.0 // softer tone
-        let frameCount = AVAudioFrameCount(sampleRate * duration)
-
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { return }
-        buffer.frameLength = frameCount
-
-        let thetaIncrement = 2.0 * Double.pi * frequency / sampleRate
-        let attackFrames = Int(Double(frameCount) * 0.1)
-        let releaseFrames = Int(Double(frameCount) * 0.1)
-
-        for frame in 0..<Int(frameCount) {
-            var sample = sin(thetaIncrement * Double(frame))
-
-            if frame < attackFrames {
-                sample *= Double(frame) / Double(attackFrames)
-            } else if frame > Int(frameCount) - releaseFrames {
-                sample *= Double(Int(frameCount) - frame) / Double(releaseFrames)
-            }
-
-            buffer.floatChannelData?.pointee[frame] = Float(sample * 0.5)
-        }
-
-        metronomeEngine.attach(metronomePlayer)
-        metronomeEngine.connect(metronomePlayer, to: metronomeEngine.mainMixerNode, format: format)
-
-        do {
-            try metronomeEngine.start()
-        } catch {
-            print("Metronome engine failed to start: \(error)")
-            return
-        }
-
-        metronomeTimer?.invalidate()
-        metronomeTimer = Timer.scheduledTimer(withTimeInterval: 60.0 / tempo, repeats: true) { _ in
-            self.metronomePlayer.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
-            self.metronomePlayer.play()
-        }
-    }
-
-    private func stopMetronome() {
-        metronomeTimer?.invalidate()
-        metronomeTimer = nil
-        metronomePlayer.stop()
-        metronomeEngine.stop()
-    }
-
     var body: some View {
         TabView {
+            // MARK: - Session Tab
             Form {
-                Section("Session Info") {
-                    DatePicker("Date", selection: $session.day, displayedComponents: .date)
-                    Stepper(value: $session.durationMinutes, in: 0...240) {
-                        Text("Duration: \(session.durationMinutes) minutes")
-                    }
-                }
-                Section("Recording") {
-                    Button(action: startOrStopRecording) {
-                        Label(isRecording ? "Stop Recording" : "Start Recording", systemImage: isRecording ? "stop.circle" : "record.circle")
-                            .foregroundColor(isRecording ? .red : .accentColor)
-                    }
-                }
-
-                PlaysSectionView(session: session)
-                NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
-                // --- Recordings Section ---
-                if !session.recordings.isEmpty {
-                    Section("Recordings") {
-                        ForEach(session.recordings, id: \.persistentModelID) { recording in
-                            VStack(alignment: .leading) {
-                                Text(recording.title ?? recording.fileURL.lastPathComponent)
+                    // Session Info Section
+                    Section {
+                        HStack {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                                .frame(width: 24)
+                            DatePicker("Date", selection: $session.day, displayedComponents: .date)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.green)
+                                    .frame(width: 24)
+                                Text("Duration")
+                                Spacer()
+                                Text("\(session.durationMinutes) min")
                                     .font(.headline)
-                                Text(recording.dateRecorded.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                if let duration = recording.duration {
-                                    Text("Duration: \(Int(duration))s")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                }
-                                Button("Play") {
-                                    let player = try? AVAudioPlayer(contentsOf: recording.fileURL)
-                                    player?.play()
-                                }
+                                    .foregroundColor(.primary)
                             }
-                            .padding(.vertical, 4)
+                            
+                            Stepper("", value: $session.durationMinutes, in: 0...240)
+                                .labelsHidden()
+                        }
+                        .padding(.vertical, 2)
+                    } header: {
+                        Label("Session Info", systemImage: "info.circle")
+                    }
+                    
+                    // Recording Section
+                    Section {
+                        VStack(spacing: 12) {
+                            Button(action: startOrStopRecording) {
+                                HStack {
+                                    Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
+                                        .font(.title2)
+                                        .foregroundColor(isRecording ? .red : .white)
+                                    
+                                    Text(isRecording ? "Stop Recording" : "Start Recording")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    
+                                    Spacer()
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(isRecording ?
+                                              LinearGradient(colors: [.red.opacity(0.8), .red], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                                              LinearGradient(colors: [.blue.opacity(0.8), .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        )
+                                        .shadow(color: isRecording ? .red.opacity(0.3) : .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            if isRecording {
+                                VStack(spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "waveform")
+                                            .foregroundColor(.red)
+                                        Text("Recording...")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                    
+                                    LiveWaveformView(level: audioLevel)
+                                        .transition(.opacity.combined(with: .scale))
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Label("Recording", systemImage: "mic")
+                    }
+
+                    PlaysSectionView(session: session)
+                    NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
+                    
+                    // Recordings Section
+                    if !session.recordings.isEmpty {
+                        Section {
+                            ForEach(session.recordings, id: \.persistentModelID) { recording in
+                                AudioRecordingCell(
+                                    recording: recording,
+                                    audioPlayerManager: audioPlayerManager,
+                                    onDelete: {
+                                        if let idx = session.recordings.firstIndex(where: { $0.persistentModelID == recording.persistentModelID }) {
+                                            let removed = session.recordings.remove(at: idx)
+                                            context.delete(removed)
+                                            try? context.save()
+                                        }
+                                    }
+                                )
+                            }
+                        } header: {
+                            Label("Recordings", systemImage: "waveform.badge.mic")
                         }
                     }
                 }
-                // --- End Recordings Section ---
-            }
             .tabItem {
                 Label("Session", systemImage: "calendar")
             }
 
-            NavigationStack {
-                List {
-                    Section("Songs") {
+            // MARK: - Songs Tab
+            List {
+                    Section {
                         ForEach(songs, id: \.persistentModelID) { song in
                             NavigationLink(destination: SongDetailView(song: song)) {
-                                VStack(alignment: .leading) {
-                                    Text(song.title)
-                                    HStack {
-                                        Spacer()
-                                        Text("\(song.totalPlayCount)/\(song.goalPlays)")
-                                            .font(.subheadline)
-                                            .monospacedDigit()
-                                        Spacer()
-                                    }
-                                    ProgressView(value: progress(for: song))
-                                }
+                                SongRowView(song: song, progress: progress(for: song))
                             }
                         }
+                    } header: {
+                        Label("Songs", systemImage: "music.note.list")
                     }
                 }
-            }
             .tabItem {
                 Label("Songs", systemImage: "music.note.list")
             }
 
-            VStack {
+            // MARK: - Metronome Tab
+            VStack(spacing: 20) {
+                Image(systemName: "metronome")
+                    .font(.system(size: 60))
+                    .foregroundColor(.orange)
+                    .padding(.top, 40)
+                
+                Text("Metronome")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                
                 MetronomeSectionView()
-                .padding()
+                    .padding()
+                
+                Spacer()
             }
             .tabItem {
                 Label("Metronome", systemImage: "metronome")
             }
-            VStack {
+            
+            // MARK: - Tuner Tab
+            VStack(spacing: 20) {
+                Image(systemName: "tuningfork")
+                    .font(.system(size: 60))
+                    .foregroundColor(.purple)
+                    .padding(.top, 40)
+                
+                Text("Tuner")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                
                 TunerTabView()
-                .padding()
+                    .padding()
+                
+                Spacer()
             }
             .tabItem {
                 Label("Tuner", systemImage: "tuningfork")
             }
-
         }
-        .navigationTitle(session.title ?? "Practice")
+        .navigationTitle(session.title ?? "Practice Session")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showingAddPlaySheet = true
-                } label: {
-                    Label("Add Play", systemImage: "plus")
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button {
                     let note = Note(text: "")
                     note.session = session
@@ -283,30 +307,68 @@ struct SessionDetailView: View {
                     context.insert(note)
                     editingNote = note
                 } label: {
-                    Label("Add Note", systemImage: "note.text.badge.plus")
+                    Image(systemName: "note.text.badge.plus")
+                        .font(.title3)
+                }
+                
+                Button {
+                    showingAddPlaySheet = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
                 }
             }
         }
         .sheet(isPresented: $showingAddPlaySheet) {
             NavigationStack {
                 List {
-                    Button("Add New Song") {
-                        showingAddPlaySheet = false
-                        showingAddSongSheet = true
-                    }
-                    ForEach(songs, id: \.persistentModelID) { song in
-                        Button(song.title) {
-                            let play = Play(count: 1)
-                            play.song = song
-                            play.session = session
-                            session.plays.append(play)
-                            context.insert(play)
-                            try? context.save()
+                    Section {
+                        Button {
                             showingAddPlaySheet = false
+                            showingAddSongSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("Add New Song")
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    } header: {
+                        Text("Create")
+                    }
+                    
+                    if !songs.isEmpty {
+                        Section {
+                            ForEach(songs, id: \.persistentModelID) { song in
+                                Button(song.title) {
+                                    let play = Play(count: 1)
+                                    play.song = song
+                                    play.session = session
+                                    session.plays.append(play)
+                                    context.insert(play)
+                                    try? context.save()
+                                    showingAddPlaySheet = false
+                                }
+                            }
+                        } header: {
+                            Text("Existing Songs")
                         }
                     }
                 }
                 .navigationTitle("Choose Song")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            showingAddPlaySheet = false
+                        }
+                    }
+                }
             }
         }
         .sheet(isPresented: $showingAddSongSheet) {
@@ -368,62 +430,132 @@ struct SessionDetailView: View {
             )
         }
         .sheet(item: $editingNote) { note in
-            NavigationStack {
-                Form {
-                    Section("Note") {
-                        TextField("Enter note text", text: Binding(
-                            get: { note.text },
-                            set: { note.text = $0 }
-                        ), axis: .vertical)
-                        .lineLimit(3...6)
-                    }
-
-                    Section("Tag Songs") {
-                        Picker("Add Song", selection: Binding<Song?>(
-                            get: { nil },
-                            set: { selected in
-                                if let song = selected, !note.songs.contains(where: { $0.id == song.id }) {
-                                    note.songs.append(song)
-                                }
-                            }
-                        )) {
-                            Text("Select a song").tag(Optional<Song>.none)
-                            ForEach(songs, id: \.persistentModelID) { song in
-                                Text(song.title).tag(Optional(song))
-                            }
+            AddNoteSheet(note: note, songs: songs)
+        }
+        .sheet(isPresented: $showingRecordingMetadataSheet, onDismiss: { clearRecordingMetadataFields() }) {
+            if let url = pendingRecordingURL {
+                RecordingMetadataSheet(
+                    fileURL: url,
+                    songs: songs,
+                    newRecordingTitle: $newRecordingTitle,
+                    selectedSongIDs: $selectedSongs,
+                    onSave: { title, songIDs in
+                        var duration: TimeInterval? = nil
+                        if let audioPlayer = try? AVAudioPlayer(contentsOf: url) {
+                            duration = audioPlayer.duration
                         }
-
-                        if !note.songs.isEmpty {
-                            ForEach(note.songs, id: \.persistentModelID) { taggedSong in
-                                HStack {
-                                    Text(taggedSong.title)
-                                    Spacer()
-                                    Button(role: .destructive) {
-                                        note.songs.removeAll { $0.id == taggedSong.id }
-                                    } label: {
-                                        Image(systemName: "minus.circle")
-                                    }
-                                }
-                            }
+                        let recording = AudioRecording(fileURL: url, duration: duration)
+                        recording.title = title.isEmpty ? url.lastPathComponent : title
+                        recording.session = session
+                        recording.dateRecorded = Date()
+                        for song in songs where songIDs.contains(song.persistentModelID) {
+                            recording.songs.append(song)
                         }
+                        session.recordings.append(recording)
+                        context.insert(recording)
+                        try? context.save()
+                        clearRecordingMetadataFields()
+                        showingRecordingMetadataSheet = false
+                    },
+                    onCancel: {
+                        clearRecordingMetadataFields()
                     }
-                }
-                .navigationTitle("Edit Note")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            editingNote = nil
-                        }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            try? context.save()
-                            editingNote = nil
-                        }
-                        .disabled(note.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
+                )
             }
         }
+    }
+}
+
+// MARK: - Enhanced Song Row View
+struct SongRowView: View {
+    let song: Song
+    let progress: Double
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "music.note")
+                    .foregroundColor(.accentColor)
+                    .frame(width: 20)
+                
+                Text(song.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(song.totalPlayCount)/\(song.goalPlays ?? 0)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .monospacedDigit()
+                    
+                    Text("\(Int(progress * 100))%")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            ProgressView(value: progress)
+                .progressViewStyle(LinearProgressViewStyle(tint: progressColor(for: progress)))
+                .scaleEffect(y: 1.5)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func progressColor(for progress: Double) -> Color {
+        switch progress {
+        case 0..<0.3:
+            return .red
+        case 0.3..<0.7:
+            return .orange
+        case 0.7..<1.0:
+            return .yellow
+        default:
+            return .green
+        }
+    }
+}
+
+// MARK: - Enhanced Live Waveform Display
+struct LiveWaveformView: View {
+    var level: CGFloat // Normalized level from 0.0 to 1.0
+    var barColor: Color = .red
+
+    private let barCount = 12
+    private let maxHeight: CGFloat = 35.0
+
+    // Enhanced multipliers for a more dynamic waveform
+    private let multipliers: [CGFloat] = [0.15, 0.3, 0.5, 0.7, 0.85, 1.0, 1.0, 0.85, 0.7, 0.5, 0.3, 0.15]
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<barCount, id: \.self) { index in
+                let baseHeight: CGFloat = 3
+                let dynamicHeight = max(baseHeight, level * maxHeight * multipliers[index])
+                
+                RoundedRectangle(cornerRadius: 2)
+                    .frame(width: 4, height: dynamicHeight)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [barColor.opacity(0.8), barColor],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: barColor.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .animation(.easeInOut(duration: 0.1), value: level)
+            }
+        }
+        .frame(height: maxHeight, alignment: .center)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(.quaternary, lineWidth: 1)
+                )
+        )
     }
 }

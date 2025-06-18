@@ -27,6 +27,10 @@ final class Song {
     @Relationship(deleteRule: .cascade) var plays: [Play] = []
     @Relationship(deleteRule: .cascade) var media: [MediaReference] = []
 
+    // The inverse parameter has been removed to break the circular reference.
+    // SwiftData will infer the inverse from the AudioRecording model.
+    @Relationship var recordings: [AudioRecording] = []
+
     init(title: String, composer: String? = nil, goalPlays: Int? = nil, studentID: UUID) {
         self.title = title
         self.composer = composer
