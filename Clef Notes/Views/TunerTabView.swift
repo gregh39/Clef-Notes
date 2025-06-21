@@ -18,7 +18,7 @@ struct TunerTabView: View {
     @State private var selectedOctave: Int = 4
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack {
             
             Picker("Octave", selection: $selectedOctave) {
                 ForEach(2...5, id: \.self) { octave in
@@ -74,7 +74,7 @@ struct TunerTabView: View {
                 // A visual indicator that pulses when the drone is playing.
                 Circle()
                     .stroke(lineWidth: 10)
-                    .frame(width: 200, height: 200)
+                    .frame(width: 100, height: 100)
                     .foregroundColor(.blue.opacity(viewModel.isPlayingDrone ? 0.5 : 0))
                     .scaleEffect(viewModel.isPlayingDrone ? 1.2 : 1.0)
                     .animation(
@@ -102,7 +102,7 @@ struct TunerTabView: View {
             Button {
                 viewModel.toggleDrone()
             } label: {
-                Label(viewModel.isPlayingDrone ? "Stop Drone" : "Play Drone", systemImage: viewModel.isPlayingDrone ? "stop.circle.fill" : "play.circle.fill")
+                Label(viewModel.isPlayingDrone ? "Stop" : "Start", systemImage: viewModel.isPlayingDrone ? "stop.circle.fill" : "play.circle.fill")
                     .frame(maxWidth: 250)
             }
             .buttonStyle(.borderedProminent)
@@ -114,7 +114,7 @@ struct TunerTabView: View {
             // Ensure audio engine stops when the view is no longer visible.
             viewModel.stopAll()
         }
-        .onChange(of: selectedOctave) { newValue in
+        .onChange(of: selectedOctave) { _, newValue in
             viewModel.selectedNote = TunerViewModel.availableNotes(for: newValue)[9] // Default to A
         }
     }
@@ -262,3 +262,4 @@ class TunerViewModel {
     }
     private var phase: Float = 0
 }
+

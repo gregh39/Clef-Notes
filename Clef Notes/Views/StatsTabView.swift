@@ -49,7 +49,6 @@ struct StatsTabView: View {
             Divider()
                 .padding(.vertical)
 
-            let lastWeekStart = Calendar.current.date(byAdding: .day, value: -6, to: Date())!
             let lastWeekDates = (1...7).compactMap {
                 Calendar.current.date(byAdding: .day, value: -$0, to: Date())
             }.reversed()

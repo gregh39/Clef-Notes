@@ -6,7 +6,7 @@ struct MetronomeSectionView: View {
     // MARK: - State Properties
     
     /// The tempo in beats per minute.
-    @State private var bpm: Double = 120.0
+    @State private var bpm: Double = 60.0
     
     /// Indicates whether the metronome is currently running.
     @State private var isPlaying: Bool = false
@@ -19,6 +19,9 @@ struct MetronomeSectionView: View {
 
     /// State property to control the color of the pulsing visual.
     @State private var pulseColor: Color = .gray.opacity(0.3)
+    
+    /// State property to control the radius of the pulsing visual.
+    @State private var pulseRadius: CGFloat = 0
 
     // MARK: - Constants
     
@@ -28,20 +31,34 @@ struct MetronomeSectionView: View {
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 30) {
+        VStack {
             Spacer()
             
             // --- Pulsing Circle Visual ---
-            Circle()
-                .fill(pulseColor)
-                .frame(width: 200, height: 200)
+            ZStack {
+                /*Circle()
+                    .stroke(lineWidth: 20)
+                    .opacity(0.15)
+                    .frame(width: 300, height: 300)*/
+                
+                Circle()
+                    .foregroundColor(.clear)
+                    .background(
+                        Circle()
+                            .fill(
+                                RadialGradient(gradient: Gradient(colors: [.blue, .clear]), center: .center, startRadius: 0, endRadius: pulseRadius)
+                            )
+                            .frame(width: 300, height: 300)
+                    )
+                    .frame(width: 300, height: 300)
+            }
             
             Spacer()
             
             // --- Controls ---
-            VStack(spacing: 25) {
+            VStack {
                 // --- Tempo Controls ---
-                HStack(spacing: 25) {
+                HStack {
                     // --- Decrease Tempo Button ---
                     Button(action: {
                         if bpm > tempoRange.lowerBound {
@@ -72,31 +89,45 @@ struct MetronomeSectionView: View {
                     }
                     .disabled(bpm >= tempoRange.upperBound)
                 }
-                .onChange(of: bpm) { newBpm in
+                .onChange(of: bpm) { oldBpm, newBpm in
                     // If playing, reschedule the timer to smoothly update the tempo.
                     if isPlaying {
                         rescheduleTimer(for: newBpm)
                     }
                 }
                 
-                // --- Start/Stop Button ---
-                Button(action: toggleMetronome) {
-                    Label(isPlaying ? "Stop" : "Start", systemImage: isPlaying ? "stop.fill" : "play.fill")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 15)
-                        .frame(maxWidth: .infinity)
-                        .background(isPlaying ? Color.red : Color.green)
-                        .cornerRadius(15)
-                        .shadow(radius: 5)
+                Slider(value: $bpm, in: tempoRange, step: 1) {
+                    Text("Tempo")
+                } minimumValueLabel: {
+                    Text("\(Int(tempoRange.lowerBound))")
+                        
+                } maximumValueLabel: {
+                    Text("\(Int(tempoRange.upperBound))")
+                       
                 }
+                .padding(.horizontal)
+                .padding(.vertical)
+                // --- Start/Stop Button ---
+                
+
             }
-            .padding(.horizontal, 30)
-            .padding(.bottom, 20)
+            Spacer()
+            Button(action: toggleMetronome) {
+                Label(isPlaying ? "Stop" : "Start", systemImage: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                    .frame(maxWidth: 250)
+                   
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(isPlaying ? .red : .accentColor)
+            .padding(.bottom, 40)
         }
-        .background(Color(.systemGray6))
-        .edgesIgnoringSafeArea(.bottom)
         .onAppear(perform: setupAudioPlayer)
+        .onDisappear {
+            // Ensure audio engine stops when the view is no longer visible.
+            stopMetronome()
+        }
+
     }
 
     // MARK: - Metronome Logic
@@ -135,6 +166,7 @@ struct MetronomeSectionView: View {
         timer = nil
         withAnimation {
             pulseColor = .gray.opacity(0.3)
+            pulseRadius = 10
         }
     }
     
@@ -143,15 +175,17 @@ struct MetronomeSectionView: View {
         playSound()
         
         // Trigger the pulse animation.
-        // It quickly animates to full color...
+        // It quickly animates to full color and expands pulseRadius...
         withAnimation(.easeOut(duration: 0.1)) {
             pulseColor = .blue
+            pulseRadius = 150
         }
         
-        // ...then fades back over the remainder of the beat duration.
+        // ...then fades back over the remainder of the beat duration and pulseRadius shrinks back.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(.easeIn(duration: timeInterval * 0.8)) {
                 pulseColor = .gray.opacity(0.3)
+                pulseRadius = 10
             }
         }
     }
@@ -182,3 +216,4 @@ struct MetronomeSectionView: View {
         audioPlayer?.play()
     }
 }
+

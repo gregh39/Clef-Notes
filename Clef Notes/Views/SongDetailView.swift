@@ -42,7 +42,7 @@ struct SongDetailView: View {
     var taggedRecordings: [AudioRecording] {
         let allRecordings = (try? context.fetch(FetchDescriptor<AudioRecording>())) ?? []
         return allRecordings.filter { $0.songs.contains(where: { $0.id == song.id }) }
-            .sorted { ($0.dateRecorded ?? .distantPast) > ($1.dateRecorded ?? .distantPast) }
+            .sorted { ($0.dateRecorded) > ($1.dateRecorded) }
     }
 
     var body: some View {
@@ -118,7 +118,6 @@ struct SongDetailView: View {
                 }
                 
 
-
                 Section("Audio Recordings") {
                     if taggedRecordings.isEmpty {
                         Text("No audio recordings tagged with this song.")
@@ -128,9 +127,16 @@ struct SongDetailView: View {
                             AudioRecordingCell(
                                 recording: recording,
                                 audioPlayerManager: audioPlayerManager,
-                                onDelete: nil // Or provide a delete action if desired
+                                onDelete: nil
                             )
                             .id(audioPlayerManager.currentlyPlayingID)
+                        }
+                        .onDelete { indices in
+                            let toDelete = indices.map { taggedRecordings[$0] }
+                            for recording in toDelete {
+                                context.delete(recording)
+                            }
+                            try? context.save()
                         }
                     }
                 }
@@ -240,7 +246,7 @@ struct SongDetailView: View {
                     }
                 }
             }
-            .onChange(of: selectedVideoItem) { newItem in
+            .onChange(of: selectedVideoItem) { _, newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self) {
                         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
@@ -292,4 +298,3 @@ func extractYouTubeID(from url: URL) -> String? {
     }
     return nil
 }
-
