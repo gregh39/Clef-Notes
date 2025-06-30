@@ -10,7 +10,7 @@ import SwiftData
 
 @Model
 final class AudioRecording {
-    @Attribute(.unique) var id: UUID = UUID() // Explicit ID
+    var id: UUID = UUID() // Explicit ID
     var title: String?
     var filename: String?
     var fileURL: URL? {
