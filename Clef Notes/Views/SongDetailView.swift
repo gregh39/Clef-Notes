@@ -75,33 +75,35 @@ struct SongDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(media.type.rawValue.capitalized)
                                 .font(.headline)
-
-                            switch media.type {
-                            case .youtubeVideo:
-                                if let id = extractYouTubeID(from: media.url) {
-                                    YouTubePlayerView(videoID: id)
-                                } else {
-                                    Text(media.url.absoluteString)
-                                        .foregroundColor(.blue)
-                                }
-                            case .spotifyLink:
-                                if let embedURL = URL(string: media.url.absoluteString.replacingOccurrences(of: "open.spotify.com/", with: "open.spotify.com/embed/")) {
-                                    WebView(url: embedURL)
-                                        .frame(height: 80)
+                            if let murl = media.url{
+                                switch media.type {
+                                case .youtubeVideo:
+                                    if let id = extractYouTubeID(from: murl) {
+                                        YouTubePlayerView(videoID: id)
+                                    } else {
+                                        Text(murl.absoluteString)
+                                            .foregroundColor(.blue)
+                                    }
+                                case .spotifyLink:
+                                    if let embedURL = URL(string: murl.absoluteString.replacingOccurrences(of: "open.spotify.com/", with: "open.spotify.com/embed/")) {
+                                        WebView(url: embedURL)
+                                            .frame(height: 80)
+                                            .cornerRadius(8)
+                                    } else {
+                                        Text(murl.absoluteString)
+                                            .foregroundColor(.blue)
+                                    }
+                                case .appleMusicLink:
+                                    Link("Open in Apple Music", destination: murl)
+                                case .localVideo:
+                                    VideoPlayer(player: AVPlayer(url: murl))
+                                        .frame(height: 200)
                                         .cornerRadius(8)
-                                } else {
-                                    Text(media.url.absoluteString)
+                                default:
+                                    Text(murl.absoluteString)
                                         .foregroundColor(.blue)
+                                    
                                 }
-                            case .appleMusicLink:
-                                Link("Open in Apple Music", destination: media.url)
-                            case .localVideo:
-                                VideoPlayer(player: AVPlayer(url: media.url))
-                                    .frame(height: 200)
-                                    .cornerRadius(8)
-                            default:
-                                Text(media.url.absoluteString)
-                                    .foregroundColor(.blue)
                             }
                         }
                         .padding(.vertical, 4)

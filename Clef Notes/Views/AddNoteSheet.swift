@@ -10,7 +10,6 @@ import SwiftData
 
 struct AddNoteSheet: View {
     @Bindable var note: Note
-    let songs: [Song]
     
     // State to control UI
     @State private var showSketchArea: Bool
@@ -19,6 +18,8 @@ struct AddNoteSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     
+    @Query(sort: \Song.title) private var songs: [Song]
+    
     // Use a larger frame height for the canvas on iPad.
     private var canvasHeight: CGFloat {
         // Adjust height for the large detent, providing ample space.
@@ -26,9 +27,8 @@ struct AddNoteSheet: View {
     }
 
     // Custom initializer to set the initial state of the sketch area and sheet size.
-    init(note: Note, songs: [Song]) {
+    init(note: Note) {
         self.note = note
-        self.songs = songs
         
         let hasDrawing = !(note.drawing?.isEmpty ?? true)
         _showSketchArea = State(initialValue: hasDrawing)
@@ -75,7 +75,7 @@ struct AddNoteSheet: View {
                     }
                 }
 
-                Section("Tag Songs") {
+                /*Section("Tag Songs") {
                     Picker("Add Song", selection: Binding<Song?>(
                         get: { nil },
                         set: { selected in
@@ -104,7 +104,7 @@ struct AddNoteSheet: View {
                             }
                         }
                     }
-                }
+                }*/
             }
             .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)

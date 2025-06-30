@@ -17,9 +17,9 @@ enum LessonLocation: String, Codable, CaseIterable {
 
 @Model
 final class PracticeSession: Hashable {
-    var day: Date
-    var durationMinutes: Int
-    var studentID: UUID
+    var day: Date = Date()
+    var durationMinutes: Int = 0
+    var studentID: UUID = UUID()
     var location: LessonLocation?
     var title: String? = "Practice"
     @Relationship var student: Student?

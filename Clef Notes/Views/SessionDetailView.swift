@@ -330,7 +330,7 @@ struct SessionDetailView: View {
                         Label("Recording", systemImage: "mic")
                     }
                     
-                    PlaysSectionView(session: session)
+                    PlaysSectionView(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet)
                     NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
                     
                     // Recordings Section
@@ -433,7 +433,7 @@ struct SessionDetailView: View {
                 addSongSheet()
             }
             .sheet(item: $editingNote) { note in
-                AddNoteSheet(note: note, songs: songs)
+                AddNoteSheet(note: note)
             }
             .sheet(isPresented: $showingRecordingMetadataSheet, onDismiss: { clearRecordingMetadataFields() }) {
                 recordingMetadataSheetView()

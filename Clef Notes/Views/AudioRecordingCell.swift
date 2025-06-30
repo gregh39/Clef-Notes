@@ -19,7 +19,7 @@ struct AudioRecordingCell: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(recording.title ?? recording.fileURL.lastPathComponent)
+                Text(recording.title ?? recording.fileURL?.lastPathComponent ?? "Unknown")
                     .font(.headline)
                 Text(recording.dateRecorded.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
@@ -33,14 +33,20 @@ struct AudioRecordingCell: View {
             Spacer()
             Button(action: {
                 print("[AudioRecordingCell] Play button tapped for: \(recording.fileURL)")
-                print("File exists: \(FileManager.default.fileExists(atPath: recording.fileURL.path))")
+                if let fileURL = recording.fileURL {
+                    print("File exists: \(FileManager.default.fileExists(atPath: fileURL.path))")
+                } else {
+                    print("File URL is nil")
+                }
                 print("isPlaying: \(isPlaying)")
                 if isPlaying {
                     print("Stopping playback")
                     audioPlayerManager.stop()
-                } else {
+                } else if let fileURL = recording.fileURL {
                     print("Starting playback")
-                    audioPlayerManager.play(url: recording.fileURL, id: recording.persistentModelID)
+                    audioPlayerManager.play(url: fileURL, id: recording.persistentModelID)
+                } else {
+                    print("Cannot play: fileURL is nil")
                 }
             }) {
                 Image(systemName: isPlaying ? "stop.fill" : "play.fill")

@@ -11,7 +11,7 @@ import SwiftData
 final class Play {
     @Relationship var session: PracticeSession?
     @Relationship var song: Song?
-    var count: Int
+    var count: Int = 0
     
     init(count: Int) {
         self.count = count

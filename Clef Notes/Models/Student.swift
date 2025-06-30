@@ -10,8 +10,8 @@ import SwiftData
 @Model
 final class Student: Identifiable, Hashable {
     @Attribute(.unique) var id: UUID = UUID() // Explicit ID
-    var name: String
-    var instrument: String
+    var name: String = ""
+    var instrument: String = ""
 
     init(name: String, instrument: String) {
         self.name = name

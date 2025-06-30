@@ -19,10 +19,10 @@ enum MediaType: String, Codable, CaseIterable {
 
 @Model
 final class Song {
-    var title: String
+    var title: String = ""
     var composer: String?
     var goalPlays: Int?
-    var studentID: UUID
+    var studentID: UUID = UUID()
     @Relationship var student: Student?
     @Relationship(deleteRule: .cascade) var plays: [Play] = []
     @Relationship(deleteRule: .cascade) var media: [MediaReference] = []

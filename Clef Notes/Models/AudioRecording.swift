@@ -12,9 +12,10 @@ import SwiftData
 final class AudioRecording {
     @Attribute(.unique) var id: UUID = UUID() // Explicit ID
     var title: String?
-    var filename: String
-    var fileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    var filename: String?
+    var fileURL: URL? {
+        guard let filename else { return nil }
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(filename)
     }
     var dateRecorded: Date

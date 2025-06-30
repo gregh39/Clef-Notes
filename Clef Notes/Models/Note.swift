@@ -10,7 +10,7 @@ import Foundation
 
 @Model
 final class Note {
-    var text: String
+    var text: String = ""
     @Relationship var session: PracticeSession?
     @Relationship var songs: [Song] = [] // Optional – can be a general note or tied to one or more specific songs
     

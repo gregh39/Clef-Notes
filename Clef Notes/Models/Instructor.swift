@@ -10,7 +10,7 @@ import SwiftData
 
 @Model
 final class Instructor {
-    var name: String
+    var name: String = ""
     
     @Relationship(deleteRule: .nullify, inverse: \PracticeSession.instructor)
     var sessions: [PracticeSession] = []

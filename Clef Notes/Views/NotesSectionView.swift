@@ -14,15 +14,23 @@ struct NotesSectionView: View {
     @Environment(\.modelContext) private var context
 
     var body: some View {
-        Section("Notes") {
+        Section("Session Notes") {
             if session.notes.isEmpty {
-                Text("No notes")
-                    .foregroundColor(.secondary)
+                Button {
+                    let note = Note(text: "")
+                    note.session = session
+                    session.notes.append(note)
+                    context.insert(note)
+                    editingNote = note
+                } label: {
+                    Label("Add Note", systemImage: "note.text.badge.plus")
+                }
+
             } else {
                 ForEach(session.notes, id: \.persistentModelID) { note in
                     VStack(alignment: .leading, spacing: 4) {
                         if !note.songs.isEmpty {
-                            Text(note.songs.map { $0.title }.joined(separator: ", "))
+                            Text(note.songs.compactMap { $0.title }.joined(separator: ", "))
                                 .font(.headline)
                         }
                         Text(note.text)
@@ -42,7 +50,18 @@ struct NotesSectionView: View {
                     }
                     try? context.save()
                 }
+                Button {
+                    let note = Note(text: "")
+                    note.session = session
+                    session.notes.append(note)
+                    context.insert(note)
+                    editingNote = note
+                } label: {
+                    Label("Add Note", systemImage: "note.text.badge.plus")
+                }
+
             }
         }
     }
 }
+

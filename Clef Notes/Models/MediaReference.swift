@@ -9,8 +9,8 @@ import SwiftUI
 
 @Model
 final class MediaReference {
-    var type: MediaType
-    var url: URL
+    var type: MediaType = MediaType.audioRecording
+    var url: URL?
     var title: String?
     var notes: String?
     
