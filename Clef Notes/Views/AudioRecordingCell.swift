@@ -32,7 +32,7 @@ struct AudioRecordingCell: View {
             }
             Spacer()
             Button(action: {
-                print("[AudioRecordingCell] Play button tapped for: \(recording.fileURL)")
+                print("[AudioRecordingCell] Play button tapped for: \(String(describing: recording.fileURL))")
                 if let fileURL = recording.fileURL {
                     print("File exists: \(FileManager.default.fileExists(atPath: fileURL.path))")
                 } else {

@@ -27,51 +27,72 @@ struct SongDetailView: View {
     @State private var videoFileURL: URL? = nil
 
     @State private var audioPlayerManager = AudioPlayerManager()
-
+    
     init(song: Song) {
         self.song = song
         _editedTitle = State(initialValue: song.title)
     }
 
-    var sortedPlays: [Play] {
-        song.plays.sorted {
-            $0.totalPlaysIncludingThis < $1.totalPlaysIncludingThis
-        }
-    }
-
     var taggedRecordings: [AudioRecording] {
         let allRecordings = (try? context.fetch(FetchDescriptor<AudioRecording>())) ?? []
-        return allRecordings.filter { $0.songs.contains(where: { $0.id == song.id }) }
+        return allRecordings.filter { ($0.songs ?? []).contains(where: { $0.id == song.id }) }
             .sorted { ($0.dateRecorded) > ($1.dateRecorded) }
+    }
+    
+    // 1. NEW: A property to pre-calculate all totals at once.
+    private var cumulativePlayTotals: [Play: Int] {
+        guard let plays = song.plays else { return [:] }
+
+        // Sort the plays chronologically just ONCE.
+        let sortedPlays = plays.sorted {
+            ($0.session?.day ?? .distantPast) < ($1.session?.day ?? .distantPast)
+        }
+        
+        var totals: [Play: Int] = [:]
+        var runningTotal = 0
+        
+        // Loop through the sorted plays ONCE to calculate totals.
+        for play in sortedPlays {
+            runningTotal += play.count
+            totals[play] = runningTotal
+        }
+        
+        return totals
+    }
+    
+    // 2. MODIFIED: Use the pre-calculated totals for sorting.
+    var groupedPlaysBySession: [(key: PracticeSession?, value: [Play])] {
+        let grouped = Dictionary(grouping: song.plays ?? [], by: { $0.session })
+        
+        let sortedGroups = grouped.sorted { lhs, rhs in
+            let lhsDate = lhs.key?.day ?? .distantPast
+            let rhsDate = rhs.key?.day ?? .distantPast
+            return lhsDate > rhsDate
+        }
+        
+        return sortedGroups.map { (session, plays) in
+            // Use the dictionary for a super-fast lookup.
+            let sortedPlays = plays.sorted {
+                // Default to 0 if a play isn't in the dictionary.
+                (cumulativePlayTotals[$0] ?? 0) > (cumulativePlayTotals[$1] ?? 0)
+            }
+            return (key: session, value: sortedPlays)
+        }
     }
 
     var body: some View {
         TabView {
             // Plays Tab
-            List {
-                ForEach(Array(Dictionary(grouping: sortedPlays, by: { $0.session })), id: \.key?.persistentModelID) { session, plays in
-                    Section(header: Text(session?.day.formatted(date: .abbreviated, time: .omitted) ?? "Unknown Session")) {
-                        ForEach(plays, id: \.persistentModelID) { play in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Count: \(play.count)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text("Total: \(play.totalPlaysIncludingThis)")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                }
-            }
+            PlaysListView(
+                groupedPlays: groupedPlaysBySession
+            )
             .tabItem {
                 Label("Plays", systemImage: "music.note.list")
             }
-
             // Media Tab
             List {
                 Section("Media") {
-                    ForEach(song.media, id: \.persistentModelID) { media in
+                    ForEach(song.media ?? [], id: \.persistentModelID) { media in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(media.type.rawValue.capitalized)
                                 .font(.headline)
@@ -171,13 +192,11 @@ struct SongDetailView: View {
                 Label("Notes", systemImage: "note.text")
             }
             .onAppear {
+                print("Just making sure shit is printing")
                 let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-                notesForSong = allNotes.filter { note in
-                    note.songs.contains(where: { $0.id == song.id })
-                }.sorted {
-                    ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast)
-                }
+                notesForSong = fetchNotesForSong(from: allNotes)
             }
+             
         }
         .navigationTitle(song.title)
         .toolbar {
@@ -230,13 +249,15 @@ struct SongDetailView: View {
                             guard let finalURL = url else { return }
                             let media = MediaReference(type: newMediaType, url: finalURL)
                             media.song = song
-                            song.media.append(media)
+                            if song.media == nil { song.media = [] }
+                            song.media?.append(media)
                             context.insert(media)
                             try? context.save()
                             newMediaURL = ""
                             newMediaType = .youtubeVideo
                         }
                         .disabled(newMediaType != .localVideo && newMediaURL.trimmingCharacters(in: .whitespaces).isEmpty)
+ 
                     }
                 }
                 .navigationTitle("Edit Song")
@@ -258,8 +279,20 @@ struct SongDetailView: View {
                 }
             }
         }
+        
+    }
+    
+    func fetchNotesForSong(from allNotes: [Note]) -> [Note] {
+        allNotes
+            .filter { note in
+                note.songs?.contains(where: { $0.id == song.id }) == true
+            }
+            .sorted {
+                ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast)
+            }
     }
 }
+
 
 import WebKit
 
@@ -300,3 +333,4 @@ func extractYouTubeID(from url: URL) -> String? {
     }
     return nil
 }
+

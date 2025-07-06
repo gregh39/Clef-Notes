@@ -15,11 +15,11 @@ struct NotesSectionView: View {
 
     var body: some View {
         Section("Session Notes") {
-            if session.notes.isEmpty {
+            if (session.notes?.isEmpty ?? true) {
                 Button {
                     let note = Note(text: "")
                     note.session = session
-                    session.notes.append(note)
+                    session.notes?.append(note)
                     context.insert(note)
                     editingNote = note
                 } label: {
@@ -27,10 +27,10 @@ struct NotesSectionView: View {
                 }
 
             } else {
-                ForEach(session.notes, id: \.persistentModelID) { note in
+                ForEach(session.notes ?? [], id: \.persistentModelID) { note in
                     VStack(alignment: .leading, spacing: 4) {
-                        if !note.songs.isEmpty {
-                            Text(note.songs.compactMap { $0.title }.joined(separator: ", "))
+                        if let songs = note.songs, !songs.isEmpty {
+                            Text(songs.map { $0.title }.joined(separator: ", "))
                                 .font(.headline)
                         }
                         Text(note.text)
@@ -44,16 +44,16 @@ struct NotesSectionView: View {
                 }
                 .onDelete { indexSet in
                     for index in indexSet {
-                        let note = session.notes[index]
+                        let note = session.notes![index]
                         context.delete(note)
-                        session.notes.remove(at: index)
+                        session.notes!.remove(at: index)
                     }
                     try? context.save()
                 }
                 Button {
                     let note = Note(text: "")
                     note.session = session
-                    session.notes.append(note)
+                    session.notes!.append(note)
                     context.insert(note)
                     editingNote = note
                 } label: {
@@ -64,4 +64,3 @@ struct NotesSectionView: View {
         }
     }
 }
-

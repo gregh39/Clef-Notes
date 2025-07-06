@@ -50,94 +50,34 @@ struct StudentDetailView: View {
             }
         }
 
-        NavigationStack {
+        
             TabView {
-                List {
-                    Section("Sessions") {
-                        ForEach(viewModel.sessions, id: \.persistentModelID) { session in
-                            NavigationLink(destination: SessionDetailView(session: session)) {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(session.title ?? "Practice")
-                                            .font(.headline)
-                                        if let location = session.location {
-                                            Text(location.rawValue)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        if let instructor = session.instructor {
-                                            Text("Instructor: \(instructor.name)")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    Spacer()
-                                    Text(session.day.formatted(date: .abbreviated, time: .omitted))
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .contextMenu {
-                            }
+                NavigationStack {
+                    SessionListView(viewModel: $viewModel)
+                        .navigationDestination(item: $newSession) { session in
+                            SessionDetailView(session: session)
                         }
-                        .onDelete { indexSet in
-                            for index in indexSet {
-                                let session = viewModel.sessions[index]
-                                viewModel.context.delete(session)
-                            }
-                            try? viewModel.context.save()
-                            viewModel.practiceVM.reload()
-                        }
-                    }
+                        .navigationTitle(student.name)
+                        .navigationBarTitleDisplayMode(.large)
                 }
                 .tabItem {
                     Label("Sessions", systemImage: "calendar")
                 }
 
-                List {
-                    Section("Songs") {
-                        Picker("Sort by", selection: $selectedSort) {
-                            ForEach(SongSortOption.allCases) { option in
-                                Text(option.rawValue).tag(option)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        ForEach(sortedSongs, id: \.persistentModelID) { song in
-                            NavigationLink(destination: SongDetailView(song: song)) {
-                                VStack(alignment: .leading) {
-                                    Text(song.title)
-                                    HStack {
-                                        Spacer()
-                                        if let gP = song.goalPlays {
-                                            Text("\(song.totalPlayCount)/\(gP)")
-                                                .font(.subheadline)
-                                                .monospacedDigit()
-                                        }
-                                        Spacer()
-                                    }
-                                    ProgressView(value: viewModel.practiceVM.progress(for: song))
-                                }
-                            }
-                        }
-                        .onDelete { indexSet in
-                            for index in indexSet {
-                                let song = viewModel.songs[index]
-                                viewModel.deleteSong(song)                            }
-                            try? viewModel.context.save()
-                            viewModel.practiceVM.reload()
-                        }
-                    }
+                NavigationStack {
+                    StudentSongsTabView(viewModel: $viewModel, selectedSort: $selectedSort)
+                        .navigationTitle("Songs")
+                        .navigationBarTitleDisplayMode(.large)
                 }
-                .tabItem {
-                    Label("Songs", systemImage: "music.note.list")
+                .tabItem { Label("Songs", systemImage: "music.note.list") }
+                
+                NavigationStack {
+                    StatsTabView(sessions: viewModel.sessions)
+                        .navigationTitle("Practice Stats")
+                        .navigationBarTitleDisplayMode(.large)
                 }
-                StatsTabView(sessions: viewModel.sessions)
-                .tabItem {
-                    Label("Stats", systemImage: "chart.bar")
-                }
+                .tabItem { Label("Stats", systemImage: "chart.bar") }
             }
-            .navigationTitle(student.name)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -180,6 +120,7 @@ struct StudentDetailView: View {
                     clearAction: viewModel.clearSongForm
                 )
             }
+        
             .sheet(isPresented: $showingAddSessionSheet) {
                 AddSessionSheet(
                     isPresented: $showingAddSessionSheet,
@@ -191,9 +132,6 @@ struct StudentDetailView: View {
                     }
                 )
             }
-            .navigationDestination(item: $newSession) { session in
-                SessionDetailView(session: session)
-            }
-        }
     }
 }
+

@@ -69,7 +69,7 @@ class StudentPracticeViewModel {
     }
 
     func progress(for song: Song) -> Double {
-        let total = Double(song.totalPlayCount)
+        let total = Double(song.totalGoalPlayCount)
         guard let goalPlays = song.goalPlays, goalPlays > 0 else { return 0.0 }
         let goal = Double(goalPlays)
         return min(total / goal, 1.0)

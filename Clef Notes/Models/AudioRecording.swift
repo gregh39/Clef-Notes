@@ -18,13 +18,13 @@ final class AudioRecording {
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(filename)
     }
-    var dateRecorded: Date
+    var dateRecorded: Date = Date()
     var duration: TimeInterval?
 
-    @Relationship var session: PracticeSession?
+    var session: PracticeSession?
     
     // The new relationship to link songs to a recording.
-    @Relationship(inverse: \Song.recordings) var songs: [Song] = []
+    @Relationship(inverse: \Song.recordings) var songs: [Song]? = []
 
     init(fileURL: URL, dateRecorded: Date = .now, title: String? = nil, duration: TimeInterval? = nil) {
         self.filename = fileURL.lastPathComponent

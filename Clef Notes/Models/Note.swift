@@ -12,7 +12,7 @@ import Foundation
 final class Note {
     var text: String = ""
     @Relationship var session: PracticeSession?
-    @Relationship var songs: [Song] = [] // Optional – can be a general note or tied to one or more specific songs
+    @Relationship var songs: [Song]? = [] 
     
     @Attribute(.externalStorage)
     var drawing: Data?

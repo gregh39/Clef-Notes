@@ -13,6 +13,7 @@ struct PlaysSectionView: View {
     
     @Binding var showingAddPlaySheet: Bool
     @Binding var showingAddSongSheet: Bool
+    @Binding var playToEdit: Play?
     
     @Environment(\.modelContext) private var context
     
@@ -20,7 +21,7 @@ struct PlaysSectionView: View {
 
     var body: some View {
         Section("Session Plays") {
-            if session.plays.isEmpty {
+            if (session.plays ?? []).isEmpty {
                 Button {
                     showingAddPlaySheet = true
                 } label: {
@@ -29,19 +30,29 @@ struct PlaysSectionView: View {
                         .foregroundColor(.accentColor)
                 }
             } else {
-                ForEach(session.plays, id: \.persistentModelID) { play in
-                    VStack(alignment: .leading) {
-                        Text(play.song?.title ?? "Unknown Song")
-                        Text("Count: \(play.count)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                ForEach(session.plays ?? [], id: \.persistentModelID) { play in
+                    Button {
+                        playToEdit = play
+                    } label: {
+                        HStack {
+                            HStack( spacing: 2) {
+                                VStack(alignment: .leading) {
+                                    Text(play.song?.title ?? "Unknown Song")
+                                }
+                                Spacer()
+                                Text("Total: \(play.totalPlaysIncludingThis)")
+                            }
+                            Spacer()
+                        }
+                        .foregroundColor(.primary)
                     }
+
                 }
                 .onDelete { indexSet in
                     for index in indexSet {
-                        let play = session.plays[index]
+                        let play = (session.plays ?? [])[index]
                         context.delete(play)
-                        session.plays.remove(at: index)
+                        session.plays?.remove(at: index)
                     }
                     try? context.save()
                 }
@@ -85,12 +96,7 @@ struct PlaysSectionView: View {
                     Section {
                         ForEach(songs, id: \.persistentModelID) { song in
                             Button(song.title) {
-                                let play = Play(count: 1)
-                                play.song = song
-                                play.session = session
-                                session.plays.append(play)
-                                context.insert(play)
-                                try? context.save()
+                                addPlay(for: song)
                                 showingAddPlaySheet = false
                             }
                         }
@@ -110,6 +116,17 @@ struct PlaysSectionView: View {
             }
         }
     }
+    
+    private func addPlay(for song: Song) {
+        let play = Play(count: 1)
+        play.song = song
+        play.session = session
+        if session.plays == nil {
+            session.plays = []
+        }
+        session.plays?.append(play)
+        context.insert(play)
+        try? context.save()
+    }
 
 }
-

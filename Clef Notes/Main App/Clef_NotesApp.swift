@@ -27,11 +27,15 @@ struct Clef_NotesApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+    
+    @AppStorage("selectedAccentColor") private var selectedColor: AccentColor = .blue
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .tint(selectedColor.color)
         }
         .modelContainer(sharedModelContainer)
+
     }
 }

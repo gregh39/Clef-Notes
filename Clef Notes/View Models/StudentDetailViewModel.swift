@@ -54,15 +54,21 @@ class StudentDetailViewModel {
             if let url = URL(string: link), !link.isEmpty {
                 let media = MediaReference(type: type, url: url)
                 media.song = song
-                song.media.append(media)
+                if song.media == nil {
+                    song.media = []
+                }
+                song.media?.append(media)
             }
         }
 
         context.insert(song)
-        for _ in 0..<current {
-            let play = Play(count: 1)
+        if current > 0 {
+            let play = Play(count: current)
             play.song = song
-            song.plays.append(play)
+            if song.plays == nil {
+                song.plays = []
+            }
+            song.plays?.append(play)
         }
 
         clearSongForm()
@@ -84,3 +90,4 @@ class StudentDetailViewModel {
         practiceVM.reload()
     }
 }
+

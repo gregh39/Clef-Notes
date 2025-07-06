@@ -51,6 +51,10 @@ struct SessionDetailView: View {
     @State private var newRecordingTitle = ""
     @State private var selectedSongs: Set<PersistentIdentifier> = []
 
+    @State private var newPlayType: PlayType? = nil
+    
+    @State private var playToEdit: Play? = nil
+
     private var noteTextBinding: Binding<String> {
         Binding(
             get: { editingNote?.text ?? "" },
@@ -156,33 +160,60 @@ struct SessionDetailView: View {
                 let play = Play(count: 1)
                 play.song = song
                 play.session = session
-                song.plays.append(play)
-                session.plays.append(play)
-                context.insert(play)
+                play.playType = newPlayType
 
+                // Safely add play to song
+                if song.plays == nil {
+                    song.plays = [play]
+                } else {
+                    song.plays!.append(play)
+                }
+
+                // Safely add play to session
+                if session.plays == nil {
+                    session.plays = [play]
+                } else {
+                    session.plays?.append(play)
+                }
+
+                context.insert(play)
+                
                 if let url = URL(string: newYouTubeLink), !newYouTubeLink.isEmpty {
                     let media = MediaReference(type: .youtubeVideo, url: url)
                     media.song = song
-                    song.media.append(media)
+                    if song.media == nil {
+                        song.media = []
+                    }
+                    song.media?.append(media)
                 }
                 if let url = URL(string: newAppleMusicLink), !newAppleMusicLink.isEmpty {
                     let media = MediaReference(type: .appleMusicLink, url: url)
                     media.song = song
-                    song.media.append(media)
+                    if song.media == nil {
+                        song.media = []
+                    }
+                    song.media?.append(media)
                 }
                 if let url = URL(string: newSpotifyLink), !newSpotifyLink.isEmpty {
                     let media = MediaReference(type: .spotifyLink, url: url)
                     media.song = song
-                    song.media.append(media)
+                    if song.media == nil {
+                        song.media = []
+                    }
+                    song.media?.append(media)
                 }
                 if let url = URL(string: newLocalFileLink), !newLocalFileLink.isEmpty {
                     let media = MediaReference(type: .audioRecording, url: url)
                     media.song = song
-                    song.media.append(media)
+                    if song.media == nil {
+                        song.media = []
+                    }
+                    song.media?.append(media)
                 }
 
                 context.insert(song)
                 try? context.save()
+                newPlayType = nil
             },
             clearAction: {
                 newTitle = ""
@@ -192,6 +223,7 @@ struct SessionDetailView: View {
                 newAppleMusicLink = ""
                 newSpotifyLink = ""
                 newLocalFileLink = ""
+                newPlayType = nil
             }
         )
     }
@@ -209,14 +241,17 @@ struct SessionDetailView: View {
                         if let audioPlayer = try? AVAudioPlayer(contentsOf: url) {
                             duration = audioPlayer.duration
                         }
+                        let selectedSongs: [Song] = songs.filter { songIDs.contains($0.persistentModelID) }
                         let recording = AudioRecording(fileURL: url, duration: duration)
                         recording.title = title.isEmpty ? url.lastPathComponent : title
                         recording.session = session
                         recording.dateRecorded = Date()
-                        for song in songs where songIDs.contains(song.persistentModelID) {
-                            recording.songs.append(song)
+                        recording.songs = selectedSongs
+                        // Safely ensure session.recordings is not nil
+                        if session.recordings == nil {
+                            session.recordings = []
                         }
-                        session.recordings.append(recording)
+                        session.recordings?.append(recording)
                         context.insert(recording)
                         try? context.save()
                         clearRecordingMetadataFields()
@@ -253,6 +288,22 @@ struct SessionDetailView: View {
                 } header: {
                     Text("Create")
                 }
+                Section {
+                    Picker("Play Type", selection: $newPlayType) {
+                        Text("None").tag(PlayType?.none)
+                        ForEach(PlayType.allCases, id: \.self) { type in
+                            Text(type.rawValue).tag(Optional(type))
+                        }
+                    }
+                    if newPlayType == .learning {
+                        Text("When learning a song, new plays will not be counted toward the number of plays goal.")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 2)
+                    }
+                } header: {
+                    Text("Play Type")
+                }
 
                 if !songs.isEmpty {
                     Section {
@@ -261,10 +312,16 @@ struct SessionDetailView: View {
                                 let play = Play(count: 1)
                                 play.song = song
                                 play.session = session
-                                session.plays.append(play)
+                                play.playType = newPlayType
+                                // Ensure session.plays is not nil before appending
+                                if session.plays == nil {
+                                    session.plays = []
+                                }
+                                session.plays?.append(play)
                                 context.insert(play)
                                 try? context.save()
                                 showingAddPlaySheet = false
+                                newPlayType = nil
                             }
                         }
                     } header: {
@@ -330,19 +387,20 @@ struct SessionDetailView: View {
                         Label("Recording", systemImage: "mic")
                     }
                     
-                    PlaysSectionView(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet)
+                    PlaysSectionView(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet, playToEdit: $playToEdit)
                     NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
                     
                     // Recordings Section
-                    if !session.recordings.isEmpty {
                         Section {
-                            ForEach(session.recordings, id: \.persistentModelID) { recording in
+                            ForEach(session.recordings ?? [], id: \.persistentModelID) { recording in
                                 AudioRecordingCell(
                                     recording: recording,
                                     audioPlayerManager: audioPlayerManager,
                                     onDelete: {
-                                        if let idx = session.recordings.firstIndex(where: { $0.persistentModelID == recording.persistentModelID }) {
-                                            let removed = session.recordings.remove(at: idx)
+                                        if var recordings = session.recordings,
+                                           let idx = recordings.firstIndex(where: { $0.persistentModelID == recording.persistentModelID }) {
+                                            let removed = recordings.remove(at: idx)
+                                            session.recordings = recordings
                                             context.delete(removed)
                                             try? context.save()
                                         }
@@ -352,7 +410,7 @@ struct SessionDetailView: View {
                         } header: {
                             Label("Recordings", systemImage: "waveform.badge.mic")
                         }
-                    }
+                    
                 }
                 .tabItem {
                     Label("Session", systemImage: "calendar")
@@ -414,7 +472,11 @@ struct SessionDetailView: View {
                         Button {
                             let note = Note(text: "")
                             note.session = session
-                            session.notes.append(note)
+                            // Ensure session.notes is not nil before appending
+                            if session.notes == nil {
+                                session.notes = []
+                            }
+                            session.notes?.append(note)
                             context.insert(note)
                             editingNote = note
                         } label: {
@@ -441,60 +503,13 @@ struct SessionDetailView: View {
             .sheet(isPresented: $showingEditSessionSheet) {
                 EditSessionSheet(isPresented: $showingEditSessionSheet, session: session, context: context)
             }
+            .sheet(item: $playToEdit) { play in
+                PlayEditSheet(play: play)
+            }
         
     }
 }
 
-// MARK: - Enhanced Song Row View
-struct SongRowView: View {
-    let song: Song
-    let progress: Double
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "music.note")
-                    .foregroundColor(.accentColor)
-                    .frame(width: 20)
-                
-                Text(song.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(song.totalPlayCount)/\(song.goalPlays ?? 0)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .monospacedDigit()
-                    
-                    Text("\(Int(progress * 100))%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle(tint: progressColor(for: progress)))
-                .scaleEffect(y: 1.5)
-        }
-        .padding(.vertical, 4)
-    }
-    
-    private func progressColor(for progress: Double) -> Color {
-        switch progress {
-        case 0..<0.3:
-            return .red
-        case 0.3..<0.7:
-            return .orange
-        case 0.7..<1.0:
-            return .yellow
-        default:
-            return .green
-        }
-    }
-}
 
 // MARK: - Enhanced Live Waveform Display
 struct LiveWaveformView: View {
@@ -546,4 +561,3 @@ struct LiveWaveformView: View {
         SessionDetailView(session: mockSession)
     }
 }
-
