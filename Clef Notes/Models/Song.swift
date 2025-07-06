@@ -23,6 +23,7 @@ final class Song: Codable {
     var composer: String?
     var goalPlays: Int?
     var studentID: UUID = UUID()
+    var songStatus: PlayType?
 
     var student: Student?
     @Relationship(deleteRule: .cascade) var plays: [Play]? = []
@@ -44,6 +45,7 @@ final class Song: Codable {
         case composer
         case goalPlays
         case studentID
+        case songStatus
     }
 
     convenience init(from decoder: Decoder) throws {
@@ -52,7 +54,9 @@ final class Song: Codable {
         let composer = try container.decodeIfPresent(String.self, forKey: .composer)
         let goalPlays = try container.decodeIfPresent(Int.self, forKey: .goalPlays)
         let studentID = try container.decode(UUID.self, forKey: .studentID)
+        let songStatus = try container.decodeIfPresent(PlayType.self, forKey: .songStatus)
         self.init(title: title, composer: composer, goalPlays: goalPlays, studentID: studentID)
+        self.songStatus = songStatus
     }
 
     func encode(to encoder: Encoder) throws {
@@ -61,6 +65,7 @@ final class Song: Codable {
         try container.encodeIfPresent(composer, forKey: .composer)
         try container.encodeIfPresent(goalPlays, forKey: .goalPlays)
         try container.encode(studentID, forKey: .studentID)
+        try container.encodeIfPresent(songStatus, forKey: .songStatus)
     }
 
     // Computed properties are not encoded

@@ -17,6 +17,7 @@ struct SongDetailView: View {
     let song: Song
 
     @State private var editedTitle: String
+    @State private var editedSongStatus: PlayType?
     @State private var newMediaURL: String = ""
     @State private var newMediaType: MediaType = .youtubeVideo
     @State private var showingEditSheet = false
@@ -31,6 +32,7 @@ struct SongDetailView: View {
     init(song: Song) {
         self.song = song
         _editedTitle = State(initialValue: song.title)
+        _editedSongStatus = State(initialValue: song.songStatus)
     }
 
     var taggedRecordings: [AudioRecording] {
@@ -211,9 +213,11 @@ struct SongDetailView: View {
                 Form {
                     Section("Song Title") {
                         TextField("Title", text: $editedTitle)
-                        Button("Save Title") {
-                            song.title = editedTitle
-                            try? context.save()
+                        Picker("Status", selection: $editedSongStatus) {
+                            Text("None").tag(Optional<PlayType>(nil))
+                            ForEach(PlayType.allCases, id: \.self) { status in
+                                Text(status.rawValue).tag(Optional(status))
+                            }
                         }
                     }
 
@@ -263,10 +267,23 @@ struct SongDetailView: View {
                 .navigationTitle("Edit Song")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") {
+                        Button("Cancel") {
                             showingEditSheet = false
                         }
                     }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            song.title = editedTitle
+                            song.songStatus = editedSongStatus
+                            try? context.save()
+                            showingEditSheet = false
+
+                        }
+
+                    }
+                }
+                .onAppear {
+                    editedSongStatus = song.songStatus
                 }
             }
             .onChange(of: selectedVideoItem) { _, newItem in

@@ -107,6 +107,7 @@ struct StudentDetailView: View {
                     appleMusicLink: $viewModel.appleMusicLink,
                     spotifyLink: $viewModel.spotifyLink,
                     localFileLink: $viewModel.localFileLink,
+                    songStatus: $viewModel.songStatus, // Now PlayType? binding
                     addAction: {
                         let mediaSources: [(String, MediaType)] = [
                             (viewModel.youtubeLink, .youtubeVideo),

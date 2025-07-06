@@ -21,6 +21,7 @@ class StudentDetailViewModel {
     var appleMusicLink = ""
     var spotifyLink = ""
     var localFileLink = ""
+    var songStatus: PlayType? = nil
 
     init(student: Student, context: ModelContext) {
         self.student = student
@@ -39,6 +40,7 @@ class StudentDetailViewModel {
         appleMusicLink = ""
         spotifyLink = ""
         localFileLink = ""
+        songStatus = nil
     }
 
     func addSong(mediaSources: [(String, MediaType)]) {
@@ -49,6 +51,7 @@ class StudentDetailViewModel {
         let current = Int(currentPlays) ?? 0
 
         let song = Song(title: title, goalPlays: goal, studentID: student.id)
+        song.songStatus = songStatus
 
         for (link, type) in mediaSources {
             if let url = URL(string: link), !link.isEmpty {

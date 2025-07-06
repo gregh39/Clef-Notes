@@ -16,6 +16,7 @@ struct AddSongSheet: View {
     @Binding var appleMusicLink: String
     @Binding var spotifyLink: String
     @Binding var localFileLink: String
+    @Binding var songStatus: PlayType?
     var addAction: () -> Void
     var clearAction: () -> Void
 
@@ -28,6 +29,12 @@ struct AddSongSheet: View {
                         .keyboardType(.numberPad)
                     TextField("Current Plays", text: $currentPlays)
                         .keyboardType(.numberPad)
+                    Picker("Status", selection: $songStatus) {
+                        Text("None").tag(Optional<PlayType>(nil))
+                        ForEach(PlayType.allCases, id: \.self) { status in
+                            Text(status.rawValue).tag(Optional(status))
+                        }
+                    }
                 }
 
                 Section("Links") {

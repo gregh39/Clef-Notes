@@ -14,32 +14,44 @@ struct SongRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "music.note")
-                    .foregroundColor(.accentColor)
-                    .frame(width: 20)
-                
-                Text(song.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(song.totalGoalPlayCount)/\(song.goalPlays ?? 0)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .monospacedDigit()
+            if song.songStatus == .practice {
+                HStack {
+                    Image(systemName: "music.note")
+                        .foregroundColor(.accentColor)
+                        .frame(width: 20)
                     
-                    Text("\(Int(progress * 100))%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text(song.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(song.totalGoalPlayCount)/\(song.goalPlays ?? 0)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .monospacedDigit()
+                        
+                        Text("\(Int(progress * 100))%")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                ProgressView(value: progress)
+                    .progressViewStyle(LinearProgressViewStyle(tint: progressColor(for: progress)))
+                    .scaleEffect(y: 1.5)
+            } else {
+                HStack {
+                    Image(systemName: "music.note")
+                        .foregroundColor(.accentColor)
+                        .frame(width: 20)
+                    Text(song.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer()
                 }
             }
-            
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle(tint: progressColor(for: progress)))
-                .scaleEffect(y: 1.5)
         }
         .padding(.vertical, 4)
     }

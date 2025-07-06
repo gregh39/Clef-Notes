@@ -5,43 +5,63 @@ struct StudentSongsTabView: View {
     @Binding var viewModel: StudentDetailViewModel
     @Binding var selectedSort: StudentDetailView.SongSortOption
 
-    var body: some View {
-        var sortedSongs: [Song] {
+    // Helper to group and sort songs by status
+    private var groupedSortedSongs: [(key: PlayType?, value: [Song])]
+    {
+        // 1. Group by songStatus
+        let grouped = Dictionary(grouping: viewModel.songs, by: { $0.songStatus })
+        // 2. Sort each group as per selectedSort
+        let sortedKeys = PlayType.allCases.map { Optional($0) } + [nil] // All statuses, nil last
+        
+        return sortedKeys.compactMap { status in
+            guard let group = grouped[status] else { return nil }
+            let sortedGroup: [Song]
             switch selectedSort {
             case .title:
-                return viewModel.songs.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+                sortedGroup = group.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
             case .playCount:
-                return viewModel.songs.sorted { $0.totalPlayCount > $1.totalPlayCount }
+                sortedGroup = group.sorted { $0.totalPlayCount > $1.totalPlayCount }
             case .recentlyPlayed:
-                return viewModel.songs.sorted {
-                    ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast)
-                }
+                sortedGroup = group.sorted { ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast) }
             }
+            return (key: status, value: sortedGroup)
         }
+    }
 
-        List {
-            Section("Songs") {
-                Picker("Sort by", selection: $selectedSort) {
-                    ForEach(StudentDetailView.SongSortOption.allCases) { option in
-                        Text(option.rawValue).tag(option)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // The sort picker (segmented) above the list
+            
+            List {
+                Section() {
+                    Picker("Sort by", selection: $selectedSort) {
+                        ForEach(StudentDetailView.SongSortOption.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
                     }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
-
-                ForEach(sortedSongs, id: \.persistentModelID) { song in
-                    NavigationLink(destination: SongDetailView(song: song)) {
-                        SongRowView(song: song, progress: viewModel.practiceVM.progress(for: song))
+                    
+                ForEach(groupedSortedSongs, id: \.key) { section in
+                    Section(header: Text(section.key?.rawValue ?? "No Status")) {
+                        ForEach(section.value, id: \.persistentModelID) { song in
+                            NavigationLink(destination: SongDetailView(song: song)) {
+                                SongRowView(song: song, progress: viewModel.practiceVM.progress(for: song))
+                            }
+                        }
+                        .onDelete { indexSet in
+                            // Delete the correct songs from this group
+                            let toDelete = indexSet.map { section.value[$0] }
+                            for song in toDelete {
+                                viewModel.deleteSong(song)
+                            }
+                            try? viewModel.context.save()
+                            viewModel.practiceVM.reload()
+                        }
                     }
-                }
-                .onDelete { indexSet in
-                    for index in indexSet {
-                        let song = sortedSongs[index]
-                        viewModel.deleteSong(song)
-                    }
-                    try? viewModel.context.save()
-                    viewModel.practiceVM.reload()
                 }
             }
         }
     }
 }
+
