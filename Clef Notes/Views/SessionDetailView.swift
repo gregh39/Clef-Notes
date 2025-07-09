@@ -56,6 +56,30 @@ struct SessionDetailView: View {
     
     @State private var playToEdit: Play? = nil
 
+    @State private var studentSongsViewModel: StudentDetailViewModel
+    @State private var selectedSort: SongSortOption = .title
+    
+    // New @State property for random song picker
+    @State private var showingRandomSongPicker = false
+    
+    init(session: PracticeSession) {
+        self._session = Bindable(wrappedValue: session)
+        if let student = session.student, let context = session.modelContext {
+            _studentSongsViewModel = State(initialValue: StudentDetailViewModel(student: student, context: context))
+        } else {
+            // Fallback for preview or missing context
+            let dummyContext = { () -> ModelContext in
+                if let container = try? ModelContainer(for: Student.self) {
+                    return ModelContext(container)
+                } else {
+                    fatalError("Failed to initialize ModelContext")
+                }
+            }()
+            let dummyStudent = Student(name: "Unknown", instrument: "")
+            _studentSongsViewModel = State(initialValue: StudentDetailViewModel(student: dummyStudent, context: dummyContext))
+        }
+    }
+    
     private var noteTextBinding: Binding<String> {
         Binding(
             get: { editingNote?.text ?? "" },
@@ -280,7 +304,7 @@ struct SessionDetailView: View {
                     }
                 
                 // MARK: - Songs Tab
-                songsTab
+                StudentSongsTabView(viewModel: $studentSongsViewModel, selectedSort: $selectedSort)
                     .tabItem {
                         Label("Songs", systemImage: "music.note.list")
                     }
@@ -300,33 +324,16 @@ struct SessionDetailView: View {
             .navigationTitle(session.title ?? "Practice Session")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            showingEditSessionSheet = true
-                        } label: {
-                            Label("Edit Session", systemImage: "square.and.pencil")
-                        }
-                        Button {
-                            showingAddPlaySheet = true
-                        } label: {
-                            Label("Add Play", systemImage: "plus.circle.fill")
-                        }
-                        Button {
-                            let note = Note(text: "")
-                            note.session = session
-                            // Ensure session.notes is not nil before appending
-                            if session.notes == nil {
-                                session.notes = []
-                            }
-                            session.notes?.append(note)
-                            context.insert(note)
-                            editingNote = note
-                        } label: {
-                            Label("Add Note", systemImage: "note.text.badge.plus")
-                        }
+                    Button(action: { showingRandomSongPicker = true }) {
+                        Image(systemName: "die.face.5")
+                    }
+                    .accessibilityLabel("Pick Random Song")
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingEditSessionSheet = true
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.title3)
+                        Label("Edit", systemImage: "square.and.pencil")
                     }
                 }
             }
@@ -351,6 +358,9 @@ struct SessionDetailView: View {
             }
             .sheet(item: $playToEdit) { play in
                 PlayEditSheet(play: play)
+            }
+            .sheet(isPresented: $showingRandomSongPicker) {
+                RandomSongPickerView(songs: songs)
             }
         
     }
@@ -424,20 +434,6 @@ struct SessionDetailView: View {
                     Label("Recordings", systemImage: "waveform.badge.mic")
                 }
             
-        }
-    }
-    
-    private var songsTab: some View {
-        List {
-            Section {
-                ForEach(songs, id: \.persistentModelID) { song in
-                    NavigationLink(destination: SongDetailView(song: song)) {
-                        SongRowView(song: song, progress: progress(for: song))
-                    }
-                }
-            } header: {
-                Label("Songs", systemImage: "music.note.list")
-            }
         }
     }
     

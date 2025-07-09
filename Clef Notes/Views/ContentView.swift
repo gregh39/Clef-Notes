@@ -8,9 +8,6 @@
 import SwiftUI
 import SwiftData
 
-import SwiftUI
-import SwiftData
-
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Student.name) private var students: [Student]
@@ -60,7 +57,6 @@ struct ContentView: View {
             }
         } detail: {
             if let student = selectedStudent {
-                // The StudentDetailView likely needs the modelContext passed in.
                 StudentDetailView(student: student, context: modelContext)
             } else {
                 Text("Select a student")

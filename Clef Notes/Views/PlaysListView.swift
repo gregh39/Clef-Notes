@@ -28,7 +28,7 @@ struct PlaysListView: View {
                             HStack {
                                 HStack( spacing: 2) {
                                     if let pT = play.playType {
-                                        Text("\(pT)")
+                                        Text(verbatim: String(describing: pT))
                                     }
                                     Spacer()
                                     Text("Total: \(play.totalPlaysIncludingThis)")
@@ -99,3 +99,4 @@ extension Play {
     }
     return PreviewWrapper()
 }
+

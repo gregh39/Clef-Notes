@@ -7,6 +7,15 @@
 import SwiftUI
 import SwiftData
 
+enum SongSortOption: String, CaseIterable, Identifiable {
+    case title = "Title"
+    case playCount = "Play Count"
+    case recentlyPlayed = "Recently Played"
+
+    var id: String { rawValue }
+}
+
+
 struct StudentDetailView: View {
     @Environment(\.modelContext) private var context
     let student: Student
@@ -20,14 +29,6 @@ struct StudentDetailView: View {
     @State private var newSession: PracticeSession?
 
     @State private var showingAddSessionSheet = false
-
-    enum SongSortOption: String, CaseIterable, Identifiable {
-        case title = "Title"
-        case playCount = "Play Count"
-        case recentlyPlayed = "Recently Played"
-
-        var id: String { rawValue }
-    }
 
     @State private var selectedSort: SongSortOption = .title
 
@@ -50,34 +51,24 @@ struct StudentDetailView: View {
             }
         }
 
-        
+        NavigationStack {
             TabView {
-                NavigationStack {
-                    SessionListView(viewModel: $viewModel)
-                        .navigationDestination(item: $newSession) { session in
-                            SessionDetailView(session: session)
-                        }
-                        .navigationTitle(student.name)
-                        .navigationBarTitleDisplayMode(.large)
-                }
-                .tabItem {
-                    Label("Sessions", systemImage: "calendar")
-                }
+                SessionListView(viewModel: $viewModel)
+                    .navigationDestination(item: $newSession) { session in
+                        SessionDetailView(session: session)
+                    }
+                    .tabItem {
+                        Label("Sessions", systemImage: "calendar")
+                    }
 
-                NavigationStack {
-                    StudentSongsTabView(viewModel: $viewModel, selectedSort: $selectedSort)
-                        .navigationTitle("Songs")
-                        .navigationBarTitleDisplayMode(.large)
-                }
-                .tabItem { Label("Songs", systemImage: "music.note.list") }
-                
-                NavigationStack {
-                    StatsTabView(sessions: viewModel.sessions)
-                        .navigationTitle("Practice Stats")
-                        .navigationBarTitleDisplayMode(.large)
-                }
-                .tabItem { Label("Stats", systemImage: "chart.bar") }
+                StudentSongsTabView(viewModel: $viewModel, selectedSort: $selectedSort)
+                    .tabItem { Label("Songs", systemImage: "music.note.list") }
+
+                StatsTabView(sessions: viewModel.sessions)
+                    .tabItem { Label("Stats", systemImage: "chart.bar") }
             }
+            .navigationTitle(student.name)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -121,7 +112,6 @@ struct StudentDetailView: View {
                     clearAction: viewModel.clearSongForm
                 )
             }
-        
             .sheet(isPresented: $showingAddSessionSheet) {
                 AddSessionSheet(
                     isPresented: $showingAddSessionSheet,
@@ -133,6 +123,6 @@ struct StudentDetailView: View {
                     }
                 )
             }
+        }
     }
 }
-

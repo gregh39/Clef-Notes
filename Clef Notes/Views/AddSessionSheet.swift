@@ -32,7 +32,7 @@ struct AddSessionSheet: View {
                 Picker("Instructor", selection: $selectedInstructor) {
                     Text("None").tag(Optional<Instructor>.none)
                     ForEach(instructors, id: \.self) { instructor in
-                        Text(instructor.name ?? "").tag(Optional(instructor))
+                        Text(instructor.name).tag(Optional(instructor))
                     }
                 }
                 Button("Add Instructor") {

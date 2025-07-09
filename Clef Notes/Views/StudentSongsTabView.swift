@@ -3,7 +3,9 @@ import SwiftData
 
 struct StudentSongsTabView: View {
     @Binding var viewModel: StudentDetailViewModel
-    @Binding var selectedSort: StudentDetailView.SongSortOption
+    @Binding var selectedSort: SongSortOption
+    
+    @State private var showingRandomSongPicker = false
 
     // Helper to group and sort songs by status
     private var groupedSortedSongs: [(key: PlayType?, value: [Song])]
@@ -30,18 +32,24 @@ struct StudentSongsTabView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            // The sort picker (segmented) above the list
             
             List {
                 Section() {
+                    Button("🎲 Random Song") {
+                        showingRandomSongPicker = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.horizontal)
+                }
+                /*Section() {
                     Picker("Sort by", selection: $selectedSort) {
-                        ForEach(StudentDetailView.SongSortOption.allCases) { option in
+                        ForEach(SongSortOption.allCases) { option in
                             Text(option.rawValue).tag(option)
                         }
                     }
                     .pickerStyle(.segmented)
-                }
-                    
+                }*/
+
                 ForEach(groupedSortedSongs, id: \.key) { section in
                     Section(header: Text(section.key?.rawValue ?? "No Status")) {
                         ForEach(section.value, id: \.persistentModelID) { song in
@@ -61,6 +69,9 @@ struct StudentSongsTabView: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showingRandomSongPicker) {
+            RandomSongPickerView(songs: viewModel.songs)
         }
     }
 }
