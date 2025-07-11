@@ -22,6 +22,7 @@ class StudentDetailViewModel {
     var spotifyLink = ""
     var localFileLink = ""
     var songStatus: PlayType? = nil
+    var pieceType: PieceType? = nil
 
     init(student: Student, context: ModelContext) {
         self.student = student
@@ -41,17 +42,17 @@ class StudentDetailViewModel {
         spotifyLink = ""
         localFileLink = ""
         songStatus = nil
+        pieceType = nil
     }
 
     func addSong(mediaSources: [(String, MediaType)]) {
-        guard let goal = Int(goalPlays) else {
-            print("Invalid goalPlays value: \(goalPlays)")
-            return
-        }
+        
         let current = Int(currentPlays) ?? 0
+        let goal = Int(goalPlays) ?? -1
 
-        let song = Song(title: title, goalPlays: goal, studentID: student.id)
+        let song = Song(title: title, studentID: student.id)
         song.songStatus = songStatus
+        song.pieceType = pieceType
 
         for (link, type) in mediaSources {
             if let url = URL(string: link), !link.isEmpty {
@@ -64,7 +65,6 @@ class StudentDetailViewModel {
             }
         }
 
-        context.insert(song)
         if current > 0 {
             let play = Play(count: current)
             play.song = song
@@ -73,6 +73,14 @@ class StudentDetailViewModel {
             }
             song.plays?.append(play)
         }
+        
+        if goal >= 0 {
+            song.goalPlays = goal
+        }
+
+
+        context.insert(song)
+        try? context.save()
 
         clearSongForm()
         practiceVM.reload()

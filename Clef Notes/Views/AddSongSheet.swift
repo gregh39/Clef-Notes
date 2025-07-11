@@ -17,6 +17,7 @@ struct AddSongSheet: View {
     @Binding var spotifyLink: String
     @Binding var localFileLink: String
     @Binding var songStatus: PlayType?
+    @Binding var pieceType: PieceType?
     var addAction: () -> Void
     var clearAction: () -> Void
 
@@ -29,6 +30,12 @@ struct AddSongSheet: View {
                         .keyboardType(.numberPad)
                     TextField("Current Plays", text: $currentPlays)
                         .keyboardType(.numberPad)
+                    Picker("Piece Type", selection: $pieceType) {
+                        Text("None").tag(PieceType?.none)
+                        ForEach(PieceType.allCases, id: \.self) { type in
+                            Text(type.rawValue).tag(Optional(type))
+                        }
+                    }
                     Picker("Status", selection: $songStatus) {
                         Text("None").tag(Optional<PlayType>(nil))
                         ForEach(PlayType.allCases, id: \.self) { status in
@@ -64,3 +71,4 @@ struct AddSongSheet: View {
         }
     }
 }
+

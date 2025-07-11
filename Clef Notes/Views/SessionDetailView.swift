@@ -28,6 +28,7 @@ struct SessionDetailView: View {
     @State private var newSpotifyLink = ""
     @State private var newLocalFileLink = ""
     @State private var newSongStatus: PlayType? = nil
+    @State private var newPieceType: PieceType? = nil
     
     @State private var showingEditSessionSheet = false
 
@@ -160,6 +161,20 @@ struct SessionDetailView: View {
         selectedSongs = []
     }
     
+    private var newGoalPlaysIntBinding: Binding<Int> {
+        Binding<Int>(
+            get: { Int(newGoalPlays) ?? 0 },
+            set: { newGoalPlays = String($0) }
+        )
+    }
+    
+    private var newCurrentPlaysIntBinding: Binding<Int> {
+        Binding<Int>(
+            get: { Int(newCurrentPlays) ?? 0 },
+            set: { newCurrentPlays = String($0) }
+        )
+    }
+    
     func progress(for song: Song) -> Double {
         let total = Double(song.totalPlayCount)
         guard let goalPlays = song.goalPlays, goalPlays > 0 else { return 0.0 }
@@ -178,9 +193,11 @@ struct SessionDetailView: View {
             spotifyLink: $newSpotifyLink,
             localFileLink: $newLocalFileLink,
             songStatus: $newSongStatus,
+            pieceType: $newPieceType,
             addAction: {
                 let goal = Int(newGoalPlays)
-                let song = Song(title: newTitle, goalPlays: goal, studentID: session.studentID)
+                let song = Song(title: newTitle, studentID: session.studentID)
+                song.pieceType = newPieceType
                 song.student = session.student
                 song.songStatus = newSongStatus
 
@@ -252,6 +269,7 @@ struct SessionDetailView: View {
                 newLocalFileLink = ""
                 newPlayType = nil
                 newSongStatus = nil
+                newPieceType = nil
             }
         )
     }
