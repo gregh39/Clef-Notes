@@ -7,7 +7,7 @@
 import SwiftData
 import Foundation
 
-enum MediaType: String, Codable, CaseIterable {
+enum MediaType: String, Codable, CaseIterable, Identifiable {
     case audioRecording = "Audio"
     case youtubeVideo = "YouTube"
     case spotifyLink = "Spotify"
@@ -15,6 +15,14 @@ enum MediaType: String, Codable, CaseIterable {
     case sheetMusic = "Sheet Music"
     case localVideo = "Local Video"
 
+    var id: String { rawValue }
+}
+
+enum PieceType: String, Codable, CaseIterable {
+    case song = "Song"
+    case scale = "Scale"
+    case warmUp = "Warm-up"
+    case exercise = "Exercise"
 }
 
 @Model
@@ -24,6 +32,7 @@ final class Song: Codable {
     var goalPlays: Int?
     var studentID: UUID = UUID()
     var songStatus: PlayType?
+    var pieceType: PieceType?
 
     var student: Student?
     @Relationship(deleteRule: .cascade) var plays: [Play]? = []
@@ -33,10 +42,9 @@ final class Song: Codable {
     @Relationship var recordings: [AudioRecording]? = []
     
 
-    init(title: String, composer: String? = nil, goalPlays: Int? = nil, studentID: UUID) {
+    init(title: String, composer: String? = nil, studentID: UUID) {
         self.title = title
         self.composer = composer
-        self.goalPlays = goalPlays
         self.studentID = studentID
     }
 
@@ -46,6 +54,7 @@ final class Song: Codable {
         case goalPlays
         case studentID
         case songStatus
+        case pieceType
     }
 
     convenience init(from decoder: Decoder) throws {
@@ -55,8 +64,10 @@ final class Song: Codable {
         let goalPlays = try container.decodeIfPresent(Int.self, forKey: .goalPlays)
         let studentID = try container.decode(UUID.self, forKey: .studentID)
         let songStatus = try container.decodeIfPresent(PlayType.self, forKey: .songStatus)
-        self.init(title: title, composer: composer, goalPlays: goalPlays, studentID: studentID)
+        let pieceType = try container.decodeIfPresent(PieceType.self, forKey: .pieceType)
+        self.init(title: title, composer: composer, studentID: studentID)
         self.songStatus = songStatus
+        self.pieceType = pieceType
     }
 
     func encode(to encoder: Encoder) throws {
@@ -66,6 +77,7 @@ final class Song: Codable {
         try container.encodeIfPresent(goalPlays, forKey: .goalPlays)
         try container.encode(studentID, forKey: .studentID)
         try container.encodeIfPresent(songStatus, forKey: .songStatus)
+        try container.encodeIfPresent(pieceType, forKey: .pieceType)
     }
 
     // Computed properties are not encoded

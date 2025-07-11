@@ -61,7 +61,7 @@ class StudentPracticeViewModel {
     }
 
     func addSong(title: String,  composer: String? = nil, goalPlays: Int? = nil) {
-        let song = Song(title: title, composer: composer, goalPlays: goalPlays, studentID: student.id)
+        let song = Song(title: title, composer: composer, studentID: student.id)
         song.student = student
         context.insert(song)
         try? context.save()

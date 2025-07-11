@@ -18,6 +18,8 @@ struct SongDetailView: View {
 
     @State private var editedTitle: String
     @State private var editedSongStatus: PlayType?
+    @State private var editedPieceType: PieceType?
+
     @State private var newMediaURL: String = ""
     @State private var newMediaType: MediaType = .youtubeVideo
     @State private var showingEditSheet = false
@@ -33,6 +35,7 @@ struct SongDetailView: View {
         self.song = song
         _editedTitle = State(initialValue: song.title)
         _editedSongStatus = State(initialValue: song.songStatus)
+        _editedPieceType = State(initialValue: song.pieceType)
     }
 
     var taggedRecordings: [AudioRecording] {
@@ -209,93 +212,15 @@ struct SongDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            NavigationStack {
-                Form {
-                    Section("Song Title") {
-                        TextField("Title", text: $editedTitle)
-                        Picker("Status", selection: $editedSongStatus) {
-                            Text("None").tag(Optional<PlayType>(nil))
-                            ForEach(PlayType.allCases, id: \.self) { status in
-                                Text(status.rawValue).tag(Optional(status))
-                            }
-                        }
-                    }
-
-                    Section("Add Media") {
-                        Picker("Type", selection: $newMediaType) {
-                            ForEach(MediaType.allCases, id: \.self) { type in
-                                Text(type.rawValue).tag(type)
-                            }
-                        }
-
-                        if newMediaType == .localVideo {
-                            PhotosPicker("Select Video", selection: $selectedVideoItem, matching: .videos)
-
-                            if let videoFileURL = videoFileURL {
-                                Text(videoFileURL.lastPathComponent)
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                            }
-                        } else {
-                            TextField("Enter media URL", text: $newMediaURL)
-                                .keyboardType(.URL)
-                                .autocapitalization(.none)
-                        }
-
-                        Button("Add Media") {
-                            let url: URL?
-                            if newMediaType == .localVideo {
-                                url = videoFileURL
-                            } else {
-                                url = URL(string: newMediaURL)
-                            }
-
-                            guard let finalURL = url else { return }
-                            let media = MediaReference(type: newMediaType, url: finalURL)
-                            media.song = song
-                            if song.media == nil { song.media = [] }
-                            song.media?.append(media)
-                            context.insert(media)
-                            try? context.save()
-                            newMediaURL = ""
-                            newMediaType = .youtubeVideo
-                        }
-                        .disabled(newMediaType != .localVideo && newMediaURL.trimmingCharacters(in: .whitespaces).isEmpty)
- 
-                    }
-                }
-                .navigationTitle("Edit Song")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            showingEditSheet = false
-                        }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            song.title = editedTitle
-                            song.songStatus = editedSongStatus
-                            try? context.save()
-                            showingEditSheet = false
-
-                        }
-
-                    }
-                }
-                .onAppear {
-                    editedSongStatus = song.songStatus
-                }
-            }
-            .onChange(of: selectedVideoItem) { _, newItem in
-                Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
-                        try? data.write(to: tempURL)
-                        videoFileURL = tempURL
-                    }
-                }
-            }
+            // ✅ The sheet modifier is now clean and simple
+            EditSongSheet(isPresented: $showingEditSheet, song: song)
         }
+        .onAppear {
+            // This logic can stay here as it pertains to the detail view itself
+            let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+            notesForSong = fetchNotesForSong(from: allNotes)
+        }
+
         
     }
     
@@ -350,4 +275,3 @@ func extractYouTubeID(from url: URL) -> String? {
     }
     return nil
 }
-

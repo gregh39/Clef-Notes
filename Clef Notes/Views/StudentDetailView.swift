@@ -72,9 +72,14 @@ struct StudentDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        viewModel.pieceType = .song
                         showingAddSongSheet = true
                     } label: {
-                        Label("Add Song", systemImage: "plus")
+                        Label {
+                            Text("Add Song")
+                        } icon: {
+                            Image("add.song")
+                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -99,6 +104,7 @@ struct StudentDetailView: View {
                     spotifyLink: $viewModel.spotifyLink,
                     localFileLink: $viewModel.localFileLink,
                     songStatus: $viewModel.songStatus, // Now PlayType? binding
+                    pieceType: $viewModel.pieceType, // <-- Added binding
                     addAction: {
                         let mediaSources: [(String, MediaType)] = [
                             (viewModel.youtubeLink, .youtubeVideo),
@@ -108,6 +114,7 @@ struct StudentDetailView: View {
                         ]
 
                         viewModel.addSong(mediaSources: mediaSources)
+
                     },
                     clearAction: viewModel.clearSongForm
                 )
@@ -126,3 +133,4 @@ struct StudentDetailView: View {
         }
     }
 }
+
