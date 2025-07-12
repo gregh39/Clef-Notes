@@ -27,6 +27,7 @@ enum PieceType: String, Codable, CaseIterable {
 
 @Model
 final class Song: Codable {
+    
     var title: String = ""
     var composer: String?
     var goalPlays: Int?
@@ -41,13 +42,38 @@ final class Song: Codable {
 
     @Relationship var recordings: [AudioRecording]? = []
     
+    // --- NEW: Efficiently calculates all cumulative totals at once ---
+    // This computed property replaces all other calculation logic.
+    @Transient
+    var cumulativeTotalsByType: [Play: Int] {
+        guard let plays = self.plays else { return [:] }
+        var allTotals: [Play: Int] = [:]
+
+        // Group plays by their type for separate counting.
+        let playsByType = Dictionary(grouping: plays.compactMap { $0 }, by: { $0.playType })
+
+        // Iterate over each group (e.g., all "Practice" plays).
+        for (_, playsInGroup) in playsByType {
+            // Sort the plays within this group just once.
+            let sortedPlays = playsInGroup.sorted {
+                ($0.session?.day ?? .distantPast) < ($1.session?.day ?? .distantPast)
+            }
+
+            var runningTotal = 0
+            for play in sortedPlays {
+                runningTotal += play.count
+                allTotals[play] = runningTotal // Store the final cumulative total for this play.
+            }
+        }
+        return allTotals
+    }
 
     init(title: String, composer: String? = nil, studentID: UUID) {
         self.title = title
         self.composer = composer
         self.studentID = studentID
     }
-
+    
     enum CodingKeys: String, CodingKey {
         case title
         case composer
@@ -92,7 +118,7 @@ final class Song: Codable {
     var lastPlayedDate: Date? {
         (plays ?? []).map(\.session?.day).compactMap { $0 }.max()
     }
-    
+/*
     /// Returns the cumulative count for the given play's type up to and including that play, chronologically.
     func cumulativeTypeCount(for play: Play) -> Int {
         guard let plays = self.plays, let type = play.playType else { return play.count }
@@ -104,4 +130,5 @@ final class Song: Codable {
         let total = sorted.prefix(upTo: idx).reduce(0) { $0 + $1.count } + play.count
         return total
     }
+ */
 }

@@ -7,17 +7,17 @@
 import SwiftUI
 import Foundation
 
-/// A private view component for displaying a single row in the plays list.
-/// This makes the main `body` cleaner and separates concerns.
 struct PlayRow: View {
     let play: Play
+    
+    // --- NEW: Add a property to receive the pre-calculated total ---
+    let cumulativeTotal: Int
 
     var body: some View {
         HStack(alignment: .center) {
-            // VStack for the song title and play type.
             VStack(alignment: .leading) {
                 Text(play.song?.title ?? "Unknown Song")
-                    .fontWeight(.medium) // Makes the title stand out.
+                    .fontWeight(.medium)
                 Text(play.playType?.rawValue ?? "Unknown Type")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -25,18 +25,16 @@ struct PlayRow: View {
             
             Spacer()
             
-            // The count, displayed prominently on the right.
-            Text("\(play.song?.cumulativeTypeCount(for: play) ?? play.count)")
+            // --- MODIFIED: Directly display the passed-in total ---
+            Text("\(cumulativeTotal)")
                 .font(.callout)
                 .foregroundColor(.secondary)
                 .fontWeight(.semibold)
         }
-        .padding(.vertical, 2) // Adds a bit of vertical space for better readability.
+        .padding(.vertical, 2)
     }
 }
 
 #Preview {
-    PlayRow(play: Play(
-        count: 5
-    ))
+    PlayRow(play: Play(count: 5), cumulativeTotal: 15)
 }
