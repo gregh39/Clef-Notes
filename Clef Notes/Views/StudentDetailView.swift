@@ -22,7 +22,7 @@ struct StudentDetailView: View {
 
     @State private var viewModel: StudentDetailViewModel
 
-    // State for add song sheet and form fields
+    // State for add song sheet
     @State private var showingAddSongSheet = false
 
     // State for navigating to new session detail
@@ -92,32 +92,22 @@ struct StudentDetailView: View {
             .task {
                 viewModel.practiceVM.reload()
             }
+            // --- MODIFIED SECTION ---
             .sheet(isPresented: $showingAddSongSheet) {
                 AddSongSheet(
                     isPresented: $showingAddSongSheet,
                     title: $viewModel.title,
                     goalPlays: $viewModel.goalPlays,
-                    currentPlays: $viewModel.currentPlays,
-                    youtubeLink: $viewModel.youtubeLink,
-                    appleMusicLink: $viewModel.appleMusicLink,
-                    spotifyLink: $viewModel.spotifyLink,
-                    localFileLink: $viewModel.localFileLink,
-                    songStatus: $viewModel.songStatus, // Now PlayType? binding
-                    pieceType: $viewModel.pieceType, // <-- Added binding
-                    addAction: {
-                        let mediaSources: [(String, MediaType)] = [
-                            (viewModel.youtubeLink, .youtubeVideo),
-                            (viewModel.appleMusicLink, .appleMusicLink),
-                            (viewModel.spotifyLink, .spotifyLink),
-                            (viewModel.localFileLink, .audioRecording)
-                        ]
-
-                        viewModel.addSong(mediaSources: mediaSources)
-
+                    songStatus: $viewModel.songStatus,
+                    pieceType: $viewModel.pieceType,
+                    // The addAction now receives the array of media entries directly
+                    addAction: { mediaEntries in
+                        viewModel.addSong(mediaEntries: mediaEntries)
                     },
                     clearAction: viewModel.clearSongForm
                 )
             }
+            // --- END MODIFIED SECTION ---
             .sheet(isPresented: $showingAddSessionSheet) {
                 AddSessionSheet(
                     isPresented: $showingAddSessionSheet,
@@ -132,4 +122,3 @@ struct StudentDetailView: View {
         }
     }
 }
-

@@ -6,6 +6,7 @@
 //
 import SwiftUI
 import SwiftData
+import PhotosUI // Import for PhotosPickerItem
 
 @Observable
 class StudentDetailViewModel {
@@ -14,13 +15,9 @@ class StudentDetailViewModel {
 
     @ObservationIgnored var practiceVM: StudentPracticeViewModel
 
+    // Simplified properties
     var title = ""
     var goalPlays = ""
-    var currentPlays = ""
-    var youtubeLink = ""
-    var appleMusicLink = ""
-    var spotifyLink = ""
-    var localFileLink = ""
     var songStatus: PlayType? = nil
     var pieceType: PieceType? = nil
 
@@ -29,62 +26,64 @@ class StudentDetailViewModel {
         self.context = context
         self.practiceVM = StudentPracticeViewModel(student: student, context: context)
     }
-
+    
     var songs: [Song] { practiceVM.songs }
     var sessions: [PracticeSession] { practiceVM.sessions }
 
     func clearSongForm() {
         title = ""
         goalPlays = ""
-        currentPlays = ""
-        youtubeLink = ""
-        appleMusicLink = ""
-        spotifyLink = ""
-        localFileLink = ""
         songStatus = nil
         pieceType = nil
     }
 
-    func addSong(mediaSources: [(String, MediaType)]) {
+    // Updated addSong function to handle MediaEntry array
+    func addSong(mediaEntries: [MediaEntry]) {
+        let goal = Int(goalPlays)
         
-        let current = Int(currentPlays) ?? 0
-        let goal = Int(goalPlays) ?? -1
-
         let song = Song(title: title, studentID: student.id)
         song.songStatus = songStatus
         song.pieceType = pieceType
-
-        for (link, type) in mediaSources {
-            if let url = URL(string: link), !link.isEmpty {
-                let media = MediaReference(type: type, url: url)
-                media.song = song
-                if song.media == nil {
-                    song.media = []
-                }
-                song.media?.append(media)
-            }
-        }
-
-        if current > 0 {
-            let play = Play(count: current)
-            play.song = song
-            if song.plays == nil {
-                song.plays = []
-            }
-            song.plays?.append(play)
-        }
-        
-        if goal >= 0 {
-            song.goalPlays = goal
-        }
-
+        song.goalPlays = goal
 
         context.insert(song)
-        try? context.save()
 
-        clearSongForm()
-        practiceVM.reload()
+        Task {
+            for entry in mediaEntries {
+                var finalURL: URL?
+                
+                if entry.type == .localVideo, let item = entry.photoPickerItem {
+                    // Handle video item by loading its data and saving to a file
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+                        try? data.write(to: tempURL)
+                        finalURL = tempURL
+                    }
+                } else if entry.type == .audioRecording, let fileURL = entry.fileURL {
+                    finalURL = fileURL
+                } else if let url = URL(string: entry.url), !entry.url.isEmpty {
+                    finalURL = url
+                }
+
+                if let url = finalURL {
+                    let media = MediaReference(type: entry.type, url: url)
+                    media.song = song
+                    if song.media == nil {
+                        song.media = []
+                    }
+                    song.media?.append(media)
+                }
+            }
+            
+            try? context.save()
+            
+            await MainActor.run {
+                clearSongForm()
+                practiceVM.reload()
+            }
+        }
     }
+
 
     func addSession() -> PracticeSession {
         let session = PracticeSession(day: .now, durationMinutes: 0, studentID: student.id)
@@ -101,4 +100,3 @@ class StudentDetailViewModel {
         practiceVM.reload()
     }
 }
-
