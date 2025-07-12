@@ -6,45 +6,34 @@ import PhotosUI
 
 struct EditSongSheet: View {
     @Environment(\.modelContext) private var context
-    @Binding var isPresented: Bool
-    
-    // The song to be edited
-    let song: Song
+    @Environment(\.dismiss) private var dismiss
 
-    // State for edited properties
-    @State private var editedTitle: String
-    @State private var editedSongStatus: PlayType?
-    @State private var editedPieceType: PieceType?
+    // --- MODIFIED: Use @Bindable for direct two-way binding ---
+    @Bindable var song: Song
 
-    // State for adding new media
+    // State for adding new media remains, as it's view-specific
     @State private var newMediaURL: String = ""
     @State private var newMediaType: MediaType = .youtubeVideo
     @State private var selectedVideoItem: PhotosPickerItem? = nil
     @State private var videoFileURL: URL? = nil
 
-    init(isPresented: Binding<Bool>, song: Song) {
-        self._isPresented = isPresented
-        self.song = song
-        // Initialize the state with the song's current values
-        _editedTitle = State(initialValue: song.title)
-        _editedSongStatus = State(initialValue: song.songStatus)
-        _editedPieceType = State(initialValue: song.pieceType)
-    }
+    // The initializer is no longer needed, as @Bindable handles it.
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Song Details") {
-                    TextField("Title", text: $editedTitle)
+                    // --- MODIFIED: Bind directly to song properties ---
+                    TextField("Title", text: $song.title)
                     
-                    Picker("Status", selection: $editedSongStatus) {
-                        Text("None").tag(PlayType?(nil))
+                    Picker("Status", selection: $song.songStatus) {
+                        Text("None").tag(PlayType?.none)
                         ForEach(PlayType.allCases, id: \.self) { status in
                             Text(status.rawValue.capitalized).tag(PlayType?(status))
                         }
                     }
                     
-                    Picker("Piece Type", selection: $editedPieceType) {
+                    Picker("Piece Type", selection: $song.pieceType) {
                         Text("None").tag(PieceType?(nil))
                         ForEach(PieceType.allCases, id: \.self) { type in
                             Text(type.rawValue.capitalized).tag(PieceType?(type))
@@ -53,6 +42,7 @@ struct EditSongSheet: View {
                 }
 
                 Section("Add Media") {
+                    // (This section's logic remains the same)
                     Picker("Type", selection: $newMediaType) {
                         ForEach(MediaType.allCases) { type in
                             Text(type.rawValue.capitalized).tag(type)
@@ -83,7 +73,7 @@ struct EditSongSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        isPresented = false
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -97,9 +87,9 @@ struct EditSongSheet: View {
             }
         }
     }
-
-    // MARK: - Helper Logic
     
+    // ... (Helper logic for media handling remains the same) ...
+
     private var isAddMediaButtonDisabled: Bool {
         if newMediaType == .localVideo {
             return videoFileURL == nil
@@ -139,15 +129,11 @@ struct EditSongSheet: View {
         selectedVideoItem = nil
     }
 
+    // --- MODIFIED: The save function is much simpler ---
     private func saveChanges() {
-        song.title = editedTitle
-        song.songStatus = editedSongStatus
-        song.pieceType = editedPieceType
-        
-        // The context will automatically save the appended media as well
+        // Any changes from the UI are already in the 'song' object.
+        // We just need to save the context.
         try? context.save()
-        
-        isPresented = false
+        dismiss()
     }
 }
-

@@ -10,76 +10,30 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import AVKit
-import AVFoundation
 
 struct SongDetailView: View {
     @Environment(\.modelContext) private var context
-    let song: Song
+    @Bindable var song: Song
 
-    @State private var editedTitle: String
-    @State private var editedSongStatus: PlayType?
-    @State private var editedPieceType: PieceType?
-
-    @State private var newMediaURL: String = ""
-    @State private var newMediaType: MediaType = .youtubeVideo
+    // State for the edit sheet
     @State private var showingEditSheet = false
 
+    // State for the notes display
     @State private var notesForSong: [Note] = []
 
-    @State private var selectedVideoItem: PhotosPickerItem? = nil
-    @State private var videoFileURL: URL? = nil
-
-    @State private var audioPlayerManager = AudioPlayerManager()
+    // State for audio playback
+    @StateObject private var audioPlayerManager = AudioPlayerManager()
     
-    init(song: Song) {
-        self.song = song
-        _editedTitle = State(initialValue: song.title)
-        _editedSongStatus = State(initialValue: song.songStatus)
-        _editedPieceType = State(initialValue: song.pieceType)
-    }
-
-    var taggedRecordings: [AudioRecording] {
-        let allRecordings = (try? context.fetch(FetchDescriptor<AudioRecording>())) ?? []
-        return allRecordings.filter { ($0.songs ?? []).contains(where: { $0.id == song.id }) }
-            .sorted { ($0.dateRecorded) > ($1.dateRecorded) }
-    }
-    
-    // 1. NEW: A property to pre-calculate all totals at once.
-    private var cumulativePlayTotals: [Play: Int] {
-        guard let plays = song.plays else { return [:] }
-
-        // Sort the plays chronologically just ONCE.
-        let sortedPlays = plays.sorted {
-            ($0.session?.day ?? .distantPast) < ($1.session?.day ?? .distantPast)
-        }
-        
-        var totals: [Play: Int] = [:]
-        var runningTotal = 0
-        
-        // Loop through the sorted plays ONCE to calculate totals.
-        for play in sortedPlays {
-            runningTotal += play.count
-            totals[play] = runningTotal
-        }
-        
-        return totals
-    }
-    
-    // 2. MODIFIED: Use the pre-calculated totals for sorting.
-    var groupedPlaysBySession: [(key: PracticeSession?, value: [Play])] {
+    // Use the @Transient property from the Song model
+    private var groupedPlaysBySession: [(key: PracticeSession?, value: [Play])] {
         let grouped = Dictionary(grouping: song.plays ?? [], by: { $0.session })
+        let sortedGroups = grouped.sorted { ($0.key?.day ?? .distantPast) > ($1.key?.day ?? .distantPast) }
         
-        let sortedGroups = grouped.sorted { lhs, rhs in
-            let lhsDate = lhs.key?.day ?? .distantPast
-            let rhsDate = rhs.key?.day ?? .distantPast
-            return lhsDate > rhsDate
-        }
+        let cumulativeTotals = song.cumulativeTotalsByType
         
         return sortedGroups.map { (session, plays) in
-            // Use the dictionary for a super-fast lookup.
             let sortedPlays = plays.sorted {
-                // Default to 0 if a play isn't in the dictionary.
-                (cumulativePlayTotals[$0] ?? 0) > (cumulativePlayTotals[$1] ?? 0)
+                (cumulativeTotals[$0] ?? 0) > (cumulativeTotals[$1] ?? 0)
             }
             return (key: session, value: sortedPlays)
         }
@@ -87,121 +41,20 @@ struct SongDetailView: View {
 
     var body: some View {
         TabView {
-            // Plays Tab
-            PlaysListView(
-                groupedPlays: groupedPlaysBySession
-            )
-            .tabItem {
-                Label("Plays", systemImage: "music.note.list")
-            }
-            // Media Tab
-            List {
-                Section("Media") {
-                    ForEach(song.media ?? [], id: \.persistentModelID) { media in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(media.type.rawValue.capitalized)
-                                .font(.headline)
-                            if let murl = media.url{
-                                switch media.type {
-                                case .youtubeVideo:
-                                    if let id = extractYouTubeID(from: murl) {
-                                        YouTubePlayerView(videoID: id)
-                                    } else {
-                                        Text(murl.absoluteString)
-                                            .foregroundColor(.blue)
-                                    }
-                                case .spotifyLink:
-                                    if let embedURL = URL(string: murl.absoluteString.replacingOccurrences(of: "open.spotify.com/", with: "open.spotify.com/embed/")) {
-                                        WebView(url: embedURL)
-                                            .frame(height: 80)
-                                            .cornerRadius(8)
-                                    } else {
-                                        Text(murl.absoluteString)
-                                            .foregroundColor(.blue)
-                                    }
-                                case .appleMusicLink:
-                                    Link("Open in Apple Music", destination: murl)
-                                case .localVideo:
-                                    VideoPlayer(player: AVPlayer(url: murl))
-                                        .frame(height: 200)
-                                        .cornerRadius(8)
-                                default:
-                                    Text(murl.absoluteString)
-                                        .foregroundColor(.blue)
-                                    
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                context.delete(media)
-                                try? context.save()
-                                notesForSong = notesForSong.filter { $0.id != media.id }
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    }
+            playsTab
+                .tabItem {
+                    Label("Plays", systemImage: "music.note.list")
                 }
-                
+            
+            mediaTab
+                .tabItem {
+                    Label("Media", systemImage: "link")
+                }
 
-                Section("Audio Recordings") {
-                    if taggedRecordings.isEmpty {
-                        Text("No audio recordings tagged with this song.")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(taggedRecordings, id: \.persistentModelID) { recording in
-                            AudioRecordingCell(
-                                recording: recording,
-                                audioPlayerManager: audioPlayerManager,
-                                onDelete: nil
-                            )
-                            .id(audioPlayerManager.currentlyPlayingID)
-                        }
-                        .onDelete { indices in
-                            let toDelete = indices.map { taggedRecordings[$0] }
-                            for recording in toDelete {
-                                context.delete(recording)
-                            }
-                            try? context.save()
-                        }
-                    }
+            notesTab
+                .tabItem {
+                    Label("Notes", systemImage: "note.text")
                 }
-            }
-            .tabItem {
-                Label("Media", systemImage: "link")
-            }
-
-            // Notes Tab
-            List {
-                Section("Notes") {
-                    if notesForSong.isEmpty {
-                        Text("No notes yet")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(notesForSong, id: \.persistentModelID) { note in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(note.text)
-                                if let sessionDate = note.session?.day {
-                                    Text(sessionDate.formatted(date: .abbreviated, time: .omitted))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .tabItem {
-                Label("Notes", systemImage: "note.text")
-            }
-            .onAppear {
-                print("Just making sure shit is printing")
-                let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-                notesForSong = fetchNotesForSong(from: allNotes)
-            }
-             
         }
         .navigationTitle(song.title)
         .toolbar {
@@ -212,66 +65,153 @@ struct SongDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            // ✅ The sheet modifier is now clean and simple
-            EditSongSheet(isPresented: $showingEditSheet, song: song)
+            EditSongSheet(song: song)
         }
-        .onAppear {
-            // This logic can stay here as it pertains to the detail view itself
-            let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-            notesForSong = fetchNotesForSong(from: allNotes)
-        }
+        .onAppear(perform: fetchNotesForSong)
+    }
 
-        
+    // MARK: - Extracted Tab Views
+
+    /// The content for the "Plays" tab.
+    private var playsTab: some View {
+        PlaysListView(
+            groupedPlays: groupedPlaysBySession
+        )
+    }
+
+    /// The content for the "Media" tab.
+    private var mediaTab: some View {
+        List {
+            Section("Audio Recordings") {
+                if taggedRecordings.isEmpty {
+                    Text("No audio recordings tagged with this song.").foregroundColor(.secondary)
+                } else {
+                    ForEach(taggedRecordings) { recording in
+                        AudioRecordingCell(recording: recording, audioPlayerManager: audioPlayerManager, onDelete: nil)
+                    }
+                }
+            }
+
+            Section("Other Media") {
+                ForEach(song.media ?? []) { media in
+                    MediaCell(media: media)
+                        .padding(.vertical, 4)
+                }
+            }
+        }
     }
     
-    func fetchNotesForSong(from allNotes: [Note]) -> [Note] {
-        allNotes
-            .filter { note in
-                note.songs?.contains(where: { $0.id == song.id }) == true
+    /// The content for the "Notes" tab.
+    private var notesTab: some View {
+        List {
+            Section("Notes") {
+                if notesForSong.isEmpty {
+                    Text("No notes yet.").foregroundColor(.secondary)
+                } else {
+                    ForEach(notesForSong) { note in
+                        NoteCell(note: note)
+                    }
+                }
             }
-            .sorted {
-                ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast)
-            }
+        }
+    }
+
+    // MARK: - Helper Logic & Views
+    
+    private var taggedRecordings: [AudioRecording] {
+        let allRecordings = (try? context.fetch(FetchDescriptor<AudioRecording>())) ?? []
+        return allRecordings.filter { ($0.songs ?? []).contains(where: { $0.id == song.id }) }
+            .sorted { $0.dateRecorded > $1.dateRecorded }
+    }
+    
+    private func fetchNotesForSong() {
+        let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        notesForSong = allNotes.filter { note in
+            (note.songs ?? []).contains { $0.id == song.id }
+        }.sorted { ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast) }
     }
 }
 
 
-import WebKit
+// MARK: - Subviews for Cells
+// By creating smaller, dedicated views for your cells, you further simplify the main view.
 
-struct WebView: UIViewRepresentable {
-    let url: URL
-
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        return WKWebView(frame: .zero, configuration: config)
-    }
-
-    func updateUIView(_ uiView: WKWebView, context: Context) {
-        let request = URLRequest(url: url)
-        uiView.load(request)
-    }
-}
-
-struct YouTubePlayerView: View {
-    let videoID: String
+private struct MediaCell: View {
+    let media: MediaReference
 
     var body: some View {
-        WebView(url: URL(string: "https://www.youtube.com/embed/\(videoID)?playsinline=1&fs=0")!)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(media.type.rawValue.capitalized).font(.headline)
+            if let murl = media.url {
+                switch media.type {
+                case .youtubeVideo:
+                    if let id = extractYouTubeID(from: murl) {
+                        YouTubePlayerView(videoID: id)
+                    }
+                case .spotifyLink:
+                    // Note: You may need to adjust the URL for embedding
+                    if let embedURL = URL(string: murl.absoluteString.replacingOccurrences(of: "/track/", with: "/embed/track/")) {
+                         WebView(url: embedURL).frame(height: 80).cornerRadius(8)
+                    }
+                case .appleMusicLink:
+                    Link("Open in Apple Music", destination: murl)
+                case .localVideo:
+                    VideoPlayer(player: AVPlayer(url: murl)).frame(height: 200).cornerRadius(8)
+                default:
+                    Link(murl.absoluteString, destination: murl).foregroundColor(.blue)
+                }
+            }
+        }
+    }
+}
+
+private struct NoteCell: View {
+    let note: Note
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(note.text)
+            if let sessionDate = note.session?.day {
+                Text(sessionDate.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+
+// MARK: - Web and YouTube Views
+// (These helpers remain the same)
+import WebKit
+
+private struct WebView: UIViewRepresentable {
+    let url: URL
+    func makeUIView(context: Context) -> WKWebView { WKWebView() }
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        uiView.load(URLRequest(url: url))
+    }
+}
+
+private struct YouTubePlayerView: View {
+    let videoID: String
+    var body: some View {
+        WebView(url: URL(string: "https://www.youtube.com/embed/\(videoID)")!)
             .frame(height: 200)
             .cornerRadius(8)
     }
 }
 
-func extractYouTubeID(from url: URL) -> String? {
-    if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-       components.host?.contains("youtube.com") == true,
-       let queryItems = components.queryItems,
+private func extractYouTubeID(from url: URL) -> String? {
+    let host = url.host?.lowercased()
+    let path = url.path
+    
+    if host?.contains("youtube.com") == true,
+       let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
        let v = queryItems.first(where: { $0.name == "v" })?.value {
         return v
-    } else if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              components.host?.contains("youtu.be") == true {
-        return components.path.dropFirst().description
+    } else if host?.contains("youtu.be") == true {
+        return String(path.dropFirst())
     }
     return nil
 }
