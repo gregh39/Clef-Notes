@@ -7,7 +7,6 @@
 import SwiftUI
 import SwiftData
 
-
 struct PlaysSectionView: View {
     @Bindable var session: PracticeSession
     
@@ -17,116 +16,56 @@ struct PlaysSectionView: View {
     
     @Environment(\.modelContext) private var context
     
+    // The query is not directly used in this view's body but might be needed for the addPlaySheet.
+    // Kept for context.
     @Query(sort: \Song.title) private var songs: [Song]
 
     var body: some View {
         Section("Session Plays") {
-            if (session.plays ?? []).isEmpty {
-                Button {
-                    showingAddPlaySheet = true
-                } label: {
-                    Label("Add a Play", systemImage: "music.note.list")
-                        .font(.body)
-                        .foregroundColor(.accentColor)
+            // Use a computed property for cleaner access and handling of optional array.
+            let plays = session.plays ?? []
+            
+            if plays.isEmpty {
+                // An improved empty state view that's more centered and inviting.
+                Button(action: { showingAddPlaySheet = true }) {
+                    Label("Add Play", systemImage: "music.note.list")
+                        .padding()
+                        .frame(maxWidth: .infinity)
                 }
             } else {
-                ForEach(session.plays ?? [], id: \.persistentModelID) { play in
-                    Button {
-                        playToEdit = play
-                    } label: {
-                        HStack {
-                            HStack( spacing: 2) {
-                                VStack(alignment: .leading) {
-                                    Text(play.song?.title ?? "Unknown Song")
-                                }
-                                Spacer()
-                                Text("Total: \(play.totalPlaysIncludingThis)")
-                            }
-                            Spacer()
-                        }
-                        .foregroundColor(.primary)
+                // Loop over the existing plays.
+                ForEach(plays) { play in
+                    Button(action: { playToEdit = play }) {
+                        PlayRow(play: play)
                     }
-
+                    .foregroundStyle(.primary)
                 }
-                .onDelete { indexSet in
-                    for index in indexSet {
-                        let play = (session.plays ?? [])[index]
-                        context.delete(play)
-                        session.plays?.remove(at: index)
-                    }
-                    try? context.save()
-                }
-                Button {
-                    showingAddPlaySheet = true
-                } label: {
-                    Label("Add a Play", systemImage: "plus")
-                        .font(.body)
-                        .foregroundColor(.accentColor)
-                }
-
-            }
-            
-        }
-    }
-    
-    private func addPlaySheetView() -> some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button {
-                        showingAddPlaySheet = false
-                        showingAddSongSheet = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Add New Song")
-                                .fontWeight(.medium)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    }
-                } header: {
-                    Text("Create")
-                }
-
-                if !songs.isEmpty {
-                    Section {
-                        ForEach(songs, id: \.persistentModelID) { song in
-                            Button(song.title) {
-                                addPlay(for: song)
-                                showingAddPlaySheet = false
-                            }
-                        }
-                    } header: {
-                        Text("Existing Songs")
-                    }
-                }
-            }
-            .navigationTitle("Choose Song")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        showingAddPlaySheet = false
-                    }
+                .onDelete(perform: deletePlay) // Abstracted the delete logic to a separate function.
+                
+                // A single, clean button at the end of the list to add more plays.
+                Button(action: { showingAddPlaySheet = true }) {
+                    Label("Add Another Play", systemImage: "plus")
                 }
             }
         }
     }
     
-    private func addPlay(for song: Song) {
-        let play = Play(count: 1)
-        play.song = song
-        play.session = session
-        if session.plays == nil {
-            session.plays = []
+    
+    
+    /// Handles the deletion of plays from the list and the model context.
+    private func deletePlay(at offsets: IndexSet) {
+        for index in offsets {
+            guard let play = session.plays?[index] else { continue }
+            context.delete(play)
+            session.plays?.remove(at: index)
         }
-        session.plays?.append(play)
-        context.insert(play)
-        try? context.save()
+        // It's good practice to wrap the save in a do-catch block.
+        do {
+            try context.save()
+        } catch {
+            // Handle the save error, e.g., by logging it.
+            print("Failed to save context after deletion: \(error)")
+        }
     }
-
 }
+

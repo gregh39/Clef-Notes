@@ -380,6 +380,57 @@ struct SessionDetailView: View {
             .sheet(isPresented: $showingRandomSongPicker) {
                 RandomSongPickerView(songs: songs)
             }
+            .overlay(
+                GeometryReader { geometry in
+                    ZStack {
+                        if isRecording {
+                            // Wide recording button expanded
+                            Button(action: startOrStopRecording) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "stop.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                    
+                                    Text("Stop Recording")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    
+                                    LiveWaveformView(level: audioLevel)
+                                        .frame(height: 35)
+                                }
+                                .padding(.horizontal, 20)
+                                .frame(width: geometry.size.width * 0.9, height: 50)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 30)
+                                        .fill(
+                                            LinearGradient(colors: [.red.opacity(0.8), .red], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        )
+                                )
+                                .shadow(color: Color.red.opacity(0.4), radius: 8, x: 0, y: 4)
+                                .animation(.easeInOut(duration: 0.3), value: isRecording)
+                            }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                        } else {
+                            // Circular record button idle
+                            Button(action: startOrStopRecording) {
+                                Image(systemName: "waveform.badge.microphone")
+                                    .font(.system(size: 36))
+                                    .foregroundColor(.accentColor)
+                                    .frame(width: 50, height: 50)
+                                    .background(
+                                        Circle()
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: Color.accentColor.opacity(0.4), radius: 8, x: 0, y: 4)
+                                    )
+                            }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.bottom, 60)
+                    .padding(.trailing, 20)
+                }
+            )
         
     }
     
@@ -387,46 +438,6 @@ struct SessionDetailView: View {
     
     private var sessionTab: some View {
         Form {
-            // Recording Section
-            Section {
-                VStack(spacing: 12) {
-                    Button(action: startOrStopRecording) {
-                        HStack {
-                            Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
-                                .font(.title2)
-                                .foregroundColor(isRecording ? .red : .white)
-                            
-                            Text(isRecording ? "Stop Recording" : "Start Recording")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            if isRecording {
-                                VStack(spacing: 8) {
-                                    LiveWaveformView(level: audioLevel)
-                                        .transition(.opacity.combined(with: .scale))
-                                }
-                                .padding(.top, 4)
-                            }
-                            
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(isRecording ?
-                                      LinearGradient(colors: [.red.opacity(0.8), .red], startPoint: .topLeading, endPoint: .bottomTrailing) :
-                                        LinearGradient(colors: [.blue.opacity(0.8), .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                     )
-                                .shadow(color: isRecording ? .red.opacity(0.3) : .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                }
-                .padding(.vertical, 4)
-            } header: {
-                Label("Recording", systemImage: "mic")
-            }
             
             PlaysSectionView(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet, playToEdit: $playToEdit)
             NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
@@ -479,43 +490,22 @@ struct SessionDetailView: View {
 // MARK: - Enhanced Live Waveform Display
 struct LiveWaveformView: View {
     var level: CGFloat // Normalized level from 0.0 to 1.0
-    var barColor: Color = .red
-
-    private let barCount = 12
-    private let maxHeight: CGFloat = 35.0
-
-    // Enhanced multipliers for a more dynamic waveform
-    private let multipliers: [CGFloat] = [0.15, 0.3, 0.5, 0.7, 0.85, 1.0, 1.0, 0.85, 0.7, 0.5, 0.3, 0.15]
-
+    var lineColor: Color = .white
+    let baseThickness: CGFloat = 4
+    let maxThickness: CGFloat = 24
+    
     var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<barCount, id: \.self) { index in
-                let baseHeight: CGFloat = 3
-                let dynamicHeight = max(baseHeight, level * maxHeight * multipliers[index])
-                
-                RoundedRectangle(cornerRadius: 2)
-                    .frame(width: 4, height: dynamicHeight)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [barColor.opacity(0.8), barColor],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .shadow(color: barColor.opacity(0.3), radius: 2, x: 0, y: 1)
-                    .animation(.easeInOut(duration: 0.1), value: level)
-            }
+        GeometryReader { geo in
+            let thickness = baseThickness + (maxThickness - baseThickness) * level
+            Capsule()
+                .fill(lineColor)
+                .frame(height: thickness)
+                .frame(maxWidth: .infinity)
+                .animation(.easeInOut(duration: 0.1), value: thickness)
+                .accessibilityLabel("Waveform level line")
         }
-        .frame(height: maxHeight, alignment: .center)
+        .frame(height: maxThickness)
         .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(.quaternary, lineWidth: 1)
-                )
-        )
     }
 }
 
@@ -526,4 +516,3 @@ struct LiveWaveformView: View {
         SessionDetailView(session: mockSession)
     }
 }
-

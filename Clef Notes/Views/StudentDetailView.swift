@@ -54,13 +54,9 @@ struct StudentDetailView: View {
         NavigationStack {
             TabView {
                 SessionListView(viewModel: $viewModel)
-                    .navigationDestination(item: $newSession) { session in
-                        SessionDetailView(session: session)
-                    }
                     .tabItem {
                         Label("Sessions", systemImage: "calendar")
                     }
-
                 StudentSongsTabView(viewModel: $viewModel, selectedSort: $selectedSort)
                     .tabItem { Label("Songs", systemImage: "music.note.list") }
 
@@ -69,6 +65,9 @@ struct StudentDetailView: View {
             }
             .navigationTitle(student.name)
             .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(item: $newSession) { session in
+                SessionDetailView(session: session)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {

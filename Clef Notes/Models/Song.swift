@@ -92,5 +92,16 @@ final class Song: Codable {
     var lastPlayedDate: Date? {
         (plays ?? []).map(\.session?.day).compactMap { $0 }.max()
     }
+    
+    /// Returns the cumulative count for the given play's type up to and including that play, chronologically.
+    func cumulativeTypeCount(for play: Play) -> Int {
+        guard let plays = self.plays, let type = play.playType else { return play.count }
+        // Sort all plays for this song by session day
+        let sorted = plays.filter { $0.playType == type }.sorted {
+            ($0.session?.day ?? .distantPast) < ($1.session?.day ?? .distantPast)
+        }
+        guard let idx = sorted.firstIndex(of: play) else { return play.count }
+        let total = sorted.prefix(upTo: idx).reduce(0) { $0 + $1.count } + play.count
+        return total
+    }
 }
-
