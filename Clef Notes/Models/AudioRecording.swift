@@ -1,33 +1,27 @@
-//
-//  AudioRecording.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/16/25.
-//
-import SwiftUI
 import Foundation
 import SwiftData
 
 @Model
 final class AudioRecording {
-    var id: UUID = UUID() // Explicit ID
+    var id: UUID = UUID()
     var title: String?
-    var filename: String?
-    var fileURL: URL? {
-        guard let filename else { return nil }
-        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent(filename)
-    }
+    
+    // --- THIS IS THE FIX ---
+    // Instead of a filename, we store the audio data directly.
+    // SwiftData will handle syncing this data efficiently via CloudKit.
+    @Attribute(.externalStorage)
+    var data: Data?
+    
     var dateRecorded: Date = Date()
     var duration: TimeInterval?
 
     var session: PracticeSession?
     
-    // The new relationship to link songs to a recording.
     @Relationship(inverse: \Song.recordings) var songs: [Song]? = []
 
-    init(fileURL: URL, dateRecorded: Date = .now, title: String? = nil, duration: TimeInterval? = nil) {
-        self.filename = fileURL.lastPathComponent
+    // The initializer now accepts the audio data.
+    init(data: Data?, dateRecorded: Date = .now, title: String? = nil, duration: TimeInterval? = nil) {
+        self.data = data
         self.dateRecorded = dateRecorded
         self.title = title
         self.duration = duration

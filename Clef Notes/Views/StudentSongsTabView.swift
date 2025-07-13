@@ -5,27 +5,24 @@ struct StudentSongsTabView: View {
     @Binding var viewModel: StudentDetailViewModel
     @Binding var selectedSort: SongSortOption
     
+    // Get the AudioManager from the environment
+    @EnvironmentObject var audioManager: AudioManager
+    
     @State private var selectedPieceType: PieceType? = nil
     @State private var editingSongForEditSheet: Song? = nil
 
     private var availablePieceTypes: [PieceType] {
-        // Creates a unique, ordered list of piece types present in the songs
         let allTypes = viewModel.songs.compactMap { $0.pieceType }
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
-    // MARK: - Body
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            // This is our filter bar
             typeFilterBar
             
-            // The main list now delegates its content to smaller views
             List {
-                // Display normal songs, grouped by status
                 songsSection
                 
-                // Display other piece types in their own dedicated sections
                 SongSectionView(
                     title: "Scales",
                     songs: filteredSongs(for: .scale),
@@ -52,7 +49,6 @@ struct StudentSongsTabView: View {
 
     // MARK: - Extracted Subviews
 
-    /// A horizontal scroll view for filtering by piece type.
     private var typeFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -65,22 +61,20 @@ struct StudentSongsTabView: View {
         }
     }
 
-    /// The section for displaying standard songs, grouped by their status.
     @ViewBuilder
     private var songsSection: some View {
-        // Only show this section if "All" or "Song" is selected
         if selectedPieceType == nil || selectedPieceType == .song {
             let normalSongs = viewModel.songs.filter { $0.pieceType == nil || $0.pieceType == .song }
             let grouped = Dictionary(grouping: normalSongs, by: { $0.songStatus })
             
-            // Sort keys to ensure consistent order: Learning, Practice, Review, No Status
             let sortedKeys = PlayType.allCases.map { Optional($0) } + [nil]
 
             ForEach(sortedKeys, id: \.self) { status in
                 if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
                     Section(header: Text(status?.rawValue ?? "No Status")) {
                         ForEach(songsInGroup) { song in
-                            NavigationLink(destination: SongDetailView(song: song)) {
+                            // Pass the audioManager to the SongDetailView initializer
+                            NavigationLink(destination: SongDetailView(song: song, audioManager: audioManager)) {
                                 SongRowView(song: song, progress: viewModel.practiceVM.progress(for: song))
                             }
                             .swipeActions(edge: .leading) {
@@ -95,9 +89,7 @@ struct StudentSongsTabView: View {
 
     // MARK: - Helper Functions
     
-    /// Filters the main songs list for a specific piece type.
     private func filteredSongs(for type: PieceType) -> [Song] {
-        // Only return songs for this section if "All" or the specific type is selected
         guard selectedPieceType == nil || selectedPieceType == type else { return [] }
         return viewModel.songs.filter { $0.pieceType == type }
     }
@@ -106,18 +98,20 @@ struct StudentSongsTabView: View {
 
 // MARK: - Reusable Components
 
-/// A reusable view for displaying a section of songs (e.g., Scales, Exercises).
 private struct SongSectionView: View {
     let title: String
     let songs: [Song]
     @Binding var editingSong: Song?
+    
+    // Get the AudioManager from the environment to pass it down
+    @EnvironmentObject var audioManager: AudioManager
 
     var body: some View {
         if !songs.isEmpty {
             Section(header: Text(title)) {
                 ForEach(songs) { song in
-                    NavigationLink(destination: SongDetailView(song: song)) {
-                        // Using SongRowView without progress for non-goal-oriented pieces
+                    // Pass the audioManager to the SongDetailView initializer
+                    NavigationLink(destination: SongDetailView(song: song, audioManager: audioManager)) {
                         SongRowView(song: song, progress: 0)
                     }
                     .swipeActions(edge: .leading) {
@@ -129,7 +123,6 @@ private struct SongSectionView: View {
     }
 }
 
-/// A reusable filter button for the top bar.
 private struct FilterButton: View {
     let title: String
     let type: PieceType?

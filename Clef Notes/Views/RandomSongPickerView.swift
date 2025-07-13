@@ -236,7 +236,7 @@ private struct WheelSlice: View {
 // MARK: - Preview
 #Preview {
     // Note: The preview uses your actual Song class initializer now.
-    var previewSongs = [
+    let previewSongs = [
         Song(title: "Ode to Joy", studentID: UUID()),
         Song(title: "Clair de Lune", studentID: UUID()),
         Song(title: "Für Elise", studentID: UUID()),

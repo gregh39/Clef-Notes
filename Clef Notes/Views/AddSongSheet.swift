@@ -1,20 +1,16 @@
-//
-//  AddSongSheet.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/13/25.
-//
 import SwiftUI
 import SwiftData
-import PhotosUI // Import for PhotosPicker
+import PhotosUI
 
-// The MediaEntry struct now includes properties to handle file selections
+// This struct now mirrors the one in EditSongSheet for consistency.
 struct MediaEntry: Identifiable {
     let id = UUID()
-    var url: String = ""
+    var urlString: String = ""
     var type: MediaType = .youtubeVideo
+    
+    // Properties for handling local file selections
     var photoPickerItem: PhotosPickerItem? = nil
-    var fileURL: URL? = nil // To store the URL of a selected audio file
+    var audioFileURL: URL? = nil
 }
 
 struct AddSongSheet: View {
@@ -29,12 +25,11 @@ struct AddSongSheet: View {
     // A single state variable to hold a list of media entries
     @State private var mediaEntries: [MediaEntry] = []
     
-    // State to control the file importer
-    @State private var isImportingFile = false
+    // State to control the file importer sheet
+    @State private var isImportingAudio = false
     @State private var selectedMediaEntryID: UUID?
 
-
-    // The closure to perform the add action, now accepting media entries
+    // The closure to perform the add action
     var addAction: ([MediaEntry]) -> Void
     var clearAction: () -> Void
 
@@ -71,26 +66,23 @@ struct AddSongSheet: View {
                             }
                             .pickerStyle(.menu)
 
-                            // --- MODIFIED: Show picker or text field based on type ---
+                            // Show the appropriate input based on the selected media type
                             switch entry.type {
                             case .localVideo:
                                 PhotosPicker("Select Video", selection: $entry.photoPickerItem, matching: .videos)
-                                if let item = entry.photoPickerItem {
-                                    // You can expand this to show a thumbnail or more details
-                                    Text("Video selected")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                if entry.photoPickerItem != nil {
+                                    Text("Video selected").font(.caption).foregroundColor(.secondary)
                                 }
                             case .audioRecording:
-                                Button(action: {
+                                Button("Select Audio File") {
                                     selectedMediaEntryID = entry.id
-                                    isImportingFile = true
-                                }) {
-                                    Label(entry.fileURL?.lastPathComponent ?? "Select Audio File", systemImage: "folder")
+                                    isImportingAudio = true
                                 }
-                                
+                                if let url = entry.audioFileURL {
+                                    Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
+                                }
                             default: // For YouTube, Spotify, etc.
-                                TextField("URL", text: $entry.url)
+                                TextField("URL", text: $entry.urlString)
                                     .keyboardType(.URL)
                                     .autocapitalization(.none)
                             }
@@ -100,7 +92,6 @@ struct AddSongSheet: View {
                         mediaEntries.remove(atOffsets: indexSet)
                     }
 
-                    // Button to add a new media entry row
                     Button(action: {
                         mediaEntries.append(MediaEntry())
                     }) {
@@ -118,7 +109,6 @@ struct AddSongSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        // Pass the media entries to the add action
                         addAction(mediaEntries)
                         isPresented = false
                         clearForm()
@@ -126,21 +116,15 @@ struct AddSongSheet: View {
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .fileImporter(isPresented: $isImportingFile, allowedContentTypes: [.audio]) { result in
-                switch result {
-                case .success(let url):
-                    if let index = mediaEntries.firstIndex(where: { $0.id == selectedMediaEntryID }) {
-                        mediaEntries[index].fileURL = url
-                    }
-                case .failure(let error):
-                    print("Error importing file: \(error.localizedDescription)")
+            .fileImporter(isPresented: $isImportingAudio, allowedContentTypes: [.audio]) { result in
+                if case .success(let url) = result, let index = mediaEntries.firstIndex(where: { $0.id == selectedMediaEntryID }) {
+                    mediaEntries[index].audioFileURL = url
                 }
             }
         }
     }
 
     private func clearForm() {
-        // Now also clears the media entries
         clearAction()
         mediaEntries = []
     }

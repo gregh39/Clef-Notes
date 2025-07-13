@@ -1,28 +1,21 @@
-//
-//  SessionListView.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/1/25.
-//
-
 import SwiftUI
 import Foundation
 import SwiftData
 
 struct SessionListView: View {
     @Binding var viewModel: StudentDetailViewModel
-    
+    @EnvironmentObject var audioManager: AudioManager // <-- ADDED
+
     var body: some View {
-        // 1. Use a ScrollView for custom layout control.
         ScrollView {
             LazyVStack(spacing: 16) {
                 ForEach(viewModel.sessions, id: \.persistentModelID) { session in
-                    NavigationLink(destination: SessionDetailView(session: session)) {
+                    // Pass the audioManager to the SessionDetailView
+                    NavigationLink(destination: SessionDetailView(session: session, audioManager: audioManager)) { // <-- FIXED
                         SessionCardView(session: session)
                     }
                     .buttonStyle(PlainButtonStyle()) // Ensures the whole card is tappable
                     .contextMenu {
-                        // 2. Add a delete button to the context menu.
                         Button(role: .destructive) {
                             deleteSession(session)
                         } label: {
@@ -34,7 +27,6 @@ struct SessionListView: View {
             .padding(.horizontal)
             .padding(.top)
         }
-        // 3. Remove the plain list style and add a proper navigation title.
         .navigationTitle("Sessions")
     }
     
@@ -51,7 +43,6 @@ struct SessionCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // MARK: Card Header
             HStack {
                 Text(session.title ?? "Practice")
                     .font(.headline)
@@ -62,7 +53,6 @@ struct SessionCardView: View {
                     .foregroundColor(.secondary)
             }
             
-            // MARK: Card Details
             HStack(spacing: 8) {
                 if let location = session.location {
                     Label(location.rawValue, systemImage: "mappin.and.ellipse")
@@ -76,14 +66,16 @@ struct SessionCardView: View {
             .foregroundColor(.secondary)
         }
         .padding()
-        .background(.background.secondary) // Use a subtle background color
-        .clipShape(RoundedRectangle(cornerRadius: 12)) // Use clipShape for better performance
+        .background(.background.secondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
     }
 }
 
 #Preview {
+    // The preview now correctly includes the AudioManager in its environment.
     PreviewWrapper()
+        .environmentObject(AudioManager())
 }
 
 struct PreviewWrapper: View {
@@ -101,11 +93,9 @@ extension StudentDetailViewModel {
         let container = try! ModelContainer(for: Student.self, PracticeSession.self, Instructor.self, configurations: .init(isStoredInMemoryOnly: true))
         let context = ModelContext(container)
 
-        // Mock student
         let student = Student(name: "Alice Example", instrument: "Cello")
         context.insert(student)
 
-        // Mock sessions
         let session1 = PracticeSession(day: Date(), durationMinutes: 45, studentID: student.id)
         session1.title = "Lesson 1"
         session1.location = LessonLocation.privateLesson
@@ -118,7 +108,6 @@ extension StudentDetailViewModel {
         context.insert(session1)
         context.insert(session2)
 
-        let viewModel = StudentDetailViewModel(student: student, context: context)
-        return viewModel
+        return StudentDetailViewModel(student: student, context: context)
     }
 }

@@ -1,33 +1,41 @@
-//
-//  AudioPlayerManager.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/16/25.
-//
 import SwiftUI
 import SwiftData
 import AVFoundation
-import PhotosUI
 import Combine
 
-
-class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
+@MainActor
+class AudioPlayerManager: NSObject, ObservableObject {
     @Published var currentlyPlayingID: PersistentIdentifier? = nil
     @Published var currentTime: TimeInterval = 0
+    
     var audioPlayer: AVAudioPlayer?
     private var progressTimer: Timer?
+    
+    private var audioManager: AudioManager
 
-    func play(url: URL, id: PersistentIdentifier) {
+    init(audioManager: AudioManager) {
+        self.audioManager = audioManager
+    }
+
+    // --- THIS IS THE FIX ---
+    // The play function now accepts the raw Data of the recording.
+    func play(data: Data, id: PersistentIdentifier) {
+        let hasSession = audioManager.requestSession(for: .player, category: .playback)
+        guard hasSession else {
+            print("AudioPlayerManager: Failed to acquire audio session.")
+            return
+        }
+        
         do {
             audioPlayer?.stop()
             progressTimer?.invalidate()
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playback, mode: .default)
-            try audioSession.setActive(true)
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            
+            // AVAudioPlayer can be initialized directly from Data.
+            audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.delegate = self
             audioPlayer?.currentTime = 0
             audioPlayer?.play()
+            
             currentTime = 0
             currentlyPlayingID = id
 
@@ -39,6 +47,7 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         } catch {
             print("Playback failed: \(error.localizedDescription)")
+            audioManager.releaseSession(for: .player)
         }
     }
 
@@ -47,12 +56,7 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         progressTimer?.invalidate()
         currentTime = 0
         currentlyPlayingID = nil
-    }
-
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        progressTimer?.invalidate()
-        currentTime = 0
-        currentlyPlayingID = nil
+        audioManager.releaseSession(for: .player)
     }
 
     func seek(to time: TimeInterval) {
@@ -62,5 +66,14 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     deinit {
         progressTimer?.invalidate()
+    }
+}
+
+extension AudioPlayerManager: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        progressTimer?.invalidate()
+        currentTime = 0
+        currentlyPlayingID = nil
+        audioManager.releaseSession(for: .player)
     }
 }

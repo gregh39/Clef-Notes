@@ -1,15 +1,11 @@
-//
-//  Clef_NotesApp.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/10/25.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
 struct Clef_NotesApp: App {
+    // Create a single, shared instance of the AudioManager.
+    @StateObject private var audioManager = AudioManager()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Student.self,
@@ -17,7 +13,9 @@ struct Clef_NotesApp: App {
             PracticeSession.self,
             Play.self,
             Note.self,
-            MediaReference.self
+            MediaReference.self,
+            AudioRecording.self,
+            Instructor.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -34,8 +32,10 @@ struct Clef_NotesApp: App {
         WindowGroup {
             ContentView()
                 .tint(selectedColor.color)
+                // Inject the AudioManager into the environment.
+                // Now, any view in the app can access it using @EnvironmentObject.
+                .environmentObject(audioManager)
         }
         .modelContainer(sharedModelContainer)
-
     }
 }

@@ -1,9 +1,3 @@
-//
-//  StudentDetailView.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/10/25.
-//
 import SwiftUI
 import SwiftData
 
@@ -18,11 +12,12 @@ enum SongSortOption: String, CaseIterable, Identifiable {
 
 struct StudentDetailView: View {
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var audioManager: AudioManager // <-- ADDED
     let student: Student
 
     @State private var viewModel: StudentDetailViewModel
 
-    // State for add song sheet
+    // State for add song sheet and form fields
     @State private var showingAddSongSheet = false
 
     // State for navigating to new session detail
@@ -38,19 +33,6 @@ struct StudentDetailView: View {
     }
 
     var body: some View {
-        var sortedSongs: [Song] {
-            switch selectedSort {
-            case .title:
-                return viewModel.songs.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-            case .playCount:
-                return viewModel.songs.sorted { $0.totalPlayCount > $1.totalPlayCount }
-            case .recentlyPlayed:
-                return viewModel.songs.sorted {
-                    ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast)
-                }
-            }
-        }
-
         NavigationStack {
             TabView {
                 SessionListView(viewModel: $viewModel)
@@ -66,7 +48,8 @@ struct StudentDetailView: View {
             .navigationTitle(student.name)
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(item: $newSession) { session in
-                SessionDetailView(session: session)
+                // Pass the audioManager to the SessionDetailView
+                SessionDetailView(session: session, audioManager: audioManager) // <-- FIXED
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -92,7 +75,6 @@ struct StudentDetailView: View {
             .task {
                 viewModel.practiceVM.reload()
             }
-            // --- MODIFIED SECTION ---
             .sheet(isPresented: $showingAddSongSheet) {
                 AddSongSheet(
                     isPresented: $showingAddSongSheet,
@@ -100,14 +82,12 @@ struct StudentDetailView: View {
                     goalPlays: $viewModel.goalPlays,
                     songStatus: $viewModel.songStatus,
                     pieceType: $viewModel.pieceType,
-                    // The addAction now receives the array of media entries directly
                     addAction: { mediaEntries in
                         viewModel.addSong(mediaEntries: mediaEntries)
                     },
                     clearAction: viewModel.clearSongForm
                 )
             }
-            // --- END MODIFIED SECTION ---
             .sheet(isPresented: $showingAddSessionSheet) {
                 AddSessionSheet(
                     isPresented: $showingAddSessionSheet,
