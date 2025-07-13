@@ -4,40 +4,65 @@ import SwiftData
 
 struct SessionListView: View {
     @Binding var viewModel: StudentDetailViewModel
-    @EnvironmentObject var audioManager: AudioManager // <-- ADDED
+    @EnvironmentObject var audioManager: AudioManager
+
+    // --- NEW STATE ---
+    // 1. To track which session is targeted for deletion.
+    @State private var sessionToDelete: PracticeSession?
+    // 2. To control the visibility of the confirmation alert.
+    @State private var showingDeleteAlert = false
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(viewModel.sessions, id: \.persistentModelID) { session in
-                    // Pass the audioManager to the SessionDetailView
-                    NavigationLink(destination: SessionDetailView(session: session, audioManager: audioManager)) { // <-- FIXED
-                        SessionCardView(session: session)
-                    }
-                    .buttonStyle(PlainButtonStyle()) // Ensures the whole card is tappable
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            deleteSession(session)
-                        } label: {
-                            Label("Delete Session", systemImage: "trash")
+        List {
+            ForEach(viewModel.sessions) { session in
+                // --- THIS IS THE FIX ---
+                // The SessionCardView is now the main content of the row.
+                SessionCardView(session: session)
+                    // The NavigationLink is placed in the background, making the whole
+                    // card tappable without showing the arrow.
+                    .background(
+                        NavigationLink(destination: SessionDetailView(session: session, audioManager: audioManager)) {
+                            EmptyView()
                         }
-                    }
-                }
+                        .opacity(0) // Make the link itself invisible
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             }
-            .padding(.horizontal)
-            .padding(.top)
+            // --- MODIFIED .onDelete ---
+            // Now, it sets state to show the alert instead of deleting directly.
+            .onDelete { offsets in
+                // Find the session to delete from the offsets.
+                guard let index = offsets.first else { return }
+                self.sessionToDelete = viewModel.sessions[index]
+                self.showingDeleteAlert = true
+            }
         }
+        .listStyle(.plain)
         .navigationTitle("Sessions")
+        // --- NEW .alert MODIFIER ---
+        // 3. This alert is presented when showingDeleteAlert is true.
+        .alert("Delete Session?", isPresented: $showingDeleteAlert, presenting: sessionToDelete) { session in
+            Button("Delete", role: .destructive) {
+                // The actual deletion happens here, only after confirmation.
+                performDelete(session: session)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { session in
+            Text("Are you sure you want to delete the session \"\(session.title ?? "Practice")\"? All of its plays, notes, and recordings will be permanently removed.")
+        }
     }
     
-    /// Deletes a specific session and saves the context.
-    private func deleteSession(_ session: PracticeSession) {
+    /// Performs the actual deletion of the session.
+    private func performDelete(session: PracticeSession) {
         viewModel.context.delete(session)
         try? viewModel.context.save()
-        viewModel.practiceVM.reload() // Assuming this reloads the data
+        viewModel.practiceVM.reload()
     }
 }
 
+// The card view itself remains mostly the same, but now lives inside a List row.
 struct SessionCardView: View {
     let session: PracticeSession
     
@@ -71,9 +96,7 @@ struct SessionCardView: View {
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
     }
 }
-
 #Preview {
-    // The preview now correctly includes the AudioManager in its environment.
     PreviewWrapper()
         .environmentObject(AudioManager())
 }
