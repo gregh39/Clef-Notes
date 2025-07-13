@@ -44,9 +44,9 @@ class StatsViewModel: ObservableObject {
     let weekdayCounts: [Int: Int]
     let shortWeekdaySymbols: [String]
     
-    // Song Stats
-    let mostPracticedSong: String
-    let songNeedingPractice: String
+    // --- MODIFIED: Store the full Song object ---
+    let mostPracticedSong: Song?
+    let songNeedingPractice: Song?
     
     // All-Time Stats
     let firstPracticeDate: String
@@ -113,29 +113,26 @@ class StatsViewModel: ObservableObject {
         }
         shortWeekdaySymbols = calendar.shortWeekdaySymbols
         
-        // --- Song Stats (Corrected Logic) ---
-        let songPlays = sessions
-            .compactMap(\.plays)
-            .flatMap { $0 }
-            .reduce(into: [String: (count: Int, goal: Int)]()) { result, play in
-                guard let song = play.song else { return }
-                
-                // **FIXED**: This safely handles an optional 'goalPlays' (Int?)
-                // and ensures the goal is never 0 to prevent division errors.
-                let goal = max(song.goalPlays ?? 1, 1)
-                
-                var entry = result[song.title, default: (count: 0, goal: goal)]
-                entry.count += play.count
-                result[song.title] = entry
-            }
+        // --- Song Stats (Logic now finds and stores Song objects) ---
+        let allPlays = sessions.compactMap(\.plays).flatMap { $0 }
+
+        let songPlayData = allPlays.reduce(into: [Song: (count: Int, goal: Int)]()) { result, play in
+            guard let song = play.song else { return }
+            let goal = max(song.goalPlays ?? 1, 1)
+            
+            var entry = result[song, default: (count: 0, goal: goal)]
+            entry.count += play.count
+            result[song] = entry
+        }
+
+        mostPracticedSong = songPlayData.max(by: { $0.value.count < $1.value.count })?.key
         
-        mostPracticedSong = songPlays.max(by: { $0.value.count < $1.value.count })?.key ?? "N/A"
-        
-        songNeedingPractice = songPlays.min(by: {
+        songNeedingPractice = songPlayData.min(by: {
             let progressA = Double($0.value.count) / Double($0.value.goal)
             let progressB = Double($1.value.count) / Double($1.value.goal)
             return progressA < progressB
-        })?.key ?? "N/A"
+        })?.key
+
         
         // All-Time Calcs
         let uniqueDays = Set(sessions.map { calendar.startOfDay(for: $0.day) })
@@ -163,38 +160,40 @@ struct StatsTabView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 25) {
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 24) {
-                            ForEach(viewModel.allMonths.sorted(), id: \.self) { month in
-                                HeatMapView(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
-                                    .frame(width: 350) // consistent width for all months' heat maps
-                                    .id(month)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 25) {
+                    ScrollViewReader { proxy in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .top, spacing: 24) {
+                                ForEach(viewModel.allMonths.sorted(), id: \.self) { month in
+                                    HeatMapView(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
+                                        .frame(width: 350) // consistent width for all months' heat maps
+                                        .id(month)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .padding(.trailing, 20)
+                        .onAppear {
+                            let today = Date()
+                            let comps = Calendar.current.dateComponents([.year, .month], from: today)
+                            let currentMonth = MonthKey(year: comps.year ?? 2000, month: comps.month ?? 1)
+                            if viewModel.allMonths.contains(currentMonth) {
+                                proxy.scrollTo(currentMonth, anchor: .center)
                             }
                         }
-                        .padding(.vertical, 2)
                     }
-                    .padding(.trailing, 20)
-                    .onAppear {
-                        let today = Date()
-                        let comps = Calendar.current.dateComponents([.year, .month], from: today)
-                        let currentMonth = MonthKey(year: comps.year ?? 2000, month: comps.month ?? 1)
-                        if viewModel.allMonths.contains(currentMonth) {
-                            proxy.scrollTo(currentMonth, anchor: .center)
-                        }
-                    }
+                    WeeklyPracticeView(viewModel: viewModel)
+                    MonthlySummaryView(viewModel: viewModel)
+                    WeekdayChartView(viewModel: viewModel)
+                    SongStatsView(viewModel: viewModel)
+                    AllTimeStatsView(viewModel: viewModel)
                 }
-                WeeklyPracticeView(viewModel: viewModel)
-                MonthlySummaryView(viewModel: viewModel)
-                WeekdayChartView(viewModel: viewModel)
-                SongStatsView(viewModel: viewModel)
-                AllTimeStatsView(viewModel: viewModel)
+                .padding()
             }
-            .padding()
+            .navigationTitle("Practice Stats")
         }
-        .navigationTitle("Practice Stats")
     }
 }
 
@@ -374,12 +373,28 @@ struct WeekdayChartView: View {
 
 struct SongStatsView: View {
     @ObservedObject var viewModel: StatsViewModel
+    @EnvironmentObject var audioManager: AudioManager
 
     var body: some View {
         Section(header: Text("Song Insights").font(.headline)) {
             VStack(spacing: 12) {
-                StatItem(label: "Most Practiced", value: viewModel.mostPracticedSong, icon: "🎵")
-                StatItem(label: "Needs Practice", value: viewModel.songNeedingPractice, icon: "⏳")
+                if let song = viewModel.mostPracticedSong {
+                    NavigationLink(destination: SongDetailView(song: song, audioManager: audioManager)) {
+                        StatItem(label: "Most Practiced", value: song.title, icon: "🎵")
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    StatItem(label: "Most Practiced", value: "N/A", icon: "🎵")
+                }
+
+                if let song = viewModel.songNeedingPractice {
+                    NavigationLink(destination: SongDetailView(song: song, audioManager: audioManager)) {
+                        StatItem(label: "Needs Practice", value: song.title, icon: "⏳")
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    StatItem(label: "Needs Practice", value: "N/A", icon: "⏳")
+                }
             }
         }
     }
@@ -424,4 +439,3 @@ struct StatItem: View {
         .cornerRadius(10)
     }
 }
-
