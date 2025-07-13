@@ -12,7 +12,7 @@ enum SongSortOption: String, CaseIterable, Identifiable {
 
 struct StudentDetailView: View {
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var audioManager: AudioManager // <-- ADDED
+    @EnvironmentObject var audioManager: AudioManager
     let student: Student
 
     @State private var viewModel: StudentDetailViewModel
@@ -48,11 +48,10 @@ struct StudentDetailView: View {
             .navigationTitle(student.name)
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(item: $newSession) { session in
-                // Pass the audioManager to the SessionDetailView
-                SessionDetailView(session: session, audioManager: audioManager) // <-- FIXED
+                SessionDetailView(session: session, audioManager: audioManager)
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
                         viewModel.pieceType = .song
                         showingAddSongSheet = true
@@ -63,8 +62,6 @@ struct StudentDetailView: View {
                             Image("add.song")
                         }
                     }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingAddSessionSheet = true
                     } label: {
@@ -72,6 +69,7 @@ struct StudentDetailView: View {
                     }
                 }
             }
+            .withGlobalTools() // <-- This modifier now provides the single menu button
             .task {
                 viewModel.practiceVM.reload()
             }

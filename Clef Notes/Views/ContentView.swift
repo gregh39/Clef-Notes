@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/10/25.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -15,8 +8,7 @@ struct ContentView: View {
     @State private var selectedStudent: Student?
     @State private var showingAddSheet = false
     
-    // 1. State to control the settings sheet presentation
-    @State private var showingSettingsSheet = false
+    // The showingSettingsSheet state is no longer needed here
     
     @State private var newName = ""
     @State private var newInstrument = ""
@@ -36,18 +28,9 @@ struct ContentView: View {
             }
             .navigationTitle("Students")
             .toolbar {
-                // 2. Add a new ToolbarItem for the settings button
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showingSettingsSheet = true
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                // The settings button is now gone, handled by the modifier
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     EditButton()
-                }
-                ToolbarItem {
                     Button {
                         showingAddSheet = true
                     } label: {
@@ -55,6 +38,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .withGlobalTools() // <-- This single modifier adds the new menu
         } detail: {
             if let student = selectedStudent {
                 StudentDetailView(student: student, context: modelContext)
@@ -88,20 +72,7 @@ struct ContentView: View {
                 }
             }
         }
-        // 3. Add the new sheet modifier for the settings menu
-        .sheet(isPresented: $showingSettingsSheet) {
-            NavigationStack {
-                SettingsView() // This view contains your theme picker
-                    .navigationTitle("Settings")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Done") {
-                                showingSettingsSheet = false
-                            }
-                        }
-                    }
-            }
-        }
+        // The sheet modifier for settings is also gone from here
     }
 
     private func addStudent() {
