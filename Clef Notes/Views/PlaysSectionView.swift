@@ -1,9 +1,3 @@
-//
-//  PlaysSectionView.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/13/25.
-//
 import SwiftUI
 import SwiftData
 
@@ -29,19 +23,15 @@ struct PlaysSectionView: View {
                         .frame(maxWidth: .infinity)
                 }
             } else {
-                // --- MODIFIED: Calculate totals once before the loop ---
-                let totalsByPlay = plays.reduce(into: [Play: Int]()) { result, play in
-                    if let songTotals = play.song?.cumulativeTotalsByType {
-                        result[play] = songTotals[play]
-                    }
-                }
-
                 ForEach(plays) { play in
-                    Button(action: { playToEdit = play }) {
-                        // Pass the pre-calculated total into the row view.
-                        PlayRow(play: play, cumulativeTotal: totalsByPlay[play] ?? play.count)
-                    }
-                    .foregroundStyle(.primary)
+                    // The "Edit" button functionality is now on a long press or separate button if needed.
+                    // For now, the row is interactive for counting.
+                    PlayRow(
+                        play: play,
+                        // --- THIS IS THE FIX ---
+                        // Pass the pre-calculated cumulative total for this play.
+                        cumulativeTotal: play.song?.cumulativeTotalsByType[play] ?? play.count
+                    )
                 }
                 .onDelete(perform: deletePlay)
                 
@@ -51,23 +41,23 @@ struct PlaysSectionView: View {
             }
         }
     }
-
     
-    
-    /// Handles the deletion of plays from the list and the model context.
     private func deletePlay(at offsets: IndexSet) {
+        // Ensure we're deleting from the correct, sorted array if necessary.
+        // For now, assuming session.plays order is stable for this view.
+        var playsToDelete: [Play] = []
         for index in offsets {
-            guard let play = session.plays?[index] else { continue }
+            if let play = session.plays?[index] {
+                playsToDelete.append(play)
+            }
+        }
+        
+        for play in playsToDelete {
             context.delete(play)
-            session.plays?.remove(at: index)
         }
-        // It's good practice to wrap the save in a do-catch block.
-        do {
-            try context.save()
-        } catch {
-            // Handle the save error, e.g., by logging it.
-            print("Failed to save context after deletion: \(error)")
-        }
+        
+        session.plays?.remove(atOffsets: offsets)
+        
+        try? context.save()
     }
 }
-
