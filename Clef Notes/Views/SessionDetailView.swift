@@ -68,8 +68,14 @@ struct SessionDetailView: View {
             sessionTab
                 .tabItem { Label("Session", systemImage: "calendar") }
             
-            StudentSongsTabView(viewModel: $studentSongsViewModel, selectedSort: $selectedSort)
-                .tabItem { Label("Songs", systemImage: "music.note.list") }
+            // --- THIS IS THE FIX ---
+            // The required onAddSong closure is now provided.
+            StudentSongsTabView(viewModel: $studentSongsViewModel, selectedSort: $selectedSort) {
+                // This is the action for the "Add First Song" button.
+                studentSongsViewModel.pieceType = .song
+                showingAddSongSheet = true
+            }
+            .tabItem { Label("Songs", systemImage: "music.note.list") }
             
             metronomeTab
                 .tabItem { Label("Metronome", systemImage: "metronome") }
@@ -193,7 +199,6 @@ struct SessionDetailView: View {
 
     // MARK: - Sheet Views
 
-    // --- THIS IS THE FIX ---
     private func addSongSheet() -> some View {
         AddSongSheet(
             isPresented: $showingAddSongSheet,

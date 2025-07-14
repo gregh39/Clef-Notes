@@ -35,12 +35,20 @@ struct StudentDetailView: View {
     var body: some View {
         NavigationStack {
             TabView {
-                SessionListView(viewModel: $viewModel)
-                    .tabItem {
-                        Label("Sessions", systemImage: "calendar")
-                    }
-                StudentSongsTabView(viewModel: $viewModel, selectedSort: $selectedSort)
-                    .tabItem { Label("Songs", systemImage: "music.note.list") }
+                SessionListView(viewModel: $viewModel) {
+                    showingAddSessionSheet = true
+                }
+                .tabItem {
+                    Label("Sessions", systemImage: "calendar")
+                }
+                
+                // --- THIS IS THE FIX ---
+                // Pass the add song action down to the StudentSongsTabView.
+                StudentSongsTabView(viewModel: $viewModel, selectedSort: $selectedSort) {
+                    viewModel.pieceType = .song
+                    showingAddSongSheet = true
+                }
+                .tabItem { Label("Songs", systemImage: "music.note.list") }
 
                 StatsTabView(sessions: viewModel.sessions)
                     .tabItem { Label("Stats", systemImage: "chart.bar") }
@@ -69,7 +77,7 @@ struct StudentDetailView: View {
                     }
                 }
             }
-            .withGlobalTools() // <-- This modifier now provides the single menu button
+            .withGlobalTools()
             .task {
                 viewModel.practiceVM.reload()
             }

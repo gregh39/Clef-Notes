@@ -5,7 +5,10 @@ struct StudentSongsTabView: View {
     @Binding var viewModel: StudentDetailViewModel
     @Binding var selectedSort: SongSortOption
     
-    // Get the AudioManager from the environment
+    // --- THIS IS THE FIX ---
+    // 1. Add a closure to handle the add action.
+    var onAddSong: () -> Void
+    
     @EnvironmentObject var audioManager: AudioManager
     
     @State private var selectedPieceType: PieceType? = nil
@@ -17,33 +20,48 @@ struct StudentSongsTabView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            typeFilterBar
-            
-            List {
-                songsSection
-                
-                SongSectionView(
-                    title: "Scales",
-                    songs: filteredSongs(for: .scale),
-                    editingSong: $editingSongForEditSheet
-                )
-                
-                SongSectionView(
-                    title: "Warm-ups",
-                    songs: filteredSongs(for: .warmUp),
-                    editingSong: $editingSongForEditSheet
-                )
-                
-                SongSectionView(
-                    title: "Exercises",
-                    songs: filteredSongs(for: .exercise),
-                    editingSong: $editingSongForEditSheet
-                )
+        // --- THIS IS THE FIX ---
+        // 2. Check if the songs list is empty.
+        if viewModel.songs.isEmpty {
+            // 3. Display a helpful empty state view.
+            ContentUnavailableView {
+                Label("No Songs Added", systemImage: "music.note.list")
+            } description: {
+                Text("Tap the button to add your first song.")
+            } actions: {
+                Button("Add First Song", action: onAddSong)
+                    .buttonStyle(.borderedProminent)
             }
-        }
-        .sheet(item: $editingSongForEditSheet) { song in
-            EditSongSheet(song: song)
+        } else {
+            // If not empty, show the list as before.
+            VStack(alignment: .leading, spacing: 2) {
+                typeFilterBar
+                
+                List {
+                    songsSection
+                    
+                    SongSectionView(
+                        title: "Scales",
+                        songs: filteredSongs(for: .scale),
+                        editingSong: $editingSongForEditSheet
+                    )
+                    
+                    SongSectionView(
+                        title: "Warm-ups",
+                        songs: filteredSongs(for: .warmUp),
+                        editingSong: $editingSongForEditSheet
+                    )
+                    
+                    SongSectionView(
+                        title: "Exercises",
+                        songs: filteredSongs(for: .exercise),
+                        editingSong: $editingSongForEditSheet
+                    )
+                }
+            }
+            .sheet(item: $editingSongForEditSheet) { song in
+                EditSongSheet(song: song)
+            }
         }
     }
 
@@ -73,7 +91,6 @@ struct StudentSongsTabView: View {
                 if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
                     Section(header: Text(status?.rawValue ?? "No Status")) {
                         ForEach(songsInGroup) { song in
-                            // Pass the audioManager to the SongDetailView initializer
                             NavigationLink(destination: SongDetailView(song: song, audioManager: audioManager)) {
                                 SongRowView(song: song, progress: viewModel.practiceVM.progress(for: song))
                             }
@@ -103,14 +120,12 @@ private struct SongSectionView: View {
     let songs: [Song]
     @Binding var editingSong: Song?
     
-    // Get the AudioManager from the environment to pass it down
     @EnvironmentObject var audioManager: AudioManager
 
     var body: some View {
         if !songs.isEmpty {
             Section(header: Text(title)) {
                 ForEach(songs) { song in
-                    // Pass the audioManager to the SongDetailView initializer
                     NavigationLink(destination: SongDetailView(song: song, audioManager: audioManager)) {
                         SongRowView(song: song, progress: 0)
                     }

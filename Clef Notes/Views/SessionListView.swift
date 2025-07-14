@@ -19,12 +19,13 @@ private struct MonthSection: Identifiable, Hashable {
 struct SessionListView: View {
     @Binding var viewModel: StudentDetailViewModel
     @EnvironmentObject var audioManager: AudioManager
+    
+    // --- THIS IS THE FIX ---
+    // 1. Add a closure to handle the add action.
+    var onAddSession: () -> Void
 
     // State to hold the session that is a candidate for deletion.
     @State private var sessionToDelete: PracticeSession? = nil
-    
-    // --- THIS IS THE FIX ---
-    // 1. State to track which month sections are expanded.
     @State private var expandedMonths: Set<Date> = []
 
     // A computed property to group sessions by month.
@@ -41,76 +42,84 @@ struct SessionListView: View {
     }
 
     var body: some View {
-        List {
-            // Iterate over the monthly groups.
-            ForEach(groupedSessions) { section in
-                // --- THIS IS THE FIX ---
-                // 2. Use a DisclosureGroup to make the section collapsible.
-                DisclosureGroup(
-                    isExpanded: Binding(
-                        get: { expandedMonths.contains(section.id) },
-                        set: { isExpanded in
-                            if isExpanded {
-                                expandedMonths.insert(section.id)
-                            } else {
-                                expandedMonths.remove(section.id)
-                            }
-                        }
-                    ),
-                    content: {
-                        // The list of sessions for this month.
-                        ForEach(section.sessions) { session in
-                            SessionCardView(session: session)
-                                .background(
-                                    NavigationLink(destination: SessionDetailView(session: session, audioManager: audioManager)) {
-                                        EmptyView()
-                                    }
-                                    .opacity(0)
-                                )
-                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        sessionToDelete = session
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                        }
-                    },
-                    label: {
-                        // The header for the collapsible section.
-                        Text(section.title)
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .padding(.vertical, 4)
-                    }
-                )
-            }
-        }
-        .listStyle(.plain)
-        .navigationTitle("Sessions")
-        .alert(
-            "Delete Session?",
-            isPresented: Binding(
-                get: { sessionToDelete != nil },
-                set: { if !$0 { sessionToDelete = nil } }
-            ),
-            presenting: sessionToDelete
-        ) { session in
-            Button("Delete", role: .destructive) {
-                deleteSession(session)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text("Are you sure you want to delete this session? All associated plays, notes, and recordings will also be permanently deleted.")
-        }
         // --- THIS IS THE FIX ---
-        // 3. When the view appears, expand the most recent month by default.
-        .onAppear {
-            if let firstMonthID = groupedSessions.first?.id {
-                expandedMonths.insert(firstMonthID)
+        // 2. Check if the sessions list is empty.
+        if viewModel.sessions.isEmpty {
+            // 3. Display a helpful empty state view.
+            ContentUnavailableView {
+                Label("No Sessions Yet", systemImage: "calendar.badge.plus")
+            } description: {
+                Text("Tap the button to log your first practice session.")
+            } actions: {
+                Button("Add First Session", action: onAddSession)
+                    .buttonStyle(.borderedProminent)
+            }
+        } else {
+            // If not empty, show the list as before.
+            List {
+                ForEach(groupedSessions) { section in
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { expandedMonths.contains(section.id) },
+                            set: { isExpanded in
+                                if isExpanded {
+                                    expandedMonths.insert(section.id)
+                                } else {
+                                    expandedMonths.remove(section.id)
+                                }
+                            }
+                        ),
+                        content: {
+                            ForEach(section.sessions) { session in
+                                SessionCardView(session: session)
+                                    .background(
+                                        NavigationLink(destination: SessionDetailView(session: session, audioManager: audioManager)) {
+                                            EmptyView()
+                                        }
+                                        .opacity(0)
+                                    )
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            sessionToDelete = session
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                            }
+                        },
+                        label: {
+                            Text(section.title)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .padding(.vertical, 4)
+                        }
+                    )
+                }
+            }
+            .listStyle(.plain)
+            .navigationTitle("Sessions")
+            .alert(
+                "Delete Session?",
+                isPresented: Binding(
+                    get: { sessionToDelete != nil },
+                    set: { if !$0 { sessionToDelete = nil } }
+                ),
+                presenting: sessionToDelete
+            ) { session in
+                Button("Delete", role: .destructive) {
+                    deleteSession(session)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in
+                Text("Are you sure you want to delete this session? All associated plays, notes, and recordings will also be permanently deleted.")
+            }
+            .onAppear {
+                if let firstMonthID = groupedSessions.first?.id {
+                    expandedMonths.insert(firstMonthID)
+                }
             }
         }
     }
@@ -160,20 +169,24 @@ struct SessionCardView: View {
 }
 
 #Preview {
-    PreviewWrapper()
-        .environmentObject(AudioManager())
-}
-
-struct PreviewWrapper: View {
-    @State var viewModel = StudentDetailViewModel.mock
-
-    var body: some View {
-        NavigationStack {
-            SessionListView(viewModel: $viewModel)
+    // Wrapper to provide the necessary environment for the preview
+    struct PreviewWrapper: View {
+        @State private var showingSheet = false
+        @State var viewModel = StudentDetailViewModel.mockEmpty
+        
+        var body: some View {
+            NavigationStack {
+                SessionListView(viewModel: $viewModel) {
+                    showingSheet = true
+                }
+            }
+            .environmentObject(AudioManager())
         }
     }
+    return PreviewWrapper()
 }
 
+// An extension to provide mock data for previews
 extension StudentDetailViewModel {
     static var mock: StudentDetailViewModel {
         let container = try! ModelContainer(for: Student.self, PracticeSession.self, Instructor.self, configurations: .init(isStoredInMemoryOnly: true))
@@ -182,7 +195,6 @@ extension StudentDetailViewModel {
         let student = Student(name: "Alice Example", instrument: "Cello")
         context.insert(student)
 
-        // Create sessions in different months for better previewing
         let session1 = PracticeSession(day: Date(), durationMinutes: 45, studentID: student.id)
         session1.title = "Lesson 1"
         session1.location = LessonLocation.privateLesson
@@ -200,6 +212,14 @@ extension StudentDetailViewModel {
         context.insert(session2)
         context.insert(session3)
 
+        return StudentDetailViewModel(student: student, context: context)
+    }
+    
+    static var mockEmpty: StudentDetailViewModel {
+        let container = try! ModelContainer(for: Student.self, configurations: .init(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+        let student = Student(name: "Bob Beginner", instrument: "Piano")
+        context.insert(student)
         return StudentDetailViewModel(student: student, context: context)
     }
 }
