@@ -1,9 +1,3 @@
-//
-//  AddSessionSheet.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/15/25.
-//
 import SwiftData
 import SwiftUI
 
@@ -92,6 +86,9 @@ struct AddSessionSheet: View {
                             selectedInstructor = instructor
                             showingAddInstructorSheet = false
                         }
+                        // --- THIS IS THE FIX ---
+                        // Disable the button if the name is empty.
+                        .disabled(newInstructorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
             }

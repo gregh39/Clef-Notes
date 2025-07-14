@@ -14,7 +14,7 @@ struct SongDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingAddNoteSheet = false
     @State private var editingNote: Note? = nil
-
+    
     @StateObject private var audioPlayerManager: AudioPlayerManager
 
     init(song: Song, audioManager: AudioManager) {
@@ -85,43 +85,17 @@ struct SongDetailView: View {
     }
     
     private var notesTab: some View {
-        let groupedNotes = Dictionary(grouping: song.notes ?? []) { note in
-            guard let date = note.session?.day else { return Date.distantPast }
-            return Calendar.current.startOfDay(for: date)
-        }
-
-        let sortedGroups = groupedNotes.sorted { $0.key > $1.key }
-        
-        return List {
-            ForEach(sortedGroups, id: \.key) { date, notes in
-                Section(header: Text(date == Date.distantPast ? "No Date" : date.formatted(date: .long, time: .omitted))) {
-                    // The onAdd closure is no longer needed here.
-                    ReusableNotesView(
-                        notes: notes,
-                        onDelete: { indexSet in
-                            deleteNote(at: indexSet, from: notes)
-                        },
-                        onEdit: { note in
-                            editingNote = note
-                            showingAddNoteSheet = true
-                        }
-                    )
-                }
-            }
-            
-            // --- THIS IS THE FIX ---
-            // Add a new section at the end of the list for the add button.
+        List {
             Section {
-                Button(action: {
-                    let note = Note(text: "")
-                    note.songs = [song]
-                    song.notes?.append(note)
-                    context.insert(note)
-                    editingNote = note
-                    showingAddNoteSheet = true
-                }) {
-                    Label("Add Note", systemImage: "note.text.badge.plus")
+                let sortedNotes = (song.notes ?? []).sorted { ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast) }
+                ForEach(sortedNotes) { note in
+                    NoteCell(note: note)
                 }
+                .onDelete { indexSet in
+                    deleteNote(at: indexSet, from: sortedNotes)
+                }
+            } header: {
+                Text("Notes")
             }
         }
     }
@@ -155,12 +129,12 @@ struct SongDetailView: View {
             song.notes?.removeAll { $0.id == note.id }
             context.delete(note)
         }
-
         try? context.save()
     }
 }
 
 // MARK: - Reusable Cell Views
+
 private struct MediaCell: View {
     let media: MediaReference
     @ObservedObject var audioPlayerManager: AudioPlayerManager
@@ -169,18 +143,16 @@ private struct MediaCell: View {
         VStack(alignment: .leading, spacing: 8) {
             switch media.type {
             case .audioRecording:
-                if let audioData = media.data {
-                    AudioPlaybackCell(
-                        title: media.title ?? "Local Audio",
-                        subtitle: media.type.rawValue,
-                        data: audioData,
-                        duration: media.duration,
-                        id: media.persistentModelID,
-                        audioPlayerManager: audioPlayerManager
-                    )
-                } else {
-                    Text("Audio data is missing.").foregroundColor(.red)
-                }
+                // --- THIS IS THE FIX ---
+                // Use the new, reusable AudioPlaybackCell here as well.
+                AudioPlaybackCell(
+                    title: media.title ?? "Local Audio",
+                    subtitle: media.type.rawValue,
+                    data: media.data,
+                    duration: media.duration,
+                    id: media.persistentModelID,
+                    audioPlayerManager: audioPlayerManager
+                )
                 
             case .localVideo:
                 Text(media.type.rawValue.capitalized).font(.headline)
@@ -227,95 +199,7 @@ private struct MediaCell: View {
     }
 }
 
-private struct AudioFile: Transferable {
-    let data: Data
-    let filename: String
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(contentType: .mpeg4Audio) { audio in
-            audio.data
-        } importing: { data in
-            AudioFile(data: data, filename: "imported.m4a")
-        }
-        .suggestedFileName { audio in
-            audio.filename
-        }
-    }
-}
-
-private struct AudioPlaybackCell: View {
-    let title: String
-    let subtitle: String
-    let data: Data
-    let duration: TimeInterval?
-    let id: PersistentIdentifier
-    @ObservedObject var audioPlayerManager: AudioPlayerManager
-    
-    @State private var isScrubbing = false
-    
-    var isPlaying: Bool {
-        audioPlayerManager.currentlyPlayingID == id
-    }
-    
-    var body: some View {
-        VStack {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(title).font(.headline)
-                    Text(subtitle).font(.caption).foregroundColor(.secondary)
-                    if let duration = duration {
-                        Text("Duration: \(Int(duration))s").font(.caption2).foregroundColor(.gray)
-                    }
-                }
-                Spacer()
-                
-                ShareLink(
-                    item: AudioFile(data: data, filename: "\(title).m4a"),
-                    preview: SharePreview(title, image: Image(systemName: "waveform"))
-                ) {
-                    Image(systemName: "square.and.arrow.up").foregroundColor(.accentColor)
-                }
-                
-                Button(action: {
-                    if isPlaying {
-                        audioPlayerManager.stop()
-                    } else {
-                        audioPlayerManager.play(data: data, id: id)
-                    }
-                }) {
-                    Image(systemName: isPlaying ? "stop.fill" : "play.fill").foregroundColor(.accentColor)
-                }
-            }
-            .padding(.vertical, 4)
-            
-            if isPlaying, let duration = duration {
-                Slider(
-                    value: Binding(
-                        get: { isScrubbing ? audioPlayerManager.currentTime : min(audioPlayerManager.currentTime, duration) },
-                        set: { isScrubbing = true; audioPlayerManager.currentTime = $0 }
-                    ),
-                    in: 0...duration,
-                    onEditingChanged: { editing in
-                        isScrubbing = editing
-                        if !editing {
-                            audioPlayerManager.seek(to: audioPlayerManager.currentTime)
-                        }
-                    }
-                )
-                .accentColor(.accentColor)
-                .padding(.horizontal, 8)
-                HStack {
-                    Text(String(format: "%02d:%02d", Int(audioPlayerManager.currentTime) / 60, Int(audioPlayerManager.currentTime) % 60))
-                        .font(.caption2).foregroundColor(.gray)
-                    Spacer()
-                    Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
-                        .font(.caption2).foregroundColor(.gray)
-                }
-                .padding(.horizontal, 8)
-            }
-        }
-    }
-}
+// The private AudioFile and AudioPlaybackCell structs are no longer needed here.
 
 private struct NoteCell: View {
     let note: Note
@@ -331,6 +215,8 @@ private struct NoteCell: View {
         }
     }
 }
+
+// MARK: - Web and YouTube Views
 
 private struct WebView: UIViewRepresentable {
     let url: URL

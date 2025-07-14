@@ -68,10 +68,7 @@ struct SessionDetailView: View {
             sessionTab
                 .tabItem { Label("Session", systemImage: "calendar") }
             
-            // --- THIS IS THE FIX ---
-            // The required onAddSong closure is now provided.
             StudentSongsTabView(viewModel: $studentSongsViewModel, selectedSort: $selectedSort) {
-                // This is the action for the "Add First Song" button.
                 studentSongsViewModel.pieceType = .song
                 showingAddSongSheet = true
             }
@@ -147,10 +144,17 @@ struct SessionDetailView: View {
             NotesSectionView(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
             
             Section {
+                // --- THIS IS THE FIX ---
+                // Use the new, reusable AudioPlaybackCell here.
                 ForEach(session.recordings ?? []) { recording in
-                    AudioRecordingCell(recording: recording, audioPlayerManager: audioPlayerManager, onDelete: {
-                        deleteRecording(recording)
-                    })
+                    AudioPlaybackCell(
+                        title: recording.title ?? "Recording",
+                        subtitle: recording.dateRecorded.formatted(date: .abbreviated, time: .shortened),
+                        data: recording.data,
+                        duration: recording.duration,
+                        id: recording.persistentModelID,
+                        audioPlayerManager: audioPlayerManager
+                    )
                 }
                 .onDelete(perform: deleteRecordings)
             } header: {
@@ -207,7 +211,6 @@ struct SessionDetailView: View {
             songStatus: $newSongStatus,
             pieceType: $newPieceType,
             addAction: { mediaEntries in
-                // Create the new song and an initial play for this session
                 let song = Song(title: newTitle, studentID: session.studentID)
                 song.pieceType = newPieceType
                 song.student = session.student
@@ -225,7 +228,6 @@ struct SessionDetailView: View {
                 context.insert(play)
                 context.insert(song)
 
-                // Asynchronously process and attach media files
                 Task {
                     for entry in mediaEntries {
                         let mediaReference: MediaReference?
@@ -234,33 +236,24 @@ struct SessionDetailView: View {
                         case .localVideo:
                             if let item = entry.photoPickerItem, let data = try? await item.loadTransferable(type: Data.self) {
                                 mediaReference = MediaReference(type: .localVideo, data: data)
-                            } else {
-                                mediaReference = nil
-                            }
+                            } else { mediaReference = nil }
                         case .audioRecording:
                             if let url = entry.audioFileURL, url.startAccessingSecurityScopedResource(), let data = try? Data(contentsOf: url) {
                                 url.stopAccessingSecurityScopedResource()
                                 mediaReference = MediaReference(type: .audioRecording, data: data)
-                            } else {
-                                mediaReference = nil
-                            }
+                            } else { mediaReference = nil }
                         default:
                             if let url = URL(string: entry.urlString) {
                                 mediaReference = MediaReference(type: entry.type, url: url)
-                            } else {
-                                mediaReference = nil
-                            }
+                            } else { mediaReference = nil }
                         }
 
                         if let newMedia = mediaReference {
                             newMedia.song = song
-                            if song.media == nil {
-                                song.media = []
-                            }
+                            if song.media == nil { song.media = [] }
                             song.media?.append(newMedia)
                         }
                     }
-                    
                     try? context.save()
                 }
             },
