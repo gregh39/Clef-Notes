@@ -21,7 +21,7 @@ struct MetronomeSectionView: View {
                     .foregroundColor(.clear)
                     .background(
                         Circle()
-                            .fill(RadialGradient(gradient: Gradient(colors: [.blue, .clear]), center: .center, startRadius: 0, endRadius: pulseRadius))
+                            .fill(RadialGradient(gradient: Gradient(colors: [.accentColor, .clear]), center: .center, startRadius: 0, endRadius: pulseRadius))
                             .frame(width: 300, height: 300)
                     )
                     .frame(width: 300, height: 300)
@@ -34,7 +34,7 @@ struct MetronomeSectionView: View {
                     Button(action: { if bpm > tempoRange.lowerBound { bpm -= 1 } }) {
                         Image(systemName: "minus.circle.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(bpm > tempoRange.lowerBound ? .blue : .gray)
+                            .foregroundColor(bpm > tempoRange.lowerBound ? .accentColor : .gray)
                     }
                     .disabled(bpm <= tempoRange.lowerBound)
                     
@@ -46,7 +46,7 @@ struct MetronomeSectionView: View {
                     Button(action: { if bpm < tempoRange.upperBound { bpm += 1 } }) {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(bpm < tempoRange.upperBound ? .blue : .gray)
+                            .foregroundColor(bpm < tempoRange.upperBound ? .accentColor : .gray)
                     }
                     .disabled(bpm >= tempoRange.upperBound)
                 }

@@ -1,10 +1,3 @@
-//
-//  DrawingView.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/16/25.
-//
-
 import SwiftUI
 import PencilKit
 
@@ -18,9 +11,10 @@ struct DrawingView: UIViewRepresentable {
         canvasView.delegate = context.coordinator
         canvasView.drawingPolicy = .anyInput
         
-        // --- UPDATE 2 of 2: Enable scrolling and a larger canvas ---
+        // --- THIS IS THE FIX ---
+        // 1. Enable scrolling and set a larger canvas size.
         canvasView.isScrollEnabled = true
-        canvasView.minimumZoomScale = 1.0 // Or lower if you want to allow zooming out
+        canvasView.minimumZoomScale = 1.0
         canvasView.maximumZoomScale = 2.0 // Allow users to zoom in
         
         // Set a content size much larger than the frame to allow scrolling.

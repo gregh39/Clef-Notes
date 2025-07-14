@@ -10,15 +10,11 @@ struct TuningNote: Hashable, Identifiable {
 struct TunerTabView: View {
     @EnvironmentObject var audioManager: AudioManager
     
-    // --- THIS IS THE FIX ---
-    // For classes using the @Observable macro, @State is the correct
-    // property wrapper for instantiation and ownership in a view.
     @State private var viewModel: TunerViewModel
     
     @State private var selectedOctave: Int = 4
     
     init() {
-        // The initializer now uses @State's syntax.
         _viewModel = State(initialValue: TunerViewModel(audioManager: AudioManager()))
     }
 
@@ -40,11 +36,11 @@ struct TunerTabView: View {
                         Text(note.name)
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity, minHeight: 80)
-                            .background(viewModel.selectedNote == note ? Color.accentColor.opacity(0.2) : Color.clear)
+                            .background(viewModel.selectedNote.name == note.name ? Color.accentColor.opacity(0.2) : Color.clear)
                             .cornerRadius(8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(viewModel.selectedNote == note ? Color.accentColor : Color.secondary, lineWidth: 1)
+                                    .stroke(viewModel.selectedNote.name == note.name ? Color.accentColor : Color.secondary, lineWidth: 1)
                             )
                     }
                 }
@@ -65,7 +61,7 @@ struct TunerTabView: View {
                 Circle()
                     .stroke(lineWidth: 10)
                     .frame(width: 100, height: 100)
-                    .foregroundColor(.blue.opacity(viewModel.isPlayingDrone ? 0.5 : 0))
+                    .foregroundColor(.accentColor.opacity(viewModel.isPlayingDrone ? 0.5 : 0))
                     .scaleEffect(viewModel.isPlayingDrone ? 1.2 : 1.0)
                     .animation(viewModel.isPlayingDrone ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true) : .default, value: viewModel.isPlayingDrone)
 
@@ -91,14 +87,28 @@ struct TunerTabView: View {
             .padding(.bottom, 40)
         }
         .onAppear {
-            // This ensures the viewModel uses the single, shared instance of AudioManager.
             viewModel.audioManager = audioManager
         }
         .onDisappear {
             viewModel.stopAll()
         }
-        .onChange(of: selectedOctave) { _, newValue in
-            viewModel.selectedNote = TunerViewModel.availableNotes(for: newValue)[9] // Default to A
+        // --- THIS IS THE FIX ---
+        // The logic is updated to find the same note in the new octave.
+        .onChange(of: selectedOctave) { _, newOctave in
+            // Get the base name of the current note (e.g., "C#" from "C#4").
+            let currentNoteName = viewModel.selectedNote.name
+            let baseName = currentNoteName.trimmingCharacters(in: .decimalDigits)
+
+            // Get the list of notes for the new octave.
+            let newNotes = TunerViewModel.availableNotes(for: newOctave)
+
+            // Find the note in the new list that matches the base name.
+            if let newNote = newNotes.first(where: { $0.name.starts(with: baseName) }) {
+                viewModel.selectedNote = newNote
+            } else {
+                // Fallback to 'A' if, for some reason, the note isn't found.
+                viewModel.selectedNote = newNotes[9]
+            }
         }
     }
 }

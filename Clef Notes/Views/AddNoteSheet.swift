@@ -13,7 +13,8 @@ struct AddNoteSheet: View {
     
     @Query(sort: \Song.title) private var songs: [Song]
     
-    // Use a larger frame height for the canvas on iPad.
+    // --- THIS IS THE FIX ---
+    // 2. Use a larger frame height for the canvas, especially on iPad.
     private var canvasHeight: CGFloat {
         // Adjust height for the large detent, providing ample space.
         UIDevice.current.userInterfaceIdiom == .pad ? 600 : 400
@@ -58,6 +59,7 @@ struct AddNoteSheet: View {
                 
                 if showSketchArea {
                     Section("Sketch") {
+                        // The DrawingView now uses the new dynamic height.
                         DrawingView(drawingData: drawingBinding)
                             .frame(height: canvasHeight)
                             .cornerRadius(10)
@@ -78,8 +80,6 @@ struct AddNoteSheet: View {
                                 }
                                 if !(note.songs?.contains(song) ?? false) {
                                     note.songs?.append(song)
-                                    // --- THIS IS THE FIX ---
-                                    // Establish the inverse relationship by telling the song about the note.
                                     song.notes?.append(note)
                                 }
                             }
@@ -98,7 +98,6 @@ struct AddNoteSheet: View {
                                 Text(taggedSong.title)
                                 Spacer()
                                 Button(role: .destructive) {
-                                    // When removing, also break the inverse relationship
                                     note.songs?.removeAll { $0.id == taggedSong.id }
                                     taggedSong.notes?.removeAll { $0.id == note.id }
                                 } label: {

@@ -4,9 +4,6 @@ import SwiftData
 struct StudentSongsTabView: View {
     @Binding var viewModel: StudentDetailViewModel
     @Binding var selectedSort: SongSortOption
-    
-    // --- THIS IS THE FIX ---
-    // 1. Add a closure to handle the add action.
     var onAddSong: () -> Void
     
     @EnvironmentObject var audioManager: AudioManager
@@ -19,11 +16,21 @@ struct StudentSongsTabView: View {
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
+    // --- THIS IS THE FIX ---
+    // 1. A new computed property to sort the songs based on the selected option.
+    private var sortedSongs: [Song] {
+        switch selectedSort {
+        case .title:
+            return viewModel.songs.sorted { $0.title < $1.title }
+        case .playCount:
+            return viewModel.songs.sorted { $0.totalPlayCount > $1.totalPlayCount }
+        case .recentlyPlayed:
+            return viewModel.songs.sorted { ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast) }
+        }
+    }
+    
     var body: some View {
-        // --- THIS IS THE FIX ---
-        // 2. Check if the songs list is empty.
         if viewModel.songs.isEmpty {
-            // 3. Display a helpful empty state view.
             ContentUnavailableView {
                 Label("No Songs Added", systemImage: "music.note.list")
             } description: {
@@ -33,8 +40,17 @@ struct StudentSongsTabView: View {
                     .buttonStyle(.borderedProminent)
             }
         } else {
-            // If not empty, show the list as before.
             VStack(alignment: .leading, spacing: 2) {
+                // --- THIS IS THE FIX ---
+                // 2. Add a Picker to let the user choose the sort option.
+                Picker("Sort By", selection: $selectedSort) {
+                    ForEach(SongSortOption.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                
                 typeFilterBar
                 
                 List {
@@ -82,7 +98,9 @@ struct StudentSongsTabView: View {
     @ViewBuilder
     private var songsSection: some View {
         if selectedPieceType == nil || selectedPieceType == .song {
-            let normalSongs = viewModel.songs.filter { $0.pieceType == nil || $0.pieceType == .song }
+            // --- THIS IS THE FIX ---
+            // 3. Use the new 'sortedSongs' property for grouping and display.
+            let normalSongs = sortedSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
             let grouped = Dictionary(grouping: normalSongs, by: { $0.songStatus })
             
             let sortedKeys = PlayType.allCases.map { Optional($0) } + [nil]
@@ -108,7 +126,8 @@ struct StudentSongsTabView: View {
     
     private func filteredSongs(for type: PieceType) -> [Song] {
         guard selectedPieceType == nil || selectedPieceType == type else { return [] }
-        return viewModel.songs.filter { $0.pieceType == type }
+        // Use the new 'sortedSongs' property for filtering as well.
+        return sortedSongs.filter { $0.pieceType == type }
     }
 }
 
