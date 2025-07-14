@@ -1,10 +1,3 @@
-//
-//  AddNoteSheet.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/16/25.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -75,36 +68,47 @@ struct AddNoteSheet: View {
                     }
                 }
 
-                /*Section("Tag Songs") {
+                Section("Tag Songs") {
                     Picker("Add Song", selection: Binding<Song?>(
                         get: { nil },
                         set: { selected in
-                            if let song = selected, !note.songs.contains(where: { $0.id == song.id }) {
-                                note.songs.append(song)
+                            if let song = selected {
+                                if note.songs == nil {
+                                    note.songs = []
+                                }
+                                if !(note.songs?.contains(song) ?? false) {
+                                    note.songs?.append(song)
+                                    // --- THIS IS THE FIX ---
+                                    // Establish the inverse relationship by telling the song about the note.
+                                    song.notes?.append(note)
+                                }
                             }
                         }
                     )) {
-                        Text("Select a song").tag(Optional<Song>.none)
+                        Text("Select a song...").tag(Optional<Song>.none)
                         ForEach(songs) { song in
                             Text(song.title).tag(Optional(song))
                         }
                     }
                     .pickerStyle(.menu)
 
-                    if !note.songs.isEmpty {
-                        ForEach(note.songs) { taggedSong in
+                    if let taggedSongs = note.songs, !taggedSongs.isEmpty {
+                        ForEach(taggedSongs) { taggedSong in
                             HStack {
                                 Text(taggedSong.title)
                                 Spacer()
                                 Button(role: .destructive) {
-                                    note.songs.removeAll { $0.id == taggedSong.id }
+                                    // When removing, also break the inverse relationship
+                                    note.songs?.removeAll { $0.id == taggedSong.id }
+                                    taggedSong.notes?.removeAll { $0.id == note.id }
                                 } label: {
                                     Image(systemName: "minus.circle")
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                }*/
+                }
             }
             .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)
@@ -135,9 +139,7 @@ struct AddNoteSheet: View {
                     .disabled(note.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (note.drawing?.isEmpty ?? true))
                 }
             }
-            // This modifier allows the sheet to have multiple sizes.
             .presentationDetents([.medium, .large], selection: $selectedDetent)
-            // This modifier hides the drag indicator when the sheet is expanded.
             .presentationDragIndicator(selectedDetent == .large ? .hidden : .visible)
         }
     }

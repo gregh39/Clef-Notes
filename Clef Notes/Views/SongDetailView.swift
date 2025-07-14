@@ -12,8 +12,9 @@ struct SongDetailView: View {
     @Bindable var song: Song
 
     @State private var showingEditSheet = false
-    @State private var notesForSong: [Note] = []
-    
+    @State private var showingAddNoteSheet = false
+    @State private var editingNote: Note? = nil
+
     @StateObject private var audioPlayerManager: AudioPlayerManager
 
     init(song: Song, audioManager: AudioManager) {
@@ -55,7 +56,9 @@ struct SongDetailView: View {
         .sheet(isPresented: $showingEditSheet) {
             EditSongSheet(song: song)
         }
-        .onAppear(perform: fetchNotesForSong)
+        .sheet(item: $editingNote) { note in
+            AddNoteSheet(note: note)
+        }
     }
 
     // MARK: - Extracted Tab Views
@@ -75,8 +78,6 @@ struct SongDetailView: View {
                         MediaCell(media: media, audioPlayerManager: audioPlayerManager)
                             .padding(.vertical, 4)
                     }
-                    // --- THIS IS THE FIX ---
-                    // Add the onDelete modifier to enable swipe-to-delete
                     .onDelete(perform: deleteMedia)
                 }
             }
@@ -84,14 +85,42 @@ struct SongDetailView: View {
     }
     
     private var notesTab: some View {
-        List {
-            Section("Notes") {
-                if notesForSong.isEmpty {
-                    Text("No notes yet.").foregroundColor(.secondary)
-                } else {
-                    ForEach(notesForSong) { note in
-                        NoteCell(note: note)
-                    }
+        let groupedNotes = Dictionary(grouping: song.notes ?? []) { note in
+            guard let date = note.session?.day else { return Date.distantPast }
+            return Calendar.current.startOfDay(for: date)
+        }
+
+        let sortedGroups = groupedNotes.sorted { $0.key > $1.key }
+        
+        return List {
+            ForEach(sortedGroups, id: \.key) { date, notes in
+                Section(header: Text(date == Date.distantPast ? "No Date" : date.formatted(date: .long, time: .omitted))) {
+                    // The onAdd closure is no longer needed here.
+                    ReusableNotesView(
+                        notes: notes,
+                        onDelete: { indexSet in
+                            deleteNote(at: indexSet, from: notes)
+                        },
+                        onEdit: { note in
+                            editingNote = note
+                            showingAddNoteSheet = true
+                        }
+                    )
+                }
+            }
+            
+            // --- THIS IS THE FIX ---
+            // Add a new section at the end of the list for the add button.
+            Section {
+                Button(action: {
+                    let note = Note(text: "")
+                    note.songs = [song]
+                    song.notes?.append(note)
+                    context.insert(note)
+                    editingNote = note
+                    showingAddNoteSheet = true
+                }) {
+                    Label("Add Note", systemImage: "note.text.badge.plus")
                 }
             }
         }
@@ -99,17 +128,7 @@ struct SongDetailView: View {
     
     // MARK: - Helper Logic
     
-    private func fetchNotesForSong() {
-        let allNotes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-        notesForSong = allNotes.filter { note in
-            (note.songs ?? []).contains { $0.id == song.id }
-        }.sorted { ($0.session?.day ?? .distantPast) > ($1.session?.day ?? .distantPast) }
-    }
-    
-    // --- THIS IS THE FIX ---
-    // A new function to handle the deletion of media items.
     private func deleteMedia(at offsets: IndexSet) {
-        // Create a temporary array of items to delete to avoid modifying the collection while iterating
         var mediaToDelete: [MediaReference] = []
         for index in offsets {
             if let media = song.media?[index] {
@@ -117,21 +136,31 @@ struct SongDetailView: View {
             }
         }
 
-        // Delete the items from the SwiftData context
         for media in mediaToDelete {
             context.delete(media)
         }
 
-        // Remove the items from the song's array to update the UI
         song.media?.remove(atOffsets: offsets)
 
-        // Save the changes to the database
+        try? context.save()
+    }
+    
+    private func deleteNote(at offsets: IndexSet, from notes: [Note]) {
+        var notesToDelete: [Note] = []
+        for index in offsets {
+            notesToDelete.append(notes[index])
+        }
+
+        for note in notesToDelete {
+            song.notes?.removeAll { $0.id == note.id }
+            context.delete(note)
+        }
+
         try? context.save()
     }
 }
 
 // MARK: - Reusable Cell Views
-
 private struct MediaCell: View {
     let media: MediaReference
     @ObservedObject var audioPlayerManager: AudioPlayerManager
@@ -140,7 +169,6 @@ private struct MediaCell: View {
         VStack(alignment: .leading, spacing: 8) {
             switch media.type {
             case .audioRecording:
-                // For audio recordings, use the unified playback cell.
                 if let audioData = media.data {
                     AudioPlaybackCell(
                         title: media.title ?? "Local Audio",
@@ -199,7 +227,6 @@ private struct MediaCell: View {
     }
 }
 
-// A helper struct to make audio data transferable for the ShareLink.
 private struct AudioFile: Transferable {
     let data: Data
     let filename: String
@@ -216,7 +243,6 @@ private struct AudioFile: Transferable {
     }
 }
 
-// A unified view for playing ANY audio, whether from an AudioRecording or a MediaReference.
 private struct AudioPlaybackCell: View {
     let title: String
     let subtitle: String
@@ -305,8 +331,6 @@ private struct NoteCell: View {
         }
     }
 }
-
-// MARK: - Web and YouTube Views
 
 private struct WebView: UIViewRepresentable {
     let url: URL

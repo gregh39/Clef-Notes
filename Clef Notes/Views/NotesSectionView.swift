@@ -1,9 +1,3 @@
-//
-//  NotesSectionView.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 6/13/25.
-//
 import SwiftUI
 import SwiftData
 
@@ -15,51 +9,38 @@ struct NotesSectionView: View {
 
     var body: some View {
         Section("Session Notes") {
-            if (session.notes?.isEmpty ?? true) {
-                Button {
-                    let note = Note(text: "")
-                    note.session = session
-                    session.notes?.append(note)
-                    context.insert(note)
-                    editingNote = note
-                } label: {
-                    Label("Add Note", systemImage: "note.text.badge.plus")
-                }
-
-            } else {
-                ForEach(session.notes ?? [], id: \.persistentModelID) { note in
-                    VStack(alignment: .leading, spacing: 4) {
-                        if let songs = note.songs, !songs.isEmpty {
-                            Text(songs.map { $0.title }.joined(separator: ", "))
-                                .font(.headline)
-                        }
-                        Text(note.text)
-                    }
-                    .onTapGesture {
-                        DispatchQueue.main.async {
-                            editingNote = note
-                            showingAddNoteSheet = true
-                        }
-                    }
-                }
-                .onDelete { indexSet in
+            // ReusableNotesView now only displays the list of existing notes.
+            ReusableNotesView(
+                notes: session.notes ?? [],
+                onDelete: { indexSet in
+                    // Logic for deleting a note from a SESSION.
                     for index in indexSet {
-                        let note = session.notes![index]
-                        context.delete(note)
-                        session.notes!.remove(at: index)
+                        if let noteToDelete = session.notes?[index] {
+                            context.delete(noteToDelete)
+                        }
                     }
+                    session.notes?.remove(atOffsets: indexSet)
                     try? context.save()
-                }
-                Button {
-                    let note = Note(text: "")
-                    note.session = session
-                    session.notes!.append(note)
-                    context.insert(note)
+                },
+                onEdit: { note in
+                    // Logic for editing a note.
                     editingNote = note
-                } label: {
-                    Label("Add Note", systemImage: "note.text.badge.plus")
+                    showingAddNoteSheet = true
                 }
-
+            )
+            
+            // --- THIS IS THE FIX ---
+            // A separate button is added back to handle note creation.
+            Button(action: {
+                // This is the logic for adding a note to a SESSION.
+                let note = Note(text: "")
+                note.session = session
+                session.notes?.append(note)
+                context.insert(note)
+                editingNote = note
+                showingAddNoteSheet = true
+            }) {
+                Label("Add Note", systemImage: "note.text.badge.plus")
             }
         }
     }
