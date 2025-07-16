@@ -21,7 +21,6 @@ import CoreData
 public class PracticeSessionCD: NSManagedObject {
 
 }
-
 extension PracticeSessionCD {
 
     @nonobjc public class func fetchRequest() -> NSFetchRequest<PracticeSessionCD> {
@@ -51,24 +50,24 @@ extension PracticeSessionCD {
     
     public var notesArray: [NoteCD] {
         let set = notes as? Set<NoteCD> ?? []
-        return set.sorted {
+        return set.sorted { (lhs: NoteCD, rhs: NoteCD) in
             // Assuming notes don't have a direct timestamp, sort by text or another attribute if needed
-            $0.text ?? "" < $1.text ?? ""
+            lhs.text ?? "" < rhs.text ?? ""
         }
     }
 
     public var playsArray: [PlayCD] {
         let set = plays as? Set<PlayCD> ?? []
-        return set.sorted {
+        return set.sorted { (lhs: PlayCD, rhs: PlayCD) in
             // Assuming plays don't have a direct timestamp, sort by count or another attribute
-            $0.count > $1.count
+            lhs.count > rhs.count
         }
     }
 
     public var recordingsArray: [AudioRecordingCD] {
         let set = recordings as? Set<AudioRecordingCD> ?? []
-        return set.sorted {
-            $0.dateRecorded ?? .distantPast > $1.dateRecorded ?? .distantPast
+        return set.sorted { (lhs: AudioRecordingCD, rhs: AudioRecordingCD) in
+            lhs.dateRecorded ?? .distantPast > rhs.dateRecorded ?? .distantPast
         }
     }
 

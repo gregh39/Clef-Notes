@@ -15,7 +15,7 @@ public enum MediaType: String, Codable, CaseIterable, Identifiable {
     case sheetMusic = "Sheet Music"
     case localVideo = "Local Video"
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 }
 
 public enum PieceType: String, Codable, CaseIterable {
