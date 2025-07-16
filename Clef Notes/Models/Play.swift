@@ -7,7 +7,7 @@
 import Foundation
 import SwiftData
 
-enum PlayType: String, Codable, CaseIterable {
+public enum PlayType: String, Codable, CaseIterable {
     case learning = "Learning"
     case practice = "Practice"
     case review = "Review"

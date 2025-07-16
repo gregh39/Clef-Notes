@@ -8,7 +8,7 @@ import SwiftData
 import SwiftUI
 import Swift
 
-enum LessonLocation: String, Codable, CaseIterable {
+public enum LessonLocation: String, Codable, CaseIterable {
     case home = "Home"
     case school = "School"
     case privateLesson = "Private Lesson"

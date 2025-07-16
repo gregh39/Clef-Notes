@@ -7,7 +7,7 @@
 import SwiftData
 import Foundation
 
-enum MediaType: String, Codable, CaseIterable, Identifiable {
+public enum MediaType: String, Codable, CaseIterable, Identifiable {
     case audioRecording = "Audio"
     case youtubeVideo = "YouTube"
     case spotifyLink = "Spotify"
@@ -18,7 +18,7 @@ enum MediaType: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum PieceType: String, Codable, CaseIterable {
+public enum PieceType: String, Codable, CaseIterable {
     case song = "Song"
     case scale = "Scale"
     case warmUp = "Warm-up"
