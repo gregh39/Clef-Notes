@@ -1,26 +1,34 @@
 import SwiftUI
 import SwiftData
+import CoreData
 
 struct ContentView: View {
+    // --- CHANGE 1: Get both data contexts from the environment ---
+    @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Student.name) private var students: [Student]
-
-    @State private var selectedStudent: Student?
-    @State private var showingAddSheet = false
     
-    // The showingSettingsSheet state is no longer needed here
+    // --- CHANGE 2: Fetch students from Core Data instead of Swift Data ---
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
+        animation: .default)
+    private var students: FetchedResults<StudentCD>
+
+    // --- CHANGE 3: State now holds a Core Data object ---
+    @State private var selectedStudent: StudentCD?
+    @State private var showingAddSheet = false
     
     @State private var newName = ""
     @State private var newInstrument = ""
 
     var body: some View {
         NavigationSplitView {
-            List(students, id: \.id, selection: $selectedStudent) { student in
+            // --- CHANGE 4: The list now iterates over Core Data objects ---
+            List(students, id: \.self, selection: $selectedStudent) { student in
                 NavigationLink(value: student) {
                     VStack(alignment: .leading) {
-                        Text(student.name)
+                        Text(student.name ?? "Unknown")
                             .font(.headline)
-                        Text(student.instrument)
+                        Text(student.instrument ?? "Unknown")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -28,9 +36,9 @@ struct ContentView: View {
             }
             .navigationTitle("Students")
             .toolbar {
-                // The settings button is now gone, handled by the modifier
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    EditButton()
+                    // EditButton will need to be adapted for Core Data deletion
+                    // Button("Edit") { /* ... */ }
                     Button {
                         showingAddSheet = true
                     } label: {
@@ -38,10 +46,11 @@ struct ContentView: View {
                     }
                 }
             }
-            .withGlobalTools() // <-- This single modifier adds the new menu
+            .withGlobalTools()
         } detail: {
             if let student = selectedStudent {
-                StudentDetailView(student: student, context: modelContext)
+                // The detail view now uses our new Core Data-ready view
+                StudentDetailViewCD(student: student)
             } else {
                 Text("Select a student")
             }
@@ -72,12 +81,25 @@ struct ContentView: View {
                 }
             }
         }
-        // The sheet modifier for settings is also gone from here
+        // --- CHANGE 5: Trigger the migration when the view first appears ---
+        .onAppear {
+            DataMigrator.migrate(from: modelContext, to: viewContext)
+        }
     }
 
+    // --- CHANGE 6: Update add/delete functions for Core Data ---
     private func addStudent() {
-        let student = Student(name: newName, instrument: newInstrument)
-        modelContext.insert(student)
+        let newStudent = StudentCD(context: viewContext)
+        newStudent.id = UUID()
+        newStudent.name = newName
+        newStudent.instrument = newInstrument
+
+        do {
+            try viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+        }
     }
 
     private func clearForm() {
@@ -85,7 +107,8 @@ struct ContentView: View {
         newInstrument = ""
     }
 }
+
 #Preview {
     ContentView()
-        .modelContainer(for: Student.self, inMemory: true)
+        .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
 }

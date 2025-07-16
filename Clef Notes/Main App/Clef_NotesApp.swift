@@ -1,11 +1,15 @@
 import SwiftUI
 import SwiftData
+import CoreData
 
 @main
 struct Clef_NotesApp: App {
-    // Create a single, shared instance of the AudioManager.
     @StateObject private var audioManager = AudioManager()
     
+    // --- CHANGE 1: Initialize the Core Data stack ---
+    let persistenceController = PersistenceController.shared
+    
+    // --- CHANGE 2: Keep the Swift Data container for migration ---
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Student.self,
@@ -31,11 +35,11 @@ struct Clef_NotesApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .tint(selectedColor.color)
-                // Inject the AudioManager into the environment.
-                // Now, any view in the app can access it using @EnvironmentObject.
+                // --- CHANGE 3: Inject the Core Data context into the environment ---
+                .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environmentObject(audioManager)
+                // --- CHANGE 4: Keep the Swift Data container available for the migration ---
+                .modelContainer(sharedModelContainer)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
