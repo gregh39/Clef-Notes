@@ -4,95 +4,97 @@ import Combine
 
 struct StatsTabViewCD: View {
     @StateObject private var viewModel: StatsViewModelCD
-    
+    @Environment(\.managedObjectContext) private var viewContext
+
     init(student: StudentCD) {
         _viewModel = StateObject(wrappedValue: StatsViewModelCD(student: student))
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 25) {
-                    ScrollViewReader { proxy in
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(alignment: .top, spacing: 24) {
-                                ForEach(viewModel.allMonths, id: \.self) { month in
-                                    HeatMapViewCD(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
-                                        .frame(width: 350)
-                                        .id(month)
-                                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 25) {
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 24) {
+                            ForEach(viewModel.allMonths, id: \.self) { month in
+                                HeatMapViewCD(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
+                                    .frame(width: 350).id(month)
                             }
-                            .padding(.vertical, 2)
                         }
-                        .padding(.trailing, 20)
-                        .onAppear {
-                            let today = Date()
-                            let comps = Calendar.current.dateComponents([.year, .month], from: today)
-                            if let currentMonth = viewModel.allMonths.first(where: { $0.year == comps.year && $0.month == comps.month }) {
-                                proxy.scrollTo(currentMonth, anchor: .center)
-                            }
+                        .padding(.vertical, 2)
+                    }
+                    .padding(.trailing, 20)
+                    .onAppear {
+                        let today = Date()
+                        let comps = Calendar.current.dateComponents([.year, .month], from: today)
+                        if let currentMonth = viewModel.allMonths.first(where: { $0.year == comps.year && $0.month == comps.month }) {
+                            proxy.scrollTo(currentMonth, anchor: .center)
                         }
                     }
-                    WeeklyPracticeViewCD(viewModel: viewModel)
-                    MonthlySummaryViewCD(viewModel: viewModel)
-                    WeekdayChartViewCD(viewModel: viewModel)
-                    SongStatsViewCD(viewModel: viewModel)
-                    AllTimeStatsViewCD(viewModel: viewModel)
                 }
-                .padding()
+                WeeklyPracticeViewCD(viewModel: viewModel)
+                MonthlySummaryViewCD(viewModel: viewModel)
+                WeekdayChartViewCD(viewModel: viewModel)
+                SongStatsViewCD(viewModel: viewModel)
+                AllTimeStatsViewCD(viewModel: viewModel)
             }
-            .navigationTitle("Practice Stats")
+            .padding()
+        }
+        .navigationTitle("Practice Stats")
+        .onAppear {
+            viewModel.setup(context: viewContext)
         }
     }
 }
 
-// MARK: - VIEW MODEL
 @MainActor
 class StatsViewModelCD: ObservableObject {
-    
     private let student: StudentCD
+    private var cancellables = Set<AnyCancellable>()
+
+    @Published var totalSessionsThisMonth: Int = 0
+    @Published var totalPlaysThisMonth: Int = 0
+    @Published var avgPlaysPerSession: Int = 0
+    @Published var last7Days: [Date] = []
+    @Published var practicedDaysLast7: Int = 0
+    @Published var weekdayCounts: [Int: Int] = [:]
+    @Published var shortWeekdaySymbols: [String] = []
+    @Published var mostPracticedSong: SongCD? = nil
+    @Published var songNeedingPractice: SongCD? = nil
+    @Published var firstPracticeDate: String = "N/A"
+    @Published var totalPracticeDays: Int = 0
+    @Published var allMonths: [MonthKeyCD] = []
+    @Published var monthPlayCounts: [MonthKeyCD: [Int: Int]] = [:]
     
-    // Monthly Stats
-    let totalSessionsThisMonth: Int
-    let totalPlaysThisMonth: Int
-    let avgPlaysPerSession: Int
-    
-    // Weekly Stats
-    let last7Days: [Date]
-    let practicedDaysLast7: Int
-    private let sessionDates: Set<Date>
-    
-    // Weekday Distribution
-    let weekdayCounts: [Int: Int]
-    let shortWeekdaySymbols: [String]
-    
-    // Song Stats
-    let mostPracticedSong: SongCD?
-    let songNeedingPractice: SongCD?
-    
-    // All-Time Stats
-    let firstPracticeDate: String
-    let totalPracticeDays: Int
-    
-    // Heat Map Data
-    let allMonths: [MonthKeyCD]
-    let monthPlayCounts: [MonthKeyCD: [Int: Int]]
-    
+    private var sessionDates: Set<Date> = []
+
     init(student: StudentCD) {
         self.student = student
-        
+        self.shortWeekdaySymbols = Calendar.current.shortWeekdaySymbols
+    }
+    
+    func setup(context: NSManagedObjectContext) {
+        recalculate()
+
+        NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave, object: context)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.recalculate()
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func recalculate() {
         let sessions = student.sessionsArray
         let calendar = Calendar.current
         let today = Date()
         
-        // Heat Map Calcs
         let monthSet = Set(sessions.map {
             let comps = calendar.dateComponents([.year, .month], from: $0.day ?? .now)
             return MonthKeyCD(year: comps.year ?? 2000, month: comps.month ?? 1)
         })
-        let monthsSorted = monthSet.sorted(by: >)
-        self.allMonths = monthsSorted
-        self.monthPlayCounts = Dictionary(uniqueKeysWithValues: monthsSorted.map { key in
+        self.allMonths = monthSet.sorted(by: >)
+        self.monthPlayCounts = Dictionary(uniqueKeysWithValues: allMonths.map { key in
             let filtered = sessions.filter {
                 let comps = calendar.dateComponents([.year, .month], from: $0.day ?? .now)
                 return comps.year == key.year && comps.month == key.month
@@ -105,7 +107,6 @@ class StatsViewModelCD: ObservableObject {
             return (key, counts)
         })
         
-        // Monthly Calcs
         let monthlySessions = sessions.filter { calendar.isDate($0.day ?? .distantPast, equalTo: today, toGranularity: .month) }
         self.totalSessionsThisMonth = monthlySessions.count
         self.totalPlaysThisMonth = monthlySessions.reduce(0) { $0 + $1.playsArray.reduce(0) { $0 + Int($1.count) } }
@@ -116,23 +117,18 @@ class StatsViewModelCD: ObservableObject {
             self.avgPlaysPerSession = 0
         }
         
-        // Weekly Calcs
-        let last7 = Array((0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.reversed())
+        self.last7Days = Array((0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.reversed())
         let sessionDaySet = Set(sessions.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
-        self.practicedDaysLast7 = last7.filter { date in
+        self.practicedDaysLast7 = last7Days.filter { date in
             sessionDaySet.contains { calendar.isDate($0, inSameDayAs: date) }
         }.count
-        self.last7Days = last7
         self.sessionDates = sessionDaySet
         
-        // Weekday Calcs
         self.weekdayCounts = monthlySessions.reduce(into: [Int: Int]()) { counts, session in
             let weekday = calendar.component(.weekday, from: session.day ?? .now)
             counts[weekday, default: 0] += 1
         }
-        self.shortWeekdaySymbols = calendar.shortWeekdaySymbols
         
-        // Song Stats
         let allPlays = sessions.flatMap { $0.playsArray }
         let songPlayData = allPlays.reduce(into: [SongCD: (count: Int, goal: Int)]()) { result, play in
             guard let song = play.song else { return }
@@ -149,7 +145,6 @@ class StatsViewModelCD: ObservableObject {
             return progressA < progressB
         })?.key
         
-        // All-Time Calcs
         let uniqueDays = Set(sessions.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
         self.totalPracticeDays = uniqueDays.count
         if let firstDay = uniqueDays.min() {
@@ -164,7 +159,6 @@ class StatsViewModelCD: ObservableObject {
     }
 }
 
-// MARK: - Helper Struct for Heat Map
 struct MonthKeyCD: Hashable, Comparable {
     let year: Int
     let month: Int
@@ -173,9 +167,6 @@ struct MonthKeyCD: Hashable, Comparable {
         lhs.year != rhs.year ? lhs.year < rhs.year : lhs.month < rhs.month
     }
 }
-
-
-// MARK: - SUBVIEWS (These have been renamed with a "CD" suffix)
 
 private struct HeatMapViewCD: View {
     let year: Int
@@ -337,7 +328,7 @@ private struct SongStatsViewCD: View {
         Section(header: Text("Song Insights").font(.headline)) {
             VStack(spacing: 12) {
                 if let song = viewModel.mostPracticedSong {
-                    NavigationLink(destination: SongDetailViewCD(song: song)) {
+                    NavigationLink(value: song) {
                         StatItemCD(label: "Most Practiced", value: song.title ?? "N/A", icon: "🎵")
                     }
                     .buttonStyle(.plain)
@@ -346,7 +337,7 @@ private struct SongStatsViewCD: View {
                 }
 
                 if let song = viewModel.songNeedingPractice {
-                    NavigationLink(destination: SongDetailViewCD(song: song)) {
+                    NavigationLink(value: song) {
                         StatItemCD(label: "Needs Practice", value: song.title ?? "N/A", icon: "⏳")
                     }
                     .buttonStyle(.plain)

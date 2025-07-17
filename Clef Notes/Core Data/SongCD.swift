@@ -16,9 +16,44 @@
 
 import Foundation
 import CoreData
+import Combine
 
 @objc(SongCD)
 public class SongCD: NSManagedObject {
+
+    private var cancellables = Set<AnyCancellable>()
+
+    public override func awakeFromInsert() {
+        super.awakeFromInsert()
+        observeContext()
+    }
+
+    public override func awakeFromFetch() {
+        super.awakeFromFetch()
+        observeContext()
+    }
+
+    private func observeContext() {
+        guard let moc = self.managedObjectContext else { return }
+        NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave, object: moc)
+            .sink { [weak self] notification in
+                guard let self = self else { return }
+                // Check if any changed PlayCDs relate to this song
+                if let updated = notification.userInfo?[NSUpdatedObjectsKey] as? Set<NSManagedObject>,
+                   updated.contains(where: { ($0 as? PlayCD)?.song == self }) {
+                    self.objectWillChange.send()
+                }
+                if let inserted = notification.userInfo?[NSInsertedObjectsKey] as? Set<NSManagedObject>,
+                   inserted.contains(where: { ($0 as? PlayCD)?.song == self }) {
+                    self.objectWillChange.send()
+                }
+                if let deleted = notification.userInfo?[NSDeletedObjectsKey] as? Set<NSManagedObject>,
+                   deleted.contains(where: { ($0 as? PlayCD)?.song == self }) {
+                    self.objectWillChange.send()
+                }
+            }
+            .store(in: &cancellables)
+    }
 
 }
 
@@ -102,26 +137,22 @@ extension SongCD {
         playsArray.compactMap { $0.session?.day }.max()
     }
     
-    public var cumulativeTotalsByType: [PlayCD: Int] {
-        var allTotals: [PlayCD: Int] = [:]
-
-        // Group plays by their type for separate counting.
-        let playsByType = Dictionary(grouping: playsArray, by: { $0.playType })
-
-        // Iterate over each group (e.g., all "Practice" plays).
-        for (_, playsInGroup) in playsByType {
-            // Sort the plays within this group just once.
-            let sortedPlays = playsInGroup.sorted {
-                ($0.session?.day ?? .distantPast) < ($1.session?.day ?? .distantPast)
-            }
-
-            var runningTotal = 0
-            for play in sortedPlays {
-                runningTotal += Int(play.count)
-                allTotals[play] = runningTotal // Store the final cumulative total for this play.
-            }
+    public func cumulativeCount(for play: PlayCD) -> Int {
+        guard let type = play.playType else { return Int(play.count) }
+        
+        // Filter plays of the same type and sort them chronologically.
+        let relevantPlays = self.playsArray.filter { $0.playType == type }.sorted {
+            ($0.session?.day ?? .distantPast) < ($1.session?.day ?? .distantPast)
         }
-        return allTotals
+        
+        // Find the index of the current play.
+        guard let currentIndex = relevantPlays.firstIndex(of: play) else {
+            return Int(play.count)
+        }
+        
+        // Sum the counts of all plays up to and including the current one.
+        let total = relevantPlays.prefix(through: currentIndex).reduce(0) { $0 + Int($1.count) }
+        return total
     }
 
 }

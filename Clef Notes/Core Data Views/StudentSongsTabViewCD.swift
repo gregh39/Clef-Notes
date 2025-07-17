@@ -38,40 +38,45 @@ struct StudentSongsTabViewCD: View {
                     .buttonStyle(.borderedProminent)
             }
         } else {
-            VStack(alignment: .leading, spacing: 2) {
-                Picker("Sort By", selection: $selectedSort) {
-                    ForEach(SongSortOption.allCases) { option in
-                        Text(option.rawValue).tag(option)
+            List {
+                songsSection
+                
+                SongSectionViewCD(
+                    title: "Scales",
+                    songs: filteredSongs(for: .scale),
+                    editingSong: $editingSongForEditSheet
+                )
+                
+                SongSectionViewCD(
+                    title: "Warm-ups",
+                    songs: filteredSongs(for: .warmUp),
+                    editingSong: $editingSongForEditSheet
+                )
+                
+                SongSectionViewCD(
+                    title: "Exercises",
+                    songs: filteredSongs(for: .exercise),
+                    editingSong: $editingSongForEditSheet
+                )
+            }
+            .listStyle(.insetGrouped)
+            .pickerStyle(.segmented)
+            .navigationTitle("Songs")
+            .toolbar {
+                ToolbarItem {
+                    Picker("Sort By", selection: $selectedSort) {
+                        ForEach(SongSortOption.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
                     }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                
-                typeFilterBar
-                
-                List {
-                    songsSection
-                    
-                    SongSectionViewCD(
-                        title: "Scales",
-                        songs: filteredSongs(for: .scale),
-                        editingSong: $editingSongForEditSheet
-                    )
-                    
-                    SongSectionViewCD(
-                        title: "Warm-ups",
-                        songs: filteredSongs(for: .warmUp),
-                        editingSong: $editingSongForEditSheet
-                    )
-                    
-                    SongSectionViewCD(
-                        title: "Exercises",
-                        songs: filteredSongs(for: .exercise),
-                        editingSong: $editingSongForEditSheet
-                    )
+                    .pickerStyle(.segmented)
                 }
             }
-            // .sheet for editing will be added later
+            .safeAreaInset(edge: .top) {
+                typeFilterBar
+                    .padding(.vertical, 8)
+                    .background(.bar)
+            }
         }
     }
 
@@ -99,7 +104,8 @@ struct StudentSongsTabViewCD: View {
                 if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
                     Section(header: Text(status?.rawValue ?? "No Status")) {
                         ForEach(songsInGroup) { song in
-                            NavigationLink(destination: SongDetailViewCD(song: song)) {
+                            // --- THIS IS THE FIX: Use value-based NavigationLink ---
+                            NavigationLink(value: song) {
                                 SongRowViewCD(song: song)
                             }
                             .swipeActions(edge: .leading) {
@@ -118,8 +124,6 @@ struct StudentSongsTabViewCD: View {
     }
 }
 
-// MARK: - Reusable Components
-
 private struct SongSectionViewCD: View {
     let title: String
     let songs: [SongCD]
@@ -131,7 +135,8 @@ private struct SongSectionViewCD: View {
         if !songs.isEmpty {
             Section(header: Text(title)) {
                 ForEach(songs) { song in
-                    NavigationLink(destination: SongDetailViewCD(song: song)) {
+                    // --- THIS IS THE FIX: Use value-based NavigationLink ---
+                    NavigationLink(value: song) {
                         SongRowViewCD(song: song)
                     }
                     .swipeActions(edge: .leading) {

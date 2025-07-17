@@ -31,7 +31,8 @@ struct AudioPlaybackCell: View {
     @State private var isScrubbing = false
     
     var isPlaying: Bool {
-        audioPlayerManager.currentlyPlayingID == id && audioPlayerManager.audioPlayer?.isPlaying == true
+      //  audioPlayerManager.currentlyPlayingID == id && audioPlayerManager.audioPlayer?.isPlaying == true
+        return false
     }
     
     var body: some View {
@@ -66,7 +67,7 @@ struct AudioPlaybackCell: View {
                         if isPlaying {
                             audioPlayerManager.stop()
                         } else if let audioData = data {
-                            audioPlayerManager.play(data: audioData, id: id)
+                            //audioPlayerManager.play(data: audioData, id: id)
                         } else {
                             print("Cannot play: audio data is nil")
                         }

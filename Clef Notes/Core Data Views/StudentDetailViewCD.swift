@@ -6,20 +6,15 @@ struct StudentDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     
+    // --- CHANGE 1: Add a path to manage the navigation stack ---
+    @State private var path = NavigationPath()
+    
     @State private var showingAddSongSheet = false
     @State private var showingAddSessionSheet = false
-    
-    // State for navigating to a new session's detail view
-    @State private var newSession: PracticeSessionCD?
-    @State private var navigateToNewSession = false
 
     var body: some View {
-        VStack {
-            // Invisible NavigationLink for programmatic navigation
-            NavigationLink(destination: Text("Session Detail (Refactor Needed)"), isActive: $navigateToNewSession) {
-                EmptyView()
-            }
-            
+        // --- CHANGE 2: Wrap the content in a NavigationStack ---
+        NavigationStack(path: $path) {
             TabView {
                 SessionListViewCD(student: student) {
                     showingAddSessionSheet = true
@@ -36,33 +31,35 @@ struct StudentDetailViewCD: View {
                 StatsTabViewCD(student: student)
                     .tabItem { Label("Stats", systemImage: "chart.bar") }
             }
-        }
-        .navigationTitle(student.name ?? "Student")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button {
-                    showingAddSongSheet = true
-                } label: {
-                    Label {
-                        Text("Add Song")
-                    } icon: {
-                        Image("add.song")
+            .navigationTitle(student.name ?? "Student")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAddSongSheet = true
+                    } label: {
+                        Label("Add Song", systemImage: "plus")
+                    }
+                    Button {
+                        showingAddSessionSheet = true
+                    } label: {
+                        Label("Add Session", systemImage: "calendar.badge.plus")
                     }
                 }
-                Button {
-                    showingAddSessionSheet = true
-                } label: {
-                    Label("Add Session", systemImage: "calendar.badge.plus")
-                }
+            }
+            .withGlobalTools()
+            // --- CHANGE 3: Add navigation destinations for different data types ---
+            .navigationDestination(for: PracticeSessionCD.self) { session in
+                SessionDetailViewCD(session: session, audioManager: audioManager)
+            }
+            .navigationDestination(for: SongCD.self) { song in
+                SongDetailViewCD(song: song, audioManager: audioManager)
             }
         }
-        .withGlobalTools()
         .sheet(isPresented: $showingAddSessionSheet) {
             AddSessionSheetCD(student: student) { session in
-                // When a session is added, trigger navigation
-                newSession = session
-                navigateToNewSession = true
+                // --- CHANGE 4: Programmatically navigate by appending to the path ---
+                path.append(session)
             }
         }
         .sheet(isPresented: $showingAddSongSheet) {
