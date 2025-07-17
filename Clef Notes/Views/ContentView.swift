@@ -1,10 +1,8 @@
 import SwiftUI
-import SwiftData
 import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.modelContext) private var modelContext
     
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
@@ -22,30 +20,20 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedStudent) {
-                Section("Debug Tools") {
-                    Button("Reset Migration Flag") {
-                        UserDefaults.standard.removeObject(forKey: "hasMigratedToCoreData_v4")
-                        print("Migration flag has been reset. Please restart the app.")
-                    }
-                    .foregroundColor(.red)
-                }
-                
-                Section("Students") {
-                    ForEach(students) { student in
-                        NavigationLink(value: student) {
-                            VStack(alignment: .leading) {
-                                Text(student.name ?? "Unknown")
-                                    .font(.headline)
-                                Text(student.instrument ?? "Unknown")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+                ForEach(students) { student in
+                    NavigationLink(value: student) {
+                        VStack(alignment: .leading) {
+                            Text(student.name ?? "Unknown")
+                                .font(.headline)
+                            Text(student.instrument ?? "Unknown")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
                     }
-                    .onDelete(perform: { offsets in
-                        self.offsetsToDelete = offsets
-                    })
                 }
+                .onDelete(perform: { offsets in
+                    self.offsetsToDelete = offsets
+                })
             }
             .navigationTitle("Students")
             .toolbar {
@@ -107,9 +95,6 @@ struct ContentView: View {
                     }
                 }
             }
-        }
-        .onAppear {
-            DataMigrator.migrate(from: modelContext, to: viewContext)
         }
     }
 

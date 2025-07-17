@@ -25,6 +25,7 @@ struct PersistenceController {
     }
 }
 
+/*
 class DataMigrator {
     
     private static let logger = Logger(subsystem: "com.yourcompany.Clef-Notes", category: "DataMigration")
@@ -122,7 +123,7 @@ class DataMigrator {
                     // --- THIS IS THE FIX: Optionally link the session if it exists ---
                     if let sessionDay = old.session?.day, let newSession = sessionMap["\(studentID)-\(sessionDay)"] {
                         new.session = newSession
-                        logger.info("        [OK] Migrated and Linked Play for song '\(songTitle)' to session on \(sessionDay.formatted(date: .short, time: .omitted))")
+                        logger.info("        [OK] Migrated and Linked Play for song '\(songTitle)' to session on \(sessionDay.formatted(date: .abbreviated, time: .omitted))")
                     } else {
                         // This play has no session, which is valid.
                         logger.info("        [OK] Migrated Play for song '\(songTitle)' (No Session)")
@@ -187,3 +188,4 @@ class DataMigrator {
         }
     }
 }
+*/
