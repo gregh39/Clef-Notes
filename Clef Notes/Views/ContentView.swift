@@ -24,7 +24,7 @@ struct ContentView: View {
             List(selection: $selectedStudent) {
                 Section("Debug Tools") {
                     Button("Reset Migration Flag") {
-                        UserDefaults.standard.removeObject(forKey: "hasMigratedToCoreData_v1")
+                        UserDefaults.standard.removeObject(forKey: "hasMigratedToCoreData_v2")
                         print("Migration flag has been reset. Please restart the app.")
                     }
                     .foregroundColor(.red)
