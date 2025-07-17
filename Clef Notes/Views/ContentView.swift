@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var selectedStudent: StudentCD?
     @State private var showingAddSheet = false
     
-    // --- CHANGE 1: State to manage the delete confirmation ---
     @State private var offsetsToDelete: IndexSet?
     
     @State private var newName = ""
@@ -23,21 +22,30 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedStudent) {
-                ForEach(students) { student in
-                    NavigationLink(value: student) {
-                        VStack(alignment: .leading) {
-                            Text(student.name ?? "Unknown")
-                                .font(.headline)
-                            Text(student.instrument ?? "Unknown")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                Section("Debug Tools") {
+                    Button("Reset Migration Flag") {
+                        UserDefaults.standard.removeObject(forKey: "hasMigratedToCoreData_v1")
+                        print("Migration flag has been reset. Please restart the app.")
+                    }
+                    .foregroundColor(.red)
+                }
+                
+                Section("Students") {
+                    ForEach(students) { student in
+                        NavigationLink(value: student) {
+                            VStack(alignment: .leading) {
+                                Text(student.name ?? "Unknown")
+                                    .font(.headline)
+                                Text(student.instrument ?? "Unknown")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
+                    .onDelete(perform: { offsets in
+                        self.offsetsToDelete = offsets
+                    })
                 }
-                // --- CHANGE 2: The onDelete modifier now sets the state to trigger the alert ---
-                .onDelete(perform: { offsets in
-                    self.offsetsToDelete = offsets
-                })
             }
             .navigationTitle("Students")
             .toolbar {
@@ -51,7 +59,6 @@ struct ContentView: View {
                 }
             }
             .withGlobalTools()
-            // --- CHANGE 3: The alert modifier to show the confirmation ---
             .alert("Delete Student?",
                    isPresented: .constant(offsetsToDelete != nil),
                    actions: {
@@ -137,9 +144,4 @@ struct ContentView: View {
         newName = ""
         newInstrument = ""
     }
-}
-
-#Preview {
-    ContentView()
-        .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
 }

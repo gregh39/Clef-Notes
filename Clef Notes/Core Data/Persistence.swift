@@ -1,12 +1,6 @@
-//
-//  Persistence.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/15/25.
-//
-
 import CoreData
 import SwiftData
+import os.log
 
 struct PersistenceController {
     static let shared = PersistenceController()
@@ -22,8 +16,6 @@ struct PersistenceController {
         
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
         })
@@ -35,41 +27,47 @@ struct PersistenceController {
 
 class DataMigrator {
     
+    // --- CHANGE 1: Create a dedicated logger for clarity ---
+    private static let logger = Logger(subsystem: "com.yourcompany.Clef-Notes", category: "DataMigration")
+    
     static func migrate(from swiftDataContext: ModelContext, to coreDataContext: NSManagedObjectContext) {
         let hasMigrated = UserDefaults.standard.bool(forKey: "hasMigratedToCoreData_v1")
         
         guard !hasMigrated else {
-            print("Data has already been migrated. Skipping.")
-            return
+            return // No need to log if we're not migrating.
         }
         
-        print("Starting data migration from Swift Data to Core Data...")
+        logger.notice("--- Starting Data Migration from Swift Data to Core Data ---")
         
         coreDataContext.perform {
             do {
-                // 1. Fetch all Instructors from Swift Data
+                // --- Instructors ---
                 let instructorDescriptor = FetchDescriptor<Instructor>()
                 let oldInstructors = try swiftDataContext.fetch(instructorDescriptor)
                 var instructorMap: [String: InstructorCD] = [:]
-
+                logger.info("Found \(oldInstructors.count) instructors to migrate.")
                 for oldInstructor in oldInstructors {
                     let newInstructor = InstructorCD(context: coreDataContext)
                     newInstructor.name = oldInstructor.name
                     instructorMap[oldInstructor.name] = newInstructor
+                    logger.info("  [OK] Migrated Instructor: \(oldInstructor.name)")
                 }
-                
-                // 2. Fetch all Students from Swift Data
+
+                // --- Students ---
                 let studentDescriptor = FetchDescriptor<Student>()
                 let oldStudents = try swiftDataContext.fetch(studentDescriptor)
+                logger.info("Found \(oldStudents.count) students to migrate.")
                 
                 for oldStudent in oldStudents {
                     let newStudent = StudentCD(context: coreDataContext)
                     newStudent.id = oldStudent.id
                     newStudent.name = oldStudent.name
                     newStudent.instrument = oldStudent.instrument
-                    
-                    // 3. Migrate associated Songs for each Student
-                    if let oldSongs = oldStudent.songs {
+                    logger.info("  [OK] Migrating Student: \(oldStudent.name) (\(oldStudent.instrument))")
+
+                    // --- Songs ---
+                    if let oldSongs = oldStudent.songs, !oldSongs.isEmpty {
+                        logger.info("    Found \(oldSongs.count) songs for \(oldStudent.name).")
                         for oldSong in oldSongs {
                             let newSong = SongCD(context: coreDataContext)
                             newSong.title = oldSong.title
@@ -79,24 +77,28 @@ class DataMigrator {
                             newSong.songStatus = oldSong.songStatus
                             newSong.pieceType = oldSong.pieceType
                             newSong.student = newStudent
-                            
-                            // 4. Migrate associated Plays for each Song
-                            if let oldPlays = oldSong.plays {
-                                for oldPlay in oldPlays {
-                                    let newPlay = PlayCD(context: coreDataContext)
-                                    newPlay.count = Int64(oldPlay.count)
-                                    newPlay.playType = oldPlay.playType
-                                    newPlay.song = newSong
-                                    // Session will be linked later
+                            logger.info("      [OK] Migrated Song: \(newSong.title ?? "Untitled")")
+
+                            // --- Media References for Song ---
+                            if let oldMedia = oldSong.media, !oldMedia.isEmpty {
+                                for oldMediaRef in oldMedia {
+                                    let newMediaRef = MediaReferenceCD(context: coreDataContext)
+                                    newMediaRef.type = oldMediaRef.type
+                                    newMediaRef.url = oldMediaRef.url
+                                    newMediaRef.title = oldMediaRef.title
+                                    newMediaRef.notes = oldMediaRef.notes
+                                    newMediaRef.duration = oldMediaRef.duration ?? 0.0
+                                    newMediaRef.data = oldMediaRef.data
+                                    newMediaRef.song = newSong
+                                    logger.info("        [OK] Migrated Media: \(newMediaRef.title ?? "Untitled Media")")
                                 }
                             }
-                            
-                            // ... (Migration for MediaReference, Note, AudioRecording for the song)
                         }
                     }
-                    
-                    // 5. Migrate associated Sessions for each Student
-                    if let oldSessions = oldStudent.sessions {
+
+                    // --- Sessions ---
+                    if let oldSessions = oldStudent.sessions, !oldSessions.isEmpty {
+                        logger.info("    Found \(oldSessions.count) sessions for \(oldStudent.name).")
                         for oldSession in oldSessions {
                             let newSession = PracticeSessionCD(context: coreDataContext)
                             newSession.day = oldSession.day
@@ -105,38 +107,86 @@ class DataMigrator {
                             newSession.location = oldSession.location
                             newSession.title = oldSession.title
                             newSession.student = newStudent
-                            
-                            // Link instructor
+                            logger.info("      [OK] Migrated Session: \(newSession.title ?? "Untitled") on \(oldSession.day.formatted(date: .abbreviated, time: .omitted))")
+
                             if let instructorName = oldSession.instructor?.name {
                                 newSession.instructor = instructorMap[instructorName]
+                                logger.info("        [OK] Linked Instructor: \(instructorName)")
                             }
-                            
-                            // Link plays to this session
-                            // --- THIS IS THE FIX ---
-                            if let oldPlays = oldSession.plays {
-                                let newSongPlays = newStudent.songsArray.flatMap({ $0.playsArray })
+
+                            // --- Plays ---
+                            if let oldPlays = oldSession.plays, !oldPlays.isEmpty {
                                 for oldPlay in oldPlays {
-                                    // This matching is simplistic. A more robust way would be to use a unique ID on the Play model.
-                                    if let matchingNewPlay = newSongPlays.first(where: { $0.song?.title == oldPlay.song?.title && $0.count == oldPlay.count && $0.session == nil }) {
-                                        matchingNewPlay.session = newSession
+                                    if let songTitle = oldPlay.song?.title,
+                                       let newSong = newStudent.songsArray.first(where: { $0.title == songTitle }) {
+                                        let newPlay = PlayCD(context: coreDataContext)
+                                        newPlay.count = Int64(oldPlay.count)
+                                        newPlay.playType = oldPlay.playType
+                                        newPlay.song = newSong
+                                        newPlay.session = newSession
+                                        logger.info("        [OK] Migrated and Linked Play for song: \(songTitle)")
+                                    } else {
+                                        logger.warning("        [!!] Could not find matching new song for a play. Skipping.")
                                     }
                                 }
                             }
                             
-                             // ... (Migration for Note, AudioRecording for the session)
+                            // --- Notes ---
+                            if let oldNotes = oldSession.notes, !oldNotes.isEmpty {
+                                for oldNote in oldNotes {
+                                    let newNote = NoteCD(context: coreDataContext)
+                                    newNote.text = oldNote.text
+                                    newNote.drawing = oldNote.drawing
+                                    newNote.session = newSession
+                                    
+                                    if let taggedSongs = oldNote.songs, !taggedSongs.isEmpty {
+                                        let taggedSongTitles = taggedSongs.map { $0.title }
+                                        let newTaggedSongs = newStudent.songsArray.filter { taggedSongTitles.contains($0.title ?? "") }
+                                        newNote.songs = NSSet(array: newTaggedSongs)
+                                        logger.info("        [OK] Migrated Note and tagged \(newTaggedSongs.count) songs.")
+                                    } else {
+                                        logger.info("        [OK] Migrated Note with no tags.")
+                                    }
+                                }
+                            }
+                            
+                            // --- Audio Recordings ---
+                            if let oldRecordings = oldSession.recordings, !oldRecordings.isEmpty {
+                                for oldRecording in oldRecordings {
+                                    let newRecording = AudioRecordingCD(context: coreDataContext)
+                                    newRecording.id = oldRecording.id
+                                    newRecording.title = oldRecording.title
+                                    newRecording.data = oldRecording.data
+                                    newRecording.dateRecorded = oldRecording.dateRecorded
+                                    newRecording.duration = oldRecording.duration ?? 0.0
+                                    newRecording.session = newSession
+                                    
+                                    if let taggedSongs = oldRecording.songs, !taggedSongs.isEmpty {
+                                        let taggedSongTitles = taggedSongs.map { $0.title }
+                                        let newTaggedSongs = newStudent.songsArray.filter { taggedSongTitles.contains($0.title ?? "") }
+                                        newRecording.songs = NSSet(array: newTaggedSongs)
+                                        logger.info("        [OK] Migrated Recording and tagged \(newTaggedSongs.count) songs.")
+                                    } else {
+                                        logger.info("        [OK] Migrated Recording with no tags.")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
                 
+                logger.notice("--- Attempting to save migrated data... ---")
                 try coreDataContext.save()
+                
                 UserDefaults.standard.set(true, forKey: "hasMigratedToCoreData_v1")
-                print("Data migration completed successfully.")
+                logger.notice("--- Data migration completed successfully. Flag set. ---")
                 
             } catch {
-                print("Data migration failed: \(error)")
-                // Consider rolling back changes if migration fails
+                logger.critical("--- Data migration FAILED: \(error.localizedDescription) ---")
+                logger.critical("--- Rolling back changes. No data was saved. ---")
                 coreDataContext.rollback()
             }
         }
     }
 }
+
