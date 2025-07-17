@@ -17,30 +17,44 @@ struct NotesSectionViewCD: View {
 
     var body: some View {
         Section("Session Notes") {
-            ForEach(session.notesArray) { note in
-                VStack(alignment: .leading, spacing: 4) {
-                    if !note.songsArray.isEmpty {
-                        Text(note.songsArray.map { $0.title ?? "" }.joined(separator: ", "))
-                            .font(.headline)
-                    }
-                    Text(note.text ?? "")
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+            if session.notesArray.isEmpty {
+                Button(action: {
+                    let note = NoteCD(context: viewContext)
+                    note.text = ""
+                    session.addToNotes(note)
                     editingNote = note
                     showingAddNoteSheet = true
+                }) {
+                    Label("Add Note", systemImage: "note.text.badge.plus")
+                        .padding()
+                        .frame(maxWidth: .infinity)
                 }
-            }
-            .onDelete(perform: deleteNote)
-            
-            Button(action: {
-                let note = NoteCD(context: viewContext)
-                note.text = ""
-                session.addToNotes(note)
-                editingNote = note
-                showingAddNoteSheet = true
-            }) {
-                Label("Add Note", systemImage: "note.text.badge.plus")
+            } else {
+                ForEach(session.notesArray) { note in
+                    VStack(alignment: .leading, spacing: 4) {
+                        if !note.songsArray.isEmpty {
+                            Text(note.songsArray.map { $0.title ?? "" }.joined(separator: ", "))
+                                .font(.headline)
+                        }
+                        Text(note.text ?? "")
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        editingNote = note
+                        showingAddNoteSheet = true
+                    }
+                }
+                .onDelete(perform: deleteNote)
+                
+                Button(action: {
+                    let note = NoteCD(context: viewContext)
+                    note.text = ""
+                    session.addToNotes(note)
+                    editingNote = note
+                    showingAddNoteSheet = true
+                }) {
+                    Label("Add Note", systemImage: "note.text.badge.plus")
+                }
             }
         }
     }

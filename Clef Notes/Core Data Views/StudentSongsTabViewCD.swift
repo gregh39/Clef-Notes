@@ -30,7 +30,7 @@ struct StudentSongsTabViewCD: View {
     var body: some View {
         if student.songsArray.isEmpty {
             ContentUnavailableView {
-                Label("No Songs Added", systemImage: "music.note.list")
+                Label("No Songs Added", image: "add.song")
             } description: {
                 Text("Tap the button to add your first song.")
             } actions: {

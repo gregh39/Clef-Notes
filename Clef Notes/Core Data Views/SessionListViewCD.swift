@@ -52,7 +52,6 @@ struct SessionListViewCD: View {
                         }
                     )) {
                         ForEach(section.sessions) { session in
-                            // --- THIS IS THE FIX: Use value-based NavigationLink ---
                             NavigationLink(value: session) {
                                 SessionCardViewCD(session: session)
                             }

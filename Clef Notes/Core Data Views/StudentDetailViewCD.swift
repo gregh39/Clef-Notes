@@ -38,7 +38,7 @@ struct StudentDetailViewCD: View {
                     Button {
                         showingAddSongSheet = true
                     } label: {
-                        Label("Add Song", systemImage: "plus")
+                        Label("Add Song", image: "add.song")
                     }
                     Button {
                         showingAddSessionSheet = true
@@ -67,3 +67,4 @@ struct StudentDetailViewCD: View {
         }
     }
 }
+

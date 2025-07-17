@@ -47,7 +47,9 @@ struct PlaysSectionViewCD: View {
         Section("Session Plays") {
             if viewModel.plays.isEmpty {
                 Button(action: { showingAddPlaySheet = true }) {
-                    Label("Add First Play", systemImage: "music.note.list")
+                    Label("Add Play", systemImage: "music.note.list")
+                        .padding()
+                        .frame(maxWidth: .infinity)
                 }
             } else {
                 ForEach(viewModel.plays) { play in
