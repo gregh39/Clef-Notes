@@ -2,6 +2,21 @@ import SwiftUI
 import CoreData
 import AVKit
 
+// --- CHANGE 1: Create a wrapper to display different media types in one list ---
+enum DisplayableMedia: Identifiable, Hashable {
+    case mediaReference(MediaReferenceCD)
+    case audioRecording(AudioRecordingCD)
+    
+    var id: NSManagedObjectID {
+        switch self {
+        case .mediaReference(let ref):
+            return ref.objectID
+        case .audioRecording(let rec):
+            return rec.objectID
+        }
+    }
+}
+
 struct SongDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
@@ -11,9 +26,17 @@ struct SongDetailViewCD: View {
     
     @StateObject private var audioPlayerManager: AudioPlayerManager
 
-    init(song: Clef_Notes.SongCD, audioManager: AudioManager) {
+    init(song: SongCD, audioManager: AudioManager) {
         self.song = song
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
+    }
+
+    // --- CHANGE 2: Create a computed property to combine both media types ---
+    private var allMediaItems: [DisplayableMedia] {
+        let references = song.mediaArray.map { DisplayableMedia.mediaReference($0) }
+        let recordings = song.recordingsArray.map { DisplayableMedia.audioRecording($0) }
+        // You can add sorting here if needed, e.g., by date
+        return references + recordings
     }
 
     var body: some View {
@@ -34,25 +57,39 @@ struct SongDetailViewCD: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            // EditSongSheetCD will be created next
+            EditSongSheetCD(song: song)
         }
     }
 
     private var playsTab: some View {
-        // We now pass the managed object context to the view's initializer.
         PlaysListViewCD(song: song, context: viewContext)
     }
 
     private var mediaTab: some View {
         List {
             Section("Media") {
-                if song.mediaArray.isEmpty {
+                // --- CHANGE 3: The list now iterates over the combined media items ---
+                if allMediaItems.isEmpty {
                     Text("No media has been added to this song.")
                         .foregroundColor(.secondary)
                 } else {
-                    ForEach(song.mediaArray) { media in
-                        MediaCellCD(media: media, audioPlayerManager: audioPlayerManager)
+                    ForEach(allMediaItems) { item in
+                        // Use a switch to display the correct cell for each type
+                        switch item {
+                        case .mediaReference(let media):
+                            MediaCellCD(media: media, audioPlayerManager: audioPlayerManager)
+                                .padding(.vertical, 4)
+                        case .audioRecording(let recording):
+                            AudioPlaybackCellCD(
+                                title: recording.title ?? "Recording",
+                                subtitle: (recording.dateRecorded ?? .now).formatted(date: .abbreviated, time: .shortened),
+                                data: recording.data,
+                                duration: recording.duration,
+                                id: recording.objectID,
+                                audioPlayerManager: audioPlayerManager
+                            )
                             .padding(.vertical, 4)
+                        }
                     }
                     .onDelete(perform: deleteMedia)
                 }
@@ -73,10 +110,16 @@ struct SongDetailViewCD: View {
         }
     }
     
+    // --- CHANGE 4: Update deletion logic to handle the combined list ---
     private func deleteMedia(at offsets: IndexSet) {
         for index in offsets {
-            let mediaToDelete = song.mediaArray[index]
-            viewContext.delete(mediaToDelete)
+            let itemToDelete = allMediaItems[index]
+            switch itemToDelete {
+            case .mediaReference(let ref):
+                viewContext.delete(ref)
+            case .audioRecording(let rec):
+                viewContext.delete(rec)
+            }
         }
         try? viewContext.save()
     }
@@ -89,4 +132,3 @@ struct SongDetailViewCD: View {
         try? viewContext.save()
     }
 }
-

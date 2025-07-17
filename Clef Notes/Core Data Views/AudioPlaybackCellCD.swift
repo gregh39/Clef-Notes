@@ -1,14 +1,26 @@
-//
-//  AudioPlaybackCellCD.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/16/25.
-//
-
-
 import SwiftUI
 import CoreData
 import AVFoundation
+import UniformTypeIdentifiers
+
+// A helper struct to make audio data transferable for the ShareLink.
+private struct AudioFile: Transferable {
+    let data: Data
+    let filename: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(contentType: .mpeg4Audio) { audio in
+            audio.data
+        } importing: { data in
+            // This part is required by the protocol but not used for sharing.
+            AudioFile(data: data, filename: "imported.m4a")
+        }
+        .suggestedFileName { audio in
+            audio.filename
+        }
+    }
+}
+
 
 struct AudioPlaybackCellCD: View {
     let title: String
@@ -30,12 +42,28 @@ struct AudioPlaybackCellCD: View {
                 VStack(alignment: .leading) {
                     Text(title).font(.headline)
                     Text(subtitle).font(.caption).foregroundColor(.secondary)
-                    Text("Duration: \(Int(duration))s").font(.caption2).foregroundColor(.gray)
+                    if duration > 0 {
+                        Text("Duration: \(Int(duration))s").font(.caption2).foregroundColor(.gray)
+                    }
                 }
                 Spacer()
                 
                 HStack(spacing: 16) {
-                    // ShareLink would be added here
+                    // --- THIS IS THE FIX ---
+                    // The ShareLink is now included, matching the original version.
+                    if let audioData = data {
+                        ShareLink(
+                            item: AudioFile(data: audioData, filename: "\(title).m4a"),
+                            preview: SharePreview(title, image: Image(systemName: "waveform"))
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title3)
+                                .frame(width: 40, height: 40)
+                                .background(Color(UIColor.systemGray6))
+                                .clipShape(Circle())
+                        }
+                    }
+                    
                     Button(action: {
                         if isPlaying {
                             audioPlayerManager.stop()
@@ -44,6 +72,10 @@ struct AudioPlaybackCellCD: View {
                         }
                     }) {
                         Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                            .font(.title3)
+                            .frame(width: 40, height: 40)
+                            .background(Color(UIColor.systemGray5))
+                            .clipShape(Circle())
                     }
                     .disabled(data == nil)
                 }
