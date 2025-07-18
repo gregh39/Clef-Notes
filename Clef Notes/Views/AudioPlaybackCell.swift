@@ -66,7 +66,7 @@ struct AudioPlaybackCell: View {
                     Button(action: {
                         if isPlaying {
                             audioPlayerManager.stop()
-                        } else if let audioData = data {
+                        } else if data != nil {
                             //audioPlayerManager.play(data: audioData, id: id)
                         } else {
                             print("Cannot play: audio data is nil")

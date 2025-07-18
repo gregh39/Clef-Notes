@@ -87,7 +87,7 @@ final class Song: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let title = try container.decode(String.self, forKey: .title)
         let composer = try container.decodeIfPresent(String.self, forKey: .composer)
-        let goalPlays = try container.decodeIfPresent(Int.self, forKey: .goalPlays)
+        _ = try container.decodeIfPresent(Int.self, forKey: .goalPlays)
         let studentID = try container.decode(UUID.self, forKey: .studentID)
         let songStatus = try container.decodeIfPresent(PlayType.self, forKey: .songStatus)
         let pieceType = try container.decodeIfPresent(PieceType.self, forKey: .pieceType)

@@ -79,7 +79,7 @@ struct AudioRecordingCell: View {
                 Button(action: {
                     if isPlaying {
                         audioPlayerManager.stop()
-                    } else if let audioData = recording.data {
+                    } else if recording.data != nil {
                        // audioPlayerManager.play(data: audioData, id: recording.persistentModelID)
                     } else {
                         print("Cannot play: audio data is nil")

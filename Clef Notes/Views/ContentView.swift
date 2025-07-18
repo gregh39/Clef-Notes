@@ -16,6 +16,7 @@ struct ContentView: View {
     
     @State private var newName = ""
     @State private var newInstrument = ""
+    @AppStorage("shareAccepted") private var shareAccepted: Bool = false
 
     var body: some View {
         NavigationSplitView {
@@ -96,6 +97,14 @@ struct ContentView: View {
                 }
             }
         }
+        .alert("Welcome!", isPresented: Binding(
+            get: { shareAccepted },
+            set: { if !$0 { shareAccepted = false } }
+        )) {
+            Button("OK") { shareAccepted = false }
+        } message: {
+            Text("You joined a shared student or content! The share was accepted.")
+        }
     }
 
     private func addStudent() {
@@ -130,3 +139,4 @@ struct ContentView: View {
         newInstrument = ""
     }
 }
+
