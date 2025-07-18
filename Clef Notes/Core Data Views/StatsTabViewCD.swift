@@ -2,6 +2,22 @@ import SwiftUI
 import CoreData
 import Combine
 
+struct MonthKey: Hashable, Comparable {
+    let year: Int
+    let month: Int
+    
+    static func < (lhs: MonthKey, rhs: MonthKey) -> Bool {
+        lhs.year != rhs.year ? lhs.year < rhs.year : lhs.month < rhs.month
+    }
+    
+    var displayString: String {
+        let date = Calendar.current.date(from: DateComponents(year: year, month: month)) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter.string(from: date)
+    }
+}
+
 struct StatsTabViewCD: View {
     @StateObject private var viewModel: StatsViewModelCD
     @Environment(\.managedObjectContext) private var viewContext

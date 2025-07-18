@@ -21,7 +21,6 @@ private struct AudioFile: Transferable {
     }
 }
 
-
 struct AudioPlaybackCellCD: View {
     let title: String
     let subtitle: String

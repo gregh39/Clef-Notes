@@ -10,6 +10,16 @@ import SwiftUI
 import CoreData
 import PhotosUI
 
+struct MediaEntry: Identifiable {
+    let id = UUID()
+    var urlString: String = ""
+    var type: MediaType = .youtubeVideo
+    
+    // Properties for handling local file selections
+    var photoPickerItem: PhotosPickerItem? = nil
+    var audioFileURL: URL? = nil
+}
+
 struct AddSongSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
