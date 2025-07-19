@@ -32,6 +32,8 @@ extension NoteCD {
     @NSManaged public var text: String?
     @NSManaged public var session: PracticeSessionCD?
     @NSManaged public var songs: NSSet?
+    @NSManaged public var student: StudentCD?
+
     
     public var songsArray: [SongCD] {
         let set = songs as? Set<SongCD> ?? []

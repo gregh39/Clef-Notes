@@ -24,6 +24,8 @@ extension PlayCD {
     @NSManaged public var playTypeRaw: String?
     @NSManaged public var session: PracticeSessionCD?
     @NSManaged public var song: SongCD?
+    @NSManaged public var student: StudentCD?
+
     
     public var playType: PlayType? {
         get {

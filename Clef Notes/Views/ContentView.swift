@@ -97,6 +97,7 @@ struct ContentView: View {
                 }
             }
         }
+        // --- THIS IS THE FIX ---
         .alert("Welcome!", isPresented: Binding(
             get: { shareAccepted },
             set: { if !$0 { shareAccepted = false } }
@@ -105,6 +106,7 @@ struct ContentView: View {
         } message: {
             Text("You joined a shared student or content! The share was accepted.")
         }
+        // --- END OF FIX ---
     }
 
     private func addStudent() {
@@ -139,4 +141,3 @@ struct ContentView: View {
         newInstrument = ""
     }
 }
-

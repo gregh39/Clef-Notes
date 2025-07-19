@@ -35,6 +35,8 @@ extension MediaReferenceCD {
     @NSManaged public var typeRaw: String?
     @NSManaged public var url: URL?
     @NSManaged public var song: SongCD?
+    @NSManaged public var student: StudentCD?
+
     
     public var type: MediaType? {
         get {

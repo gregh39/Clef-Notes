@@ -13,7 +13,7 @@
     <entity name="InstructorCD" representedClassName="InstructorCD" syncable="YES">
         <attribute name="name" attributeType="String" defaultValueString=""/>
         <relationship name="sessions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="PracticeSessionCD" inverseName="instructor" inverseEntity="PracticeSessionCD"/>
-        <relationship name="students" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="instructors" inverseEntity="StudentCD"/>
+        <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="instructors" inverseEntity="StudentCD"/>
     </entity>
     <entity name="MediaReferenceCD" representedClassName="MediaReferenceCD" syncable="YES">
         <attribute name="data" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
@@ -69,7 +69,7 @@
         <attribute name="instrument" attributeType="String" defaultValueString=""/>
         <attribute name="name" attributeType="String" defaultValueString=""/>
         <relationship name="audioRecordings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AudioRecordingCD" inverseName="student" inverseEntity="AudioRecordingCD"/>
-        <relationship name="instructors" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="InstructorCD" inverseName="students" inverseEntity="InstructorCD"/>
+        <relationship name="instructors" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="InstructorCD" inverseName="student" inverseEntity="InstructorCD"/>
         <relationship name="mediaReferences" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="MediaReferenceCD" inverseName="student" inverseEntity="MediaReferenceCD"/>
         <relationship name="notes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NoteCD" inverseName="student" inverseEntity="NoteCD"/>
         <relationship name="plays" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="PlayCD" inverseName="student" inverseEntity="PlayCD"/>
