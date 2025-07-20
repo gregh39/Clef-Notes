@@ -1,34 +1,43 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Student.name) private var students: [Student]
+    @Environment(\.managedObjectContext) private var viewContext
+    
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
+        animation: .default)
+    private var students: FetchedResults<StudentCD>
 
-    @State private var selectedStudent: Student?
+    @State private var selectedStudent: StudentCD?
     @State private var showingAddSheet = false
     
-    // The showingSettingsSheet state is no longer needed here
+    @State private var offsetsToDelete: IndexSet?
     
     @State private var newName = ""
     @State private var newInstrument = ""
+    @AppStorage("shareAccepted") private var shareAccepted: Bool = false
 
     var body: some View {
         NavigationSplitView {
-            List(students, id: \.id, selection: $selectedStudent) { student in
-                NavigationLink(value: student) {
-                    VStack(alignment: .leading) {
-                        Text(student.name)
-                            .font(.headline)
-                        Text(student.instrument)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+            List(selection: $selectedStudent) {
+                ForEach(students) { student in
+                    NavigationLink(value: student) {
+                        VStack(alignment: .leading) {
+                            Text(student.name ?? "Unknown")
+                                .font(.headline)
+                            Text(student.instrument ?? "Unknown")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
+                .onDelete(perform: { offsets in
+                    self.offsetsToDelete = offsets
+                })
             }
             .navigationTitle("Students")
             .toolbar {
-                // The settings button is now gone, handled by the modifier
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     EditButton()
                     Button {
@@ -38,10 +47,26 @@ struct ContentView: View {
                     }
                 }
             }
-            .withGlobalTools() // <-- This single modifier adds the new menu
+            .withGlobalTools()
+            .alert("Delete Student?",
+                   isPresented: .constant(offsetsToDelete != nil),
+                   actions: {
+                        Button("Delete", role: .destructive) {
+                            if let offsets = offsetsToDelete {
+                                deleteStudents(offsets: offsets)
+                            }
+                            offsetsToDelete = nil
+                        }
+                        Button("Cancel", role: .cancel) {
+                            offsetsToDelete = nil
+                        }
+                   },
+                   message: {
+                        Text("This will permanently delete the student and all of their songs, sessions, and plays. This action cannot be undone.")
+                   })
         } detail: {
             if let student = selectedStudent {
-                StudentDetailView(student: student, context: modelContext)
+                StudentDetailViewCD(student: student)
             } else {
                 Text("Select a student")
             }
@@ -72,20 +97,47 @@ struct ContentView: View {
                 }
             }
         }
-        // The sheet modifier for settings is also gone from here
+        // --- THIS IS THE FIX ---
+        .alert("Welcome!", isPresented: Binding(
+            get: { shareAccepted },
+            set: { if !$0 { shareAccepted = false } }
+        )) {
+            Button("OK") { shareAccepted = false }
+        } message: {
+            Text("You joined a shared student or content! The share was accepted.")
+        }
+        // --- END OF FIX ---
     }
 
     private func addStudent() {
-        let student = Student(name: newName, instrument: newInstrument)
-        modelContext.insert(student)
+        let newStudent = StudentCD(context: viewContext)
+        newStudent.id = UUID()
+        newStudent.name = newName
+        newStudent.instrument = newInstrument
+
+        do {
+            try viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+        }
+    }
+    
+    private func deleteStudents(offsets: IndexSet) {
+        withAnimation {
+            offsets.map { students[$0] }.forEach(viewContext.delete)
+
+            do {
+                try viewContext.save()
+            } catch {
+                let nsError = error as NSError
+                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            }
+        }
     }
 
     private func clearForm() {
         newName = ""
         newInstrument = ""
     }
-}
-#Preview {
-    ContentView()
-        .modelContainer(for: Student.self, inMemory: true)
 }

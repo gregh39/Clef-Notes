@@ -1,11 +1,12 @@
 import SwiftUI
-import SwiftData
+import CoreData
 import AVFoundation
 import Combine
 
 @MainActor
 class AudioPlayerManager: NSObject, ObservableObject {
-    @Published var currentlyPlayingID: PersistentIdentifier? = nil
+    // --- CHANGE 1: The ID type is now NSManagedObjectID ---
+    @Published var currentlyPlayingID: NSManagedObjectID? = nil
     @Published var currentTime: TimeInterval = 0
     
     var audioPlayer: AVAudioPlayer?
@@ -15,11 +16,11 @@ class AudioPlayerManager: NSObject, ObservableObject {
 
     init(audioManager: AudioManager) {
         self.audioManager = audioManager
+        super.init()
     }
 
-    // --- THIS IS THE FIX ---
-    // The play function now accepts the raw Data of the recording.
-    func play(data: Data, id: PersistentIdentifier) {
+    // --- CHANGE 2: The play function now accepts an NSManagedObjectID ---
+    func play(data: Data, id: NSManagedObjectID) {
         let hasSession = audioManager.requestSession(for: .player, category: .playback)
         guard hasSession else {
             print("AudioPlayerManager: Failed to acquire audio session.")
@@ -30,7 +31,6 @@ class AudioPlayerManager: NSObject, ObservableObject {
             audioPlayer?.stop()
             progressTimer?.invalidate()
             
-            // AVAudioPlayer can be initialized directly from Data.
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.delegate = self
             audioPlayer?.currentTime = 0
