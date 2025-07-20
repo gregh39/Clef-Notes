@@ -12,58 +12,21 @@ struct ContentView: View {
     @State private var selectedStudent: StudentCD?
     @State private var showingAddSheet = false
     
+    // State variables to control the global tools sheets
+    @State private var showingSettingsSheet = false
+    @State private var showingMetronome = false
+    @State private var showingTuner = false
+    
     @State private var offsetsToDelete: IndexSet?
     
     @State private var newName = ""
-    @State private var newInstrument = ""
+    @State private var newInstrument: Instrument? = nil
     @AppStorage("shareAccepted") private var shareAccepted: Bool = false
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selectedStudent) {
-                ForEach(students) { student in
-                    NavigationLink(value: student) {
-                        VStack(alignment: .leading) {
-                            Text(student.name ?? "Unknown")
-                                .font(.headline)
-                            Text(student.instrument ?? "Unknown")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .onDelete(perform: { offsets in
-                    self.offsetsToDelete = offsets
-                })
-            }
-            .navigationTitle("Students")
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    EditButton()
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        Label("Add Student", systemImage: "plus")
-                    }
-                }
-            }
-            .withGlobalTools()
-            .alert("Delete Student?",
-                   isPresented: .constant(offsetsToDelete != nil),
-                   actions: {
-                        Button("Delete", role: .destructive) {
-                            if let offsets = offsetsToDelete {
-                                deleteStudents(offsets: offsets)
-                            }
-                            offsetsToDelete = nil
-                        }
-                        Button("Cancel", role: .cancel) {
-                            offsetsToDelete = nil
-                        }
-                   },
-                   message: {
-                        Text("This will permanently delete the student and all of their songs, sessions, and plays. This action cannot be undone.")
-                   })
+            // The main view is now simpler, referencing the computed property below
+            studentListView
         } detail: {
             if let student = selectedStudent {
                 StudentDetailViewCD(student: student)
@@ -75,7 +38,16 @@ struct ContentView: View {
             NavigationStack {
                 Form {
                     TextField("Name", text: $newName)
-                    TextField("Instrument", text: $newInstrument)
+                    Picker("Instrument", selection: $newInstrument) {
+                        Text("Select an Instrument").tag(Optional<Instrument>.none)
+                        ForEach(instrumentSections) { section in
+                            Section(header: Text(section.name)) {
+                                ForEach(section.instruments) { instrument in
+                                    Text(instrument.rawValue).tag(Optional(instrument))
+                                }
+                            }
+                        }
+                    }
                 }
                 .navigationTitle("New Student")
                 .toolbar {
@@ -92,12 +64,11 @@ struct ContentView: View {
                             clearForm()
                         }
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty ||
-                                  newInstrument.trimmingCharacters(in: .whitespaces).isEmpty)
+                                  newInstrument == nil)
                     }
                 }
             }
         }
-        // --- THIS IS THE FIX ---
         .alert("Welcome!", isPresented: Binding(
             get: { shareAccepted },
             set: { if !$0 { shareAccepted = false } }
@@ -106,15 +77,85 @@ struct ContentView: View {
         } message: {
             Text("You joined a shared student or content! The share was accepted.")
         }
-        // --- END OF FIX ---
+        // The updated modifier is called on the root view
+        .withGlobalTools(
+            showingSettings: $showingSettingsSheet,
+            showingMetronome: $showingMetronome,
+            showingTuner: $showingTuner
+        )
+    }
+
+    // The complex List is broken out into its own computed property to solve the compiler issue
+    private var studentListView: some View {
+        List(selection: $selectedStudent) {
+            ForEach(students) { student in
+                ZStack {
+                    StudentCellView(student: student)
+                    NavigationLink(value: student) {
+                        EmptyView()
+                    }
+                    .opacity(0)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+            .onDelete(perform: { offsets in
+                self.offsetsToDelete = offsets
+            })
+        }
+        .listStyle(.plain)
+        .navigationTitle("Students")
+        .toolbar {
+            // The global tools menu is re-added here
+            ToolbarItem(placement: .navigationBarLeading) {
+                Menu {
+                    Button { showingMetronome = true } label: {
+                        Label("Metronome", systemImage: "metronome")
+                    }
+                    Button { showingTuner = true } label: {
+                        Label("Tuner", systemImage: "tuningfork")
+                    }
+                    Divider()
+                    Button { showingSettingsSheet = true } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                } label: {
+                    Label("Tools", systemImage: "line.3.horizontal")
+                }
+            }
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                EditButton()
+                Button {
+                    showingAddSheet = true
+                } label: {
+                    Label("Add Student", systemImage: "plus")
+                }
+            }
+        }
+        .alert("Delete Student?",
+               isPresented: .constant(offsetsToDelete != nil),
+               actions: {
+                    Button("Delete", role: .destructive) {
+                        if let offsets = offsetsToDelete {
+                            deleteStudents(offsets: offsets)
+                        }
+                        offsetsToDelete = nil
+                    }
+                    Button("Cancel", role: .cancel) {
+                        offsetsToDelete = nil
+                    }
+               },
+               message: {
+                    Text("This will permanently delete the student and all of their songs, sessions, and plays. This action cannot be undone.")
+               })
     }
 
     private func addStudent() {
         let newStudent = StudentCD(context: viewContext)
         newStudent.id = UUID()
         newStudent.name = newName
-        newStudent.instrument = newInstrument
-
+        newStudent.instrumentType = newInstrument
         do {
             try viewContext.save()
         } catch {
@@ -138,6 +179,87 @@ struct ContentView: View {
 
     private func clearForm() {
         newName = ""
-        newInstrument = ""
+        newInstrument = nil
+    }
+}
+
+private struct StudentCellView: View {
+    @ObservedObject var student: StudentCD
+    
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        let uniqueDays = Set(student.sessionsArray.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
+        let sortedDates = uniqueDays.sorted(by: >)
+
+        guard !sortedDates.isEmpty else { return 0 }
+
+        var streak = 0
+        var dateToMatch = calendar.startOfDay(for: .now)
+
+        if !sortedDates.contains(dateToMatch) {
+            dateToMatch = calendar.date(byAdding: .day, value: -1, to: dateToMatch)!
+            if !sortedDates.contains(dateToMatch) {
+                return 0
+            }
+        }
+
+        for practiceDate in sortedDates {
+            if practiceDate == dateToMatch {
+                streak += 1
+                dateToMatch = calendar.date(byAdding: .day, value: -1, to: dateToMatch)!
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 44))
+                .foregroundColor(.accentColor)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(student.name ?? "Unknown Student")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    Spacer()
+                    if student.isShared {
+                        Image(systemName: "person.2.fill")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Text(student.instrument ?? "No Instrument")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Divider().padding(.vertical, 2)
+                
+                HStack(spacing: 16) {
+                    Label("\(currentStreak) Day Streak", systemImage: "flame.fill")
+                        .foregroundColor(currentStreak > 0 ? .orange : .secondary)
+                    
+                    if let lastSessionDate = student.sessionsArray.first?.day {
+                        Label(Self.dateFormatter.string(from: lastSessionDate), systemImage: "clock.arrow.circlepath")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding()
+        .background(.background.secondary)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
     }
 }

@@ -27,6 +27,7 @@ struct AddSongSheetCD: View {
     let student: StudentCD
 
     @State private var title: String = ""
+    @State private var composer: String = ""
     @State private var goalPlays: String = ""
     @State private var songStatus: PlayType? = nil
     @State private var pieceType: PieceType? = nil
@@ -38,34 +39,82 @@ struct AddSongSheetCD: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Song Info") {
+                Section {
                     TextField("Title", text: $title)
-                    TextField("Goal Plays (Optional)", text: $goalPlays)
-                        .keyboardType(.numberPad)
-                    
-                    Picker("Piece Type", selection: $pieceType) {
+                    TextField("Composer (Optional)", text: $composer)
+                } header: {
+                    Text("Song Info")
+                } footer: {
+                    Text("Enter the title and composer of the piece.")
+                }
+                
+                Section {
+                    Picker(selection: $pieceType) {
                         Text("None").tag(PieceType?.none)
                         ForEach(PieceType.allCases, id: \.self) { type in
                             Text(type.rawValue).tag(Optional(type))
                         }
+                    } label: {
+                        Label("Piece Type", systemImage: "music.note.list")
                     }
                     
-                    Picker("Status", selection: $songStatus) {
+                    Picker(selection: $songStatus) {
                         Text("None").tag(PlayType?.none)
                         ForEach(PlayType.allCases, id: \.self) { status in
                             Text(status.rawValue).tag(Optional(status))
                         }
+                    } label: {
+                        Label("Initial Status", systemImage: "tag.fill")
                     }
                 }
+                
+                Section {
+                    TextField("Goal Plays (Optional)", text: $goalPlays)
+                        .keyboardType(.numberPad)
+                } footer: {
+                    Text("Set a target number of plays for songs with a 'Practice' status.")
+                }
+
 
                 Section("Media Links") {
-                    // This section remains the same as it deals with local state
+                    // --- THIS IS THE FIX: The UI for each media entry is now implemented ---
                     ForEach($mediaEntries) { $entry in
-                        // ... Media Entry UI ...
+                        VStack(alignment: .leading) {
+                            Picker("Type", selection: $entry.type) {
+                                ForEach(MediaType.allCases) { type in
+                                    Text(type.rawValue).tag(type)
+                                }
+                            }
+
+                            switch entry.type {
+                            case .localVideo:
+                                PhotosPicker("Select Video", selection: $entry.photoPickerItem, matching: .videos)
+                                if entry.photoPickerItem != nil {
+                                    Text("Video selected").font(.caption).foregroundColor(.secondary)
+                                }
+                            case .audioRecording:
+                                Button("Select Audio File") {
+                                    selectedMediaEntryID = entry.id
+                                    isImportingAudio = true
+                                }
+                                if let url = entry.audioFileURL {
+                                    Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
+                                }
+                            default:
+                                TextField("Enter URL", text: $entry.urlString)
+                                    .keyboardType(.URL)
+                                    .autocapitalization(.none)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
                     .onDelete { mediaEntries.remove(atOffsets: $0) }
 
-                    Button(action: { mediaEntries.append(MediaEntry()) }) {
+                    Button(action: {
+                        withAnimation {
+                            mediaEntries.append(MediaEntry())
+                        }
+                    }) {
                         Label("Add Media Link", systemImage: "plus")
                     }
                 }
@@ -94,13 +143,13 @@ struct AddSongSheetCD: View {
     private func addSong() {
         let newSong = SongCD(context: viewContext)
         newSong.title = title
+        newSong.composer = composer
         newSong.studentID = student.id
         newSong.student = student
         newSong.goalPlays = Int64(goalPlays) ?? 0
         newSong.songStatus = songStatus
         newSong.pieceType = pieceType
 
-        // Use a Task to handle asynchronous file loading
         Task {
             for entry in mediaEntries {
                 let mediaReference: MediaReferenceCD?
@@ -132,7 +181,6 @@ struct AddSongSheetCD: View {
                     newMedia.student = student
                 }            }
             
-            // Save the context after all media has been processed
             try? viewContext.save()
         }
     }

@@ -8,16 +8,15 @@ struct EditSongSheetCD: View {
     
     @ObservedObject var song: SongCD
 
-    // Local state for editing song properties
     @State private var title: String = ""
+    // --- THIS IS THE FIX: Added state for the composer ---
+    @State private var composer: String = ""
     @State private var songStatus: PlayType?
     @State private var pieceType: PieceType?
 
-    // State for adding new media
     @State private var newMediaType: MediaType = .youtubeVideo
     @State private var newMediaURLString: String = ""
     
-    // State for file pickers
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var isImportingAudio = false
     @State private var selectedAudioURL: URL?
@@ -25,25 +24,35 @@ struct EditSongSheetCD: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Song Details") {
+                Section {
                     TextField("Title", text: $title)
-                    
-                    Picker("Status", selection: $songStatus) {
-                        Text("None").tag(PlayType?.none)
-                        ForEach(PlayType.allCases, id: \.self) { status in
-                            Text(status.rawValue.capitalized).tag(PlayType?(status))
-                        }
-                    }
-                    
-                    Picker("Piece Type", selection: $pieceType) {
+                    // --- THIS IS THE FIX: Added the TextField for the composer ---
+                    TextField("Composer", text: $composer)
+                } header: {
+                    Text("Song Details")
+                }
+
+                Section {
+                    Picker(selection: $pieceType) {
                         Text("None").tag(PieceType?.none)
                         ForEach(PieceType.allCases, id: \.self) { type in
                             Text(type.rawValue.capitalized).tag(PieceType?(type))
                         }
+                    } label: {
+                        Label("Piece Type", systemImage: "music.note.list")
+                    }
+                    
+                    Picker(selection: $songStatus) {
+                        Text("None").tag(PlayType?.none)
+                        ForEach(PlayType.allCases, id: \.self) { status in
+                            Text(status.rawValue.capitalized).tag(PlayType?(status))
+                        }
+                    } label: {
+                        Label("Status", systemImage: "tag.fill")
                     }
                 }
 
-                Section("Add Media") {
+                Section {
                     Picker("Type", selection: $newMediaType) {
                         ForEach(MediaType.allCases) { type in
                             Text(type.rawValue.capitalized).tag(type)
@@ -71,6 +80,10 @@ struct EditSongSheetCD: View {
                         Task { await addMedia() }
                     }
                     .disabled(isAddMediaButtonDisabled)
+                } header: {
+                    Text("Add Media")
+                } footer: {
+                    Text("Any media added here will be linked to this song.")
                 }
             }
             .navigationTitle("Edit Song")
@@ -88,8 +101,9 @@ struct EditSongSheetCD: View {
                 }
             }
             .onAppear {
-                // Populate local state when the view appears
                 title = song.title ?? ""
+                // --- THIS IS THE FIX: Populate composer state ---
+                composer = song.composer ?? ""
                 songStatus = song.songStatus
                 pieceType = song.pieceType
             }
@@ -134,7 +148,6 @@ struct EditSongSheetCD: View {
             }
         }
 
-        // The object is already in the context, just need to save.
         resetMediaInputFields()
     }
     
@@ -147,6 +160,8 @@ struct EditSongSheetCD: View {
 
     private func saveChanges() {
         song.title = title
+        // --- THIS IS THE FIX: Save composer changes ---
+        song.composer = composer
         song.songStatus = songStatus
         song.pieceType = pieceType
         

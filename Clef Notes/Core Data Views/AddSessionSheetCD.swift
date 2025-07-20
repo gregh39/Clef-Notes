@@ -8,7 +8,6 @@ struct AddSessionSheetCD: View {
     let student: StudentCD
     var onAdd: (PracticeSessionCD) -> Void
 
-    // The FetchRequest is now a regular property.
     @FetchRequest private var instructors: FetchedResults<InstructorCD>
 
     @State private var selectedInstructor: InstructorCD?
@@ -19,12 +18,10 @@ struct AddSessionSheetCD: View {
     @State private var showingAddInstructorSheet = false
     @State private var newInstructorName: String = ""
 
-    // An initializer is added to configure the FetchRequest with a dynamic predicate.
     init(student: StudentCD, onAdd: @escaping (PracticeSessionCD) -> Void) {
         self.student = student
         self.onAdd = onAdd
         
-        // This predicate filters instructors to only include those linked to the current student.
         let predicate = NSPredicate(format: "student == %@", student)
         
         self._instructors = FetchRequest<InstructorCD>(
@@ -36,25 +33,37 @@ struct AddSessionSheetCD: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Title") {
+                // --- THIS IS THE FIX: A footer is added to the section ---
+                Section {
                     TextField("Session Title", text: $sessionTitle)
-                }
-                DatePicker("Date", selection: $sessionDate, displayedComponents: [.date])
-                Picker("Instructor", selection: $selectedInstructor) {
-                    Text("None").tag(Optional<InstructorCD>.none)
-                    // The 'instructors' list is now correctly filtered.
-                    ForEach(instructors) { instructor in
-                        Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                    DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
+                        Label("Date", systemImage: "calendar")
                     }
-                }
-                Button("Add New Instructor") {
-                    showingAddInstructorSheet = true
+                    Picker(selection: $selectedLocation) {
+                        Text("None").tag(Optional<LessonLocation>.none)
+                        ForEach(LessonLocation.allCases, id: \.self) { location in
+                            Text(location.rawValue).tag(Optional(location))
+                        }
+                    } label: {
+                        Label("Location", systemImage: "mappin.and.ellipse")
+                    }
+                } header: {
+                    Text("Session Details")
+                } footer: {
+                    Text("The session title defaults to 'Practice' but can be changed to whatever you like.")
                 }
 
-                Picker("Location", selection: $selectedLocation) {
-                    Text("None").tag(Optional<LessonLocation>.none)
-                    ForEach(LessonLocation.allCases, id: \.self) { location in
-                        Text(location.rawValue).tag(Optional(location))
+                Section("Instructor") {
+                    Picker(selection: $selectedInstructor) {
+                        Text("None").tag(Optional<InstructorCD>.none)
+                        ForEach(instructors) { instructor in
+                            Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                        }
+                    } label: {
+                        Label("Instructor", systemImage: "person.fill")
+                    }
+                    Button("Add New Instructor") {
+                        showingAddInstructorSheet = true
                     }
                 }
             }

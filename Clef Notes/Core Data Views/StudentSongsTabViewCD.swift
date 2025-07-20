@@ -104,9 +104,13 @@ struct StudentSongsTabViewCD: View {
                 if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
                     Section(header: Text(status?.rawValue ?? "No Status")) {
                         ForEach(songsInGroup) { song in
-                            // --- THIS IS THE FIX: Use value-based NavigationLink ---
-                            NavigationLink(value: song) {
-                                SongRowViewCD(song: song)
+                            ZStack {
+                                // --- THIS IS THE FIX: The new card view is used here ---
+                                SongCardView(song: song)
+                                NavigationLink(value: song) {
+                                    EmptyView()
+                                }
+                                .opacity(0)
                             }
                             .swipeActions(edge: .leading) {
                                 Button { editingSongForEditSheet = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
@@ -135,9 +139,13 @@ private struct SongSectionViewCD: View {
         if !songs.isEmpty {
             Section(header: Text(title)) {
                 ForEach(songs) { song in
-                    // --- THIS IS THE FIX: Use value-based NavigationLink ---
-                    NavigationLink(value: song) {
-                        SongRowViewCD(song: song)
+                    ZStack {
+                        // --- THIS IS THE FIX: The new card view is used here too ---
+                        SongCardView(song: song)
+                        NavigationLink(value: song) {
+                            EmptyView()
+                        }
+                        .opacity(0)
                     }
                     .swipeActions(edge: .leading) {
                         Button { editingSong = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
@@ -148,7 +156,8 @@ private struct SongSectionViewCD: View {
     }
 }
 
-struct SongRowViewCD: View {
+// --- THIS IS THE FIX: The simple SongRowViewCD is replaced with the more attractive SongCardView ---
+private struct SongCardView: View {
     @ObservedObject var song: SongCD
     
     private var progress: Double {
@@ -157,57 +166,49 @@ struct SongRowViewCD: View {
         return min(total / goal, 1.0)
     }
     
+    private var statusColor: Color {
+        switch song.songStatus {
+        case .learning: .blue
+        case .practice: .green
+        case .review: .purple
+        case .none: .gray
+        }
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if song.songStatus == .practice {
-                HStack {
-                    Image(systemName: "music.note")
-                        .foregroundColor(.accentColor)
-                        .frame(width: 20)
-                    
-                    Text(song.title ?? "Unknown Song")
-                        .font(.headline)
-                        .lineLimit(1)
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(song.totalGoalPlayCount)/\(song.goalPlays)")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .monospacedDigit()
-                        
-                        Text("\(Int(progress * 100))%")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(song.title ?? "Unknown Song")
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer()
+                if let status = song.songStatus {
+                    Text(status.rawValue.uppercased())
+                        .font(.caption.bold())
+                        .foregroundColor(statusColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(statusColor.opacity(0.15))
+                        .clipShape(Capsule())
                 }
-                
-                ProgressView(value: progress)
-                    .progressViewStyle(LinearProgressViewStyle(tint: progressColor(for: progress)))
-                    .scaleEffect(y: 1.5)
-            } else {
-                HStack {
-                    Image(systemName: "music.note")
-                        .foregroundColor(.accentColor)
-                        .frame(width: 20)
-                    Text(song.title ?? "Unknown Song")
-                        .font(.headline)
-                        .lineLimit(1)
-                    Spacer()
+            }
+            
+            if song.songStatus == .practice {
+                VStack(alignment: .leading, spacing: 4) {
+                    ProgressView(value: progress)
+                        .progressViewStyle(LinearProgressViewStyle(tint: statusColor))
+                    
+                    HStack {
+                        Text("Goal")
+                        Spacer()
+                        Text("\(song.totalGoalPlayCount) / \(song.goalPlays) Plays")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 }
             }
         }
-        .padding(.vertical, 4)
-    }
-    
-    private func progressColor(for progress: Double) -> Color {
-        switch progress {
-        case 0..<0.3: return .red
-        case 0.3..<0.7: return .orange
-        case 0.7..<1.0: return .yellow
-        default: return .green
-        }
+        .padding(.vertical, 6) // Add some vertical padding inside the list row
     }
 }
 

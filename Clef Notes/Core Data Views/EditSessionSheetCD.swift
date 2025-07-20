@@ -7,7 +7,6 @@ struct EditSessionSheetCD: View {
 
     @ObservedObject var session: PracticeSessionCD
 
-    // The FetchRequest is now a standard property.
     @FetchRequest private var instructors: FetchedResults<InstructorCD>
 
     @State private var title: String = ""
@@ -15,16 +14,13 @@ struct EditSessionSheetCD: View {
     @State private var selectedLocation: LessonLocation?
     @State private var date: Date = .now
 
-    // A new initializer to set up the filtered FetchRequest.
     init(session: PracticeSessionCD) {
         self.session = session
         
-        // This predicate ensures only instructors for the session's student are fetched.
         let studentPredicate: NSPredicate
         if let student = session.student {
             studentPredicate = NSPredicate(format: "student == %@", student)
         } else {
-            // A fallback to fetch no instructors if the session has no student.
             studentPredicate = NSPredicate(value: false)
         }
         
@@ -37,22 +33,35 @@ struct EditSessionSheetCD: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Session Info")) {
-                    TextField("Title", text: $title)
-                    Picker("Instructor", selection: $selectedInstructor) {
-                        Text("None").tag(Optional<InstructorCD>.none)
-                        // This list is now correctly filtered.
-                        ForEach(instructors) { instructor in
-                            Text(instructor.name ?? "Unknown").tag(Optional(instructor))
-                        }
+                // --- THIS IS THE FIX: Section is updated with header and footer text ---
+                Section {
+                    TextField("Session Title", text: $title)
+                    DatePicker(selection: $date, displayedComponents: .date) {
+                        Label("Date", systemImage: "calendar")
                     }
-                    Picker("Location", selection: $selectedLocation) {
+                    Picker(selection: $selectedLocation) {
                         Text("None").tag(Optional<LessonLocation>.none)
                         ForEach(LessonLocation.allCases, id: \.self) { location in
                             Text(location.rawValue).tag(Optional(location))
                         }
+                    } label: {
+                        Label("Location", systemImage: "mappin.and.ellipse")
                     }
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                } header: {
+                    Text("Session Details")
+                } footer: {
+                    Text("Update the title, date, or location for this practice session.")
+                }
+
+                Section("Instructor") {
+                    Picker(selection: $selectedInstructor) {
+                        Text("None").tag(Optional<InstructorCD>.none)
+                        ForEach(instructors) { instructor in
+                            Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                        }
+                    } label: {
+                        Label("Instructor", systemImage: "person.fill")
+                    }
                 }
             }
             .navigationTitle("Edit Session")

@@ -52,8 +52,13 @@ struct SessionListViewCD: View {
                         }
                     )) {
                         ForEach(section.sessions) { session in
-                            NavigationLink(value: session) {
+                            // --- THIS IS THE FIX: ZStack used to overlay an invisible NavigationLink ---
+                            ZStack {
                                 SessionCardViewCD(session: session)
+                                NavigationLink(value: session) {
+                                    EmptyView()
+                                }
+                                .opacity(0)
                             }
                             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 16))
                             .listRowSeparator(.hidden)

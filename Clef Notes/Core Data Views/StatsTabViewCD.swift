@@ -29,23 +29,28 @@ struct StatsTabViewCD: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
+                // The StreakView and other components remain unchanged.
+                StreakViewCD(viewModel: viewModel)
+                
+                // The ScrollViewReader allows us to programmatically scroll to a specific view.
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 24) {
                             ForEach(viewModel.allMonths, id: \.self) { month in
                                 HeatMapViewCD(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
-                                    .frame(width: 350).id(month)
+                                    .frame(width: 350)
+                                    .id(month)
                             }
+                            // 1. An invisible view with a static ID is placed at the end of the HStack.
+                            Color.clear.frame(width: 1, height: 1).id("HeatMapEnd")
                         }
                         .padding(.vertical, 2)
                     }
                     .padding(.trailing, 20)
                     .onAppear {
-                        let today = Date()
-                        let comps = Calendar.current.dateComponents([.year, .month], from: today)
-                        if let currentMonth = viewModel.allMonths.first(where: { $0.year == comps.year && $0.month == comps.month }) {
-                            proxy.scrollTo(currentMonth, anchor: .center)
-                        }
+                        // 2. When the view appears, we directly tell the proxy to scroll to our static ID.
+                        // This is more reliable than trying to find the "last month".
+                        proxy.scrollTo("HeatMapEnd", anchor: .trailing)
                     }
                 }
                 WeeklyPracticeViewCD(viewModel: viewModel)
@@ -81,6 +86,8 @@ class StatsViewModelCD: ObservableObject {
     @Published var totalPracticeDays: Int = 0
     @Published var allMonths: [MonthKeyCD] = []
     @Published var monthPlayCounts: [MonthKeyCD: [Int: Int]] = [:]
+    @Published var currentStreak = 0
+    @Published var longestStreak = 0
     
     private var sessionDates: Set<Date> = []
 
@@ -109,7 +116,7 @@ class StatsViewModelCD: ObservableObject {
             let comps = calendar.dateComponents([.year, .month], from: $0.day ?? .now)
             return MonthKeyCD(year: comps.year ?? 2000, month: comps.month ?? 1)
         })
-        self.allMonths = monthSet.sorted(by: >)
+        self.allMonths = monthSet.sorted()
         self.monthPlayCounts = Dictionary(uniqueKeysWithValues: allMonths.map { key in
             let filtered = sessions.filter {
                 let comps = calendar.dateComponents([.year, .month], from: $0.day ?? .now)
@@ -168,12 +175,70 @@ class StatsViewModelCD: ObservableObject {
         } else {
             self.firstPracticeDate = "N/A"
         }
+        
+        // --- THIS IS THE FIX: Calculate streaks ---
+        let sortedDates = sessionDaySet.sorted(by: >)
+        (currentStreak, longestStreak) = calculateStreaks(from: sortedDates)
+    }
+    
+    private func calculateStreaks(from sortedDates: [Date]) -> (current: Int, longest: Int) {
+        guard !sortedDates.isEmpty else { return (0, 0) }
+        let calendar = Calendar.current
+        var current = 0
+        var longest = 0
+        var streak = 0
+        
+        let today = calendar.startOfDay(for: .now)
+        var dateToCheck = today
+        
+        // Calculate current streak
+        for date in sortedDates {
+            if date == dateToCheck {
+                current += 1
+                dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+            } else if date < dateToCheck {
+                break
+            }
+        }
+        
+        // Calculate longest streak
+        var lastDate: Date? = nil
+        for date in sortedDates.reversed() { // Iterate from past to present
+            if let previousDate = lastDate {
+                let diff = calendar.dateComponents([.day], from: previousDate, to: date).day ?? 0
+                if diff == 1 {
+                    streak += 1
+                } else {
+                    longest = max(longest, streak)
+                    streak = 1
+                }
+            } else {
+                streak = 1
+            }
+            lastDate = date
+        }
+        longest = max(longest, streak)
+        
+        return (current, longest)
     }
     
     func didPracticeOn(date: Date) -> Bool {
         sessionDates.contains { Calendar.current.isDate($0, inSameDayAs: date) }
     }
 }
+
+// --- THIS IS THE FIX: New streak view ---
+private struct StreakViewCD: View {
+    @ObservedObject var viewModel: StatsViewModelCD
+
+    var body: some View {
+        HStack(spacing: 16) {
+            StatItemCD(label: "Current Streak", value: "\(viewModel.currentStreak) Days", icon: "🔥")
+            StatItemCD(label: "Longest Streak", value: "\(viewModel.longestStreak) Days", icon: "🏆")
+        }
+    }
+}
+
 
 struct MonthKeyCD: Hashable, Comparable {
     let year: Int
@@ -404,4 +469,3 @@ private struct StatItemCD: View {
         .cornerRadius(10)
     }
 }
-

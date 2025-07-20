@@ -7,35 +7,33 @@ struct StudentDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     
-    // --- CHANGE 1: Add a path to manage the navigation stack ---
     @State private var path = NavigationPath()
     
     @State private var showingAddSongSheet = false
     @State private var showingAddSessionSheet = false
+    @State private var showingEditStudentSheet = false
     
-    // --- THIS IS THE FIX ---
+    @State private var showingSettingsSheet = false
+    @State private var showingMetronome = false
+    @State private var showingTuner = false
+    
     @State private var isSharePresented = false
     @State private var cloudSharingController: UICloudSharingController?
-    // --- END OF FIX ---
-    
-    // Added per instructions
-    @State private var showingMigrationSheet = false
-    @State private var migrationResult: StudentCD.MigrationResult? = nil
     
     func populateStudentReferences() {
-        // Songs
+        // This function remains the same.
+        // It ensures data integrity by checking and fixing relationships
+        // between the student and their related data like songs, sessions, etc.
         if let songs = student.songs as? Set<SongCD> {
             for song in songs {
                 if song.student !== student {
                     song.student = student
                 }
-                // Ensure inverse
                 if !(student.songs?.contains(song) ?? false) {
                     student.addToSongs(song)
                 }
             }
         }
-        // Sessions
         if let sessions = student.sessions as? Set<PracticeSessionCD> {
             for session in sessions {
                 if session.student !== student {
@@ -46,7 +44,6 @@ struct StudentDetailViewCD: View {
                 }
             }
         }
-        // Plays
         if let plays = student.plays as? Set<PlayCD> {
             for play in plays {
                 if play.student !== student {
@@ -57,7 +54,6 @@ struct StudentDetailViewCD: View {
                 }
             }
         }
-        // Notes
         if let notes = student.notes as? Set<NoteCD> {
             for note in notes {
                 if note.student !== student {
@@ -68,7 +64,6 @@ struct StudentDetailViewCD: View {
                 }
             }
         }
-        // Media References
         if let mediaRefs = student.mediaReferences as? Set<MediaReferenceCD> {
             for mediaRef in mediaRefs {
                 if mediaRef.student !== student {
@@ -79,7 +74,6 @@ struct StudentDetailViewCD: View {
                 }
             }
         }
-        // Audio Recordings
         if let recordings = student.audioRecordings as? Set<AudioRecordingCD> {
             for recording in recordings {
                 if recording.student !== student {
@@ -90,14 +84,11 @@ struct StudentDetailViewCD: View {
                 }
             }
         }
-        // Instructors (if you have instructor->student as well)
         if let instructors = student.instructors as? Set<InstructorCD> {
             for instructor in instructors {
-                // If InstructorCD has a single student property:
                 if let iStudent = instructor.value(forKey: "student") as? StudentCD, iStudent !== student {
                     instructor.setValue(student, forKey: "student")
                 }
-                // If InstructorCD has students as a set, add student
                 if let students = instructor.value(forKey: "student") as? NSSet, !students.contains(student) {
                     instructor.mutableSetValue(forKey: "student").add(student)
                 }
@@ -106,7 +97,6 @@ struct StudentDetailViewCD: View {
                 }
             }
         }
-        // Save context
         do {
             try viewContext.save()
         } catch {
@@ -115,7 +105,6 @@ struct StudentDetailViewCD: View {
     }
 
     var body: some View {
-        // --- CHANGE 2: Wrap the content in a NavigationStack ---
         NavigationStack(path: $path) {
             TabView {
                 SessionListViewCD(student: student) {
@@ -135,29 +124,69 @@ struct StudentDetailViewCD: View {
             }
             .navigationTitle(student.name ?? "Student")
             .navigationBarTitleDisplayMode(.large)
+            // --- THIS IS THE FIX: The toolbar is re-organized ---
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // "Add Song" and "Add Session" are now top-level buttons
                     Button {
                         showingAddSongSheet = true
                     } label: {
                         Label("Add Song", image: "add.song")
                     }
+                    
                     Button {
                         showingAddSessionSheet = true
                     } label: {
                         Label("Add Session", systemImage: "calendar.badge.plus")
                     }
-                    // --- THIS IS THE FIX ---
-                    Button {
-                        isSharePresented = true
+                    
+                    // The remaining actions are in the "More" menu
+                    Menu {
+                        Section("Student Actions") {
+                            Button {
+                                showingEditStudentSheet = true
+                            } label: {
+                                Label("Edit Student", systemImage: "pencil")
+                            }
+                            
+                            Button {
+                                isSharePresented = true
+                            } label: {
+                                Label("Share Student", systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        
+                        Section("Tools") {
+                            Button {
+                                showingMetronome = true
+                            } label: {
+                                Label("Metronome", systemImage: "metronome")
+                            }
+                            
+                            Button {
+                                showingTuner = true
+                            } label: {
+                                Label("Tuner", systemImage: "tuningfork")
+                            }
+                            
+                            Divider()
+                            
+                            Button {
+                                showingSettingsSheet = true
+                            } label: {
+                                Label("Settings", systemImage: "gearshape")
+                            }
+                        }
                     } label: {
-                        Label("Share", systemImage: "square.and.arrow.up")
+                        Label("More", systemImage: "ellipsis.circle")
                     }
-                    // --- END OF FIX ---
                 }
             }
-            .withGlobalTools()
-            // --- CHANGE 3: Add navigation destinations for different data types ---
+            .withGlobalTools(
+                showingSettings: $showingSettingsSheet,
+                showingMetronome: $showingMetronome,
+                showingTuner: $showingTuner
+            )
             .navigationDestination(for: PracticeSessionCD.self) { session in
                 SessionDetailViewCD(session: session, audioManager: audioManager)
             }
@@ -167,48 +196,17 @@ struct StudentDetailViewCD: View {
         }
         .sheet(isPresented: $showingAddSessionSheet) {
             AddSessionSheetCD(student: student) { session in
-                // --- CHANGE 4: Programmatically navigate by appending to the path ---
                 path.append(session)
             }
         }
         .sheet(isPresented: $showingAddSongSheet) {
             AddSongSheetCD(student: student)
         }
-        // --- THIS IS THE FIX ---
+        .sheet(isPresented: $showingEditStudentSheet) {
+            EditStudentSheetCD(student: student)
+        }
         .sheet(isPresented: $isSharePresented) {
             CloudSharingView(student: student)
-        }
-        // --- END OF FIX ---
-        // Added per instructions
-        .sheet(isPresented: $showingMigrationSheet) {
-            if let result = migrationResult {
-                MigrationResultSheet(result: result)
-            }
-        }
-    }
-}
-
-struct MigrationResultSheet: View {
-    let result: StudentCD.MigrationResult
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section(header: Text("Updated Objects")) {
-                    HStack { Text("Plays"); Spacer(); Text("\(result.playCount)") }
-                    HStack { Text("Notes"); Spacer(); Text("\(result.noteCount)") }
-                    HStack { Text("Media References"); Spacer(); Text("\(result.mediaReferenceCount)") }
-                    HStack { Text("Audio Recordings"); Spacer(); Text("\(result.audioRecordingCount)") }
-                    HStack { Text("Instructors"); Spacer(); Text("\(result.instructorCount)") }
-                }
-            }
-            .navigationTitle("Migration Results")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
         }
     }
 }

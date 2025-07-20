@@ -2,7 +2,7 @@ import SwiftUI
 import CoreData
 import AVKit
 
-// --- CHANGE 1: Create a wrapper to display different media types in one list ---
+// A wrapper to display different media types in one list.
 enum DisplayableMedia: Identifiable, Hashable {
     case mediaReference(MediaReferenceCD)
     case audioRecording(AudioRecordingCD)
@@ -17,26 +17,43 @@ enum DisplayableMedia: Identifiable, Hashable {
     }
 }
 
+// A new struct to hold grouped notes
+private struct NoteGroup: Identifiable {
+    var id: Date { date }
+    let date: Date
+    let notes: [NoteCD]
+}
+
 struct SongDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     @ObservedObject var song: SongCD
 
     @State private var showingEditSheet = false
-    
     @StateObject private var audioPlayerManager: AudioPlayerManager
+    
+    @State private var noteToEdit: NoteCD?
 
     init(song: SongCD, audioManager: AudioManager) {
         self.song = song
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
     }
 
-    // --- CHANGE 2: Create a computed property to combine both media types ---
     private var allMediaItems: [DisplayableMedia] {
         let references = song.mediaArray.map { DisplayableMedia.mediaReference($0) }
         let recordings = song.recordingsArray.map { DisplayableMedia.audioRecording($0) }
-        // You can add sorting here if needed, e.g., by date
         return references + recordings
+    }
+
+    // A new computed property to group and sort notes by date
+    private var groupedNotes: [NoteGroup] {
+        let grouped = Dictionary(grouping: song.notesArray) { note in
+            // Group by the start of the day of the note's session.
+            Calendar.current.startOfDay(for: note.session?.day ?? .distantPast)
+        }
+        
+        // Map the dictionary to an array of NoteGroup and sort descending by date.
+        return grouped.map { NoteGroup(date: $0, notes: $1) }.sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -59,6 +76,9 @@ struct SongDetailViewCD: View {
         .sheet(isPresented: $showingEditSheet) {
             EditSongSheetCD(song: song)
         }
+        .sheet(item: $noteToEdit) { note in
+            AddNoteSheetCD(note: note)
+        }
     }
 
     private var playsTab: some View {
@@ -68,13 +88,11 @@ struct SongDetailViewCD: View {
     private var mediaTab: some View {
         List {
             Section("Media") {
-                // --- CHANGE 3: The list now iterates over the combined media items ---
                 if allMediaItems.isEmpty {
                     Text("No media has been added to this song.")
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(allMediaItems) { item in
-                        // Use a switch to display the correct cell for each type
                         switch item {
                         case .mediaReference(let media):
                             MediaCellCD(media: media, audioPlayerManager: audioPlayerManager)
@@ -99,18 +117,26 @@ struct SongDetailViewCD: View {
     
     private var notesTab: some View {
         List {
-            Section("Notes") {
-                ForEach(song.notesArray) { note in
-                    NoteCellCD(note: note)
-                }
-                .onDelete { indexSet in
-                    deleteNote(at: indexSet, from: song.notesArray)
+            // The list now iterates over the grouped notes
+            ForEach(groupedNotes) { group in
+                Section(header: Text(group.date, style: .date)) {
+                    ForEach(group.notes) { note in
+                        Button(action: {
+                            noteToEdit = note
+                        }) {
+                            NoteCellCD(note: note)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .onDelete { indexSet in
+                        // The deletion logic is now scoped to the specific group
+                        deleteNote(at: indexSet, from: group.notes)
+                    }
                 }
             }
         }
     }
     
-    // --- CHANGE 4: Update deletion logic to handle the combined list ---
     private func deleteMedia(at offsets: IndexSet) {
         for index in offsets {
             let itemToDelete = allMediaItems[index]
