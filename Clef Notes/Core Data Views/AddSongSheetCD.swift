@@ -129,8 +129,8 @@ struct AddSongSheetCD: View {
 
                 if let newMedia = mediaReference {
                     newMedia.song = newSong
-                }
-            }
+                    newMedia.student = student
+                }            }
             
             // Save the context after all media has been processed
             try? viewContext.save()

@@ -108,7 +108,7 @@ struct AddPlaySheetViewCD: View {
         play.count = 1
         play.song = song
         play.session = session
-        // --- CHANGE 4: Assign the selected play type ---
+        play.student = session.student
         play.playType = selectedPlayType
         
         do {

@@ -4,27 +4,44 @@ import CoreData
 struct EditSessionSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    
-    // --- CHANGE 1: Use @ObservedObject for Core Data objects ---
+
     @ObservedObject var session: PracticeSessionCD
 
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \InstructorCD.name, ascending: true)])
-    private var instructors: FetchedResults<InstructorCD>
+    // The FetchRequest is now a standard property.
+    @FetchRequest private var instructors: FetchedResults<InstructorCD>
 
-    // --- CHANGE 2: Create local @State variables for editing ---
     @State private var title: String = ""
     @State private var selectedInstructor: InstructorCD?
     @State private var selectedLocation: LessonLocation?
     @State private var date: Date = .now
 
+    // A new initializer to set up the filtered FetchRequest.
+    init(session: PracticeSessionCD) {
+        self.session = session
+        
+        // This predicate ensures only instructors for the session's student are fetched.
+        let studentPredicate: NSPredicate
+        if let student = session.student {
+            studentPredicate = NSPredicate(format: "student == %@", student)
+        } else {
+            // A fallback to fetch no instructors if the session has no student.
+            studentPredicate = NSPredicate(value: false)
+        }
+        
+        self._instructors = FetchRequest<InstructorCD>(
+            sortDescriptors: [NSSortDescriptor(keyPath: \InstructorCD.name, ascending: true)],
+            predicate: studentPredicate
+        )
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section(header: Text("Session Info")) {
-                    // --- CHANGE 3: Bind controls to local state ---
                     TextField("Title", text: $title)
                     Picker("Instructor", selection: $selectedInstructor) {
                         Text("None").tag(Optional<InstructorCD>.none)
+                        // This list is now correctly filtered.
                         ForEach(instructors) { instructor in
                             Text(instructor.name ?? "Unknown").tag(Optional(instructor))
                         }
@@ -46,7 +63,6 @@ struct EditSessionSheetCD: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        // --- CHANGE 4: Save local state back to the object ---
                         session.title = title
                         session.instructor = selectedInstructor
                         session.location = selectedLocation
@@ -58,7 +74,6 @@ struct EditSessionSheetCD: View {
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            // --- CHANGE 5: Populate state when the view appears ---
             .onAppear {
                 title = session.title ?? ""
                 selectedInstructor = session.instructor

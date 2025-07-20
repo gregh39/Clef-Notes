@@ -7,8 +7,7 @@ struct AddNoteSheetCD: View {
     
     @ObservedObject var note: NoteCD
 
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \SongCD.title, ascending: true)])
-    private var songs: FetchedResults<SongCD>
+    @FetchRequest private var songs: FetchedResults<SongCD>
 
     // Local state for editing
     @State private var noteText: String = ""
@@ -23,6 +22,20 @@ struct AddNoteSheetCD: View {
         let hasDrawing = !(note.drawing?.isEmpty ?? true)
         _showSketchArea = State(initialValue: hasDrawing)
         _selectedDetent = State(initialValue: hasDrawing ? .large : .medium)
+        
+        // This predicate filters songs to only those belonging to the note's student.
+        let studentPredicate: NSPredicate
+        if let student = note.session?.student {
+            studentPredicate = NSPredicate(format: "student == %@", student)
+        } else {
+            // If there's no student, fetch no songs.
+            studentPredicate = NSPredicate(value: false)
+        }
+        
+        _songs = FetchRequest<SongCD>(
+            sortDescriptors: [NSSortDescriptor(keyPath: \SongCD.title, ascending: true)],
+            predicate: studentPredicate
+        )
     }
 
     var body: some View {
@@ -55,6 +68,7 @@ struct AddNoteSheetCD: View {
                         }
                     })) {
                         Text("Select a song...").tag(Optional<SongCD>.none)
+                        // The 'songs' list is now correctly filtered.
                         ForEach(songs) { song in
                             Text(song.title ?? "Unknown").tag(Optional(song))
                         }
@@ -84,6 +98,7 @@ struct AddNoteSheetCD: View {
                         note.text = noteText
                         note.drawing = drawingData
                         note.songs = NSSet(array: Array(taggedSongs))
+                        note.student = note.session?.student
                         
                         try? viewContext.save()
                         dismiss()

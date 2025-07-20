@@ -110,7 +110,8 @@ struct EditSongSheetCD: View {
     private func addMedia() async {
         let mediaReference = MediaReferenceCD(context: viewContext)
         mediaReference.song = song
-        
+        mediaReference.student = song.student
+
         switch newMediaType {
         case .localVideo:
             if let item = selectedVideoItem, let data = try? await item.loadTransferable(type: Data.self) {

@@ -183,6 +183,7 @@ struct SessionDetailViewCD: View {
     }
     
     // --- THIS IS THE FIX ---
+    // gregh39/clef-notes/Clef-Notes-CoreData/Clef Notes/Core Data Views/SessionDetailViewCD.swift
     private func saveRecording(title: String, songs: Set<SongCD>) {
         guard let url = audioRecorderManager.finishedRecordingURL else { return }
         do {
@@ -192,19 +193,14 @@ struct SessionDetailViewCD: View {
                 duration = player.duration
             }
             
-            // 1. Create ONE AudioRecordingCD object.
             let recording = AudioRecordingCD(context: viewContext)
             recording.data = audioData
             recording.dateRecorded = .now
             recording.title = title.isEmpty ? "Recording" : title
             recording.duration = duration ?? 0.0
-            
-            // 2. Link it to the current session.
             recording.session = session
-            
-            // 3. Link it to all tagged songs. This will make it appear
-            //    in the song's "Recordings" list.
             recording.addToSongs(songs as NSSet)
+            recording.student = session.student
             
             try viewContext.save()
             

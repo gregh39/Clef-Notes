@@ -117,6 +117,9 @@ class PersistenceController: NSObject {
         DispatchQueue.main.async {
             do {
                 try container.initializeCloudKitSchema()
+                print("CloudKit Migration Complete")
+
+
             } catch {
                 print("\(#function): initializeCloudKitSchema: \(error)")
             }

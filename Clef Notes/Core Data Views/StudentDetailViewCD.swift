@@ -155,16 +155,6 @@ struct StudentDetailViewCD: View {
                     }
                     // --- END OF FIX ---
                 }
-                // Added per instructions
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        let result = StudentCD.assignStudentToAllObjects(context: viewContext)
-                        migrationResult = result
-                        showingMigrationSheet = true
-                    } label: {
-                        Label("Migrate Data", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                }
             }
             .withGlobalTools()
             // --- CHANGE 3: Add navigation destinations for different data types ---

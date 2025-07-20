@@ -22,6 +22,7 @@ struct NotesSectionViewCD: View {
                     let note = NoteCD(context: viewContext)
                     note.text = ""
                     session.addToNotes(note)
+                    note.student = session.student // Add this line
                     editingNote = note
                     showingAddNoteSheet = true
                 }) {
@@ -50,6 +51,7 @@ struct NotesSectionViewCD: View {
                     let note = NoteCD(context: viewContext)
                     note.text = ""
                     session.addToNotes(note)
+                    note.student = session.student // And add this line here too
                     editingNote = note
                     showingAddNoteSheet = true
                 }) {

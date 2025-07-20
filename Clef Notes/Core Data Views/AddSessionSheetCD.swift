@@ -1,11 +1,3 @@
-//
-//  AddSessionSheetCD.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/15/25.
-//
-
-
 import SwiftUI
 import CoreData
 
@@ -16,8 +8,8 @@ struct AddSessionSheetCD: View {
     let student: StudentCD
     var onAdd: (PracticeSessionCD) -> Void
 
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \InstructorCD.name, ascending: true)])
-    private var instructors: FetchedResults<InstructorCD>
+    // The FetchRequest is now a regular property.
+    @FetchRequest private var instructors: FetchedResults<InstructorCD>
 
     @State private var selectedInstructor: InstructorCD?
     @State private var selectedLocation: LessonLocation?
@@ -26,6 +18,20 @@ struct AddSessionSheetCD: View {
     
     @State private var showingAddInstructorSheet = false
     @State private var newInstructorName: String = ""
+
+    // An initializer is added to configure the FetchRequest with a dynamic predicate.
+    init(student: StudentCD, onAdd: @escaping (PracticeSessionCD) -> Void) {
+        self.student = student
+        self.onAdd = onAdd
+        
+        // This predicate filters instructors to only include those linked to the current student.
+        let predicate = NSPredicate(format: "student == %@", student)
+        
+        self._instructors = FetchRequest<InstructorCD>(
+            sortDescriptors: [NSSortDescriptor(keyPath: \InstructorCD.name, ascending: true)],
+            predicate: predicate
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -36,6 +42,7 @@ struct AddSessionSheetCD: View {
                 DatePicker("Date", selection: $sessionDate, displayedComponents: [.date])
                 Picker("Instructor", selection: $selectedInstructor) {
                     Text("None").tag(Optional<InstructorCD>.none)
+                    // The 'instructors' list is now correctly filtered.
                     ForEach(instructors) { instructor in
                         Text(instructor.name ?? "Unknown").tag(Optional(instructor))
                     }
@@ -87,6 +94,7 @@ struct AddSessionSheetCD: View {
                     Button("Save") {
                         let instructor = InstructorCD(context: viewContext)
                         instructor.name = newInstructorName
+                        instructor.student = student
                         try? viewContext.save()
                         selectedInstructor = instructor
                         showingAddInstructorSheet = false
