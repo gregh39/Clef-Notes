@@ -52,26 +52,41 @@ struct CloudSharingView: View {
         isPreparing = true
         error = nil
         defer { isPreparing = false }
+
+        let backgroundContext = container.newBackgroundContext()
+
         do {
-            let objectIDs = [student.objectID]
-            // Perform share fetching and creation on a background thread
-            let shares: [NSManagedObjectID: CKShare] = try await withCheckedThrowingContinuation { continuation in
-                container.performBackgroundTask { context in
-                    do {
-                        let shares = try container.fetchShares(matching: objectIDs)
-                        continuation.resume(returning: shares)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                }
+            // Use the specific student's object ID from the main context
+            let studentObjectID = student.objectID
+            
+            // Fetch existing shares using the background context
+            let shares = try await backgroundContext.perform {
+                try self.container.fetchShares(matching: [studentObjectID])
             }
-            if let existingShare = shares[student.objectID] {
-                share = existingShare
+
+            if let existingShare = shares[studentObjectID] {
+                self.share = existingShare
             } else {
-                let (_, createdShare, _) = try await container.share([student], to: nil)
-                createdShare[CKShare.SystemFieldKey.title] = student.name
-                createdShare.publicPermission = .readWrite
-                share = createdShare
+                // Fetch the student in the background context before sharing
+                guard let studentInContext = backgroundContext.object(with: studentObjectID) as? StudentCD else {
+                    // Handle error if student is not found in the new context
+                    self.error = NSError(domain: "ClefNotes", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find the student to share."])
+                    return
+                }
+
+                // Create the share using the object from the background context
+                let (_, newShare, _) = try await container.share([studentInContext], to: nil)
+                
+                // Set share properties
+                newShare[CKShare.SystemFieldKey.title] = student.name
+                newShare.publicPermission = .readWrite
+                
+                // **THE FIX**: Save the background context to persist the share
+                try await backgroundContext.perform {
+                    try backgroundContext.save()
+                }
+                
+                self.share = newShare
             }
         } catch {
             self.error = error
