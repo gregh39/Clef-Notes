@@ -52,7 +52,6 @@ struct SessionListViewCD: View {
                         }
                     )) {
                         ForEach(section.sessions) { session in
-                            // --- THIS IS THE FIX: ZStack used to overlay an invisible NavigationLink ---
                             ZStack {
                                 SessionCardViewCD(session: session)
                                 NavigationLink(value: session) {
@@ -60,7 +59,7 @@ struct SessionListViewCD: View {
                                 }
                                 .opacity(0)
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -105,9 +104,31 @@ struct SessionListViewCD: View {
     }
 }
 
+// --- THIS IS THE FIX: The SessionCardView is updated with at-a-glance stats ---
 struct SessionCardViewCD: View {
     @ObservedObject var session: PracticeSessionCD
     
+    private var totalPlays: Int {
+        session.playsArray.reduce(0) { $0 + Int($1.count) }
+    }
+    private var noteCount: Int {
+        session.notesArray.count
+    }
+    private var recordingCount: Int {
+        session.recordingsArray.count
+    }
+    private var durationString: String {
+        let totalMinutes = session.durationMinutes
+        guard totalMinutes > 0 else { return "" }
+        let hours = Int(totalMinutes) / 60
+        let minutes = Int(totalMinutes) % 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -125,8 +146,30 @@ struct SessionCardViewCD: View {
                 }
             }
             .font(.subheadline).foregroundColor(.secondary)
+            
+            if totalPlays > 0 || noteCount > 0 || recordingCount > 0 || session.durationMinutes > 0 {
+                Divider()
+                HStack(spacing: 16) {
+                    if totalPlays > 0 {
+                        Label("\(totalPlays)", systemImage: "music.note.list")
+                    }
+                    if noteCount > 0 {
+                        Label("\(noteCount)", systemImage: "note.text")
+                    }
+                    if recordingCount > 0 {
+                        Label("\(recordingCount)", systemImage: "mic.fill")
+                    }
+                    Spacer()
+                    if session.durationMinutes > 0 {
+                        Label(durationString, systemImage: "clock.fill")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
         }
-        .padding().background(.background.secondary)
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
     }

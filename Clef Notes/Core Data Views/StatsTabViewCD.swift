@@ -29,10 +29,8 @@ struct StatsTabViewCD: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
-                // The StreakView and other components remain unchanged.
                 StreakViewCD(viewModel: viewModel)
                 
-                // The ScrollViewReader allows us to programmatically scroll to a specific view.
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 24) {
@@ -41,15 +39,12 @@ struct StatsTabViewCD: View {
                                     .frame(width: 350)
                                     .id(month)
                             }
-                            // 1. An invisible view with a static ID is placed at the end of the HStack.
                             Color.clear.frame(width: 1, height: 1).id("HeatMapEnd")
                         }
                         .padding(.vertical, 2)
                     }
                     .padding(.trailing, 20)
                     .onAppear {
-                        // 2. When the view appears, we directly tell the proxy to scroll to our static ID.
-                        // This is more reliable than trying to find the "last month".
                         proxy.scrollTo("HeatMapEnd", anchor: .trailing)
                     }
                 }
@@ -176,32 +171,50 @@ class StatsViewModelCD: ObservableObject {
             self.firstPracticeDate = "N/A"
         }
         
-        // --- THIS IS THE FIX: Calculate streaks ---
         let sortedDates = sessionDaySet.sorted(by: >)
         (currentStreak, longestStreak) = calculateStreaks(from: sortedDates)
     }
     
+    // --- THIS IS THE FIX: The streak calculation logic is updated ---
     private func calculateStreaks(from sortedDates: [Date]) -> (current: Int, longest: Int) {
         guard !sortedDates.isEmpty else { return (0, 0) }
+        
         let calendar = Calendar.current
         var current = 0
         var longest = 0
-        var streak = 0
         
+        // --- Calculate Current Streak ---
         let today = calendar.startOfDay(for: .now)
-        var dateToCheck = today
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        let practicedToday = sortedDates.contains(today)
+        let practicedYesterday = sortedDates.contains(yesterday)
         
-        // Calculate current streak
-        for date in sortedDates {
-            if date == dateToCheck {
-                current += 1
-                dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
-            } else if date < dateToCheck {
-                break
+        var dateToCheck: Date
+        
+        if practicedToday {
+            dateToCheck = today
+        } else if practicedYesterday {
+            dateToCheck = yesterday
+        } else {
+            // If the user didn't practice today or yesterday, the current streak is 0.
+            dateToCheck = .distantFuture // A date that won't match anything.
+        }
+
+        if dateToCheck != .distantFuture {
+            for date in sortedDates { // sortedDates is already descending
+                if date == dateToCheck {
+                    current += 1
+                    dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+                } else if date < dateToCheck {
+                    // A gap was found, so the streak is over.
+                    break
+                }
             }
         }
         
-        // Calculate longest streak
+        // --- Calculate Longest Streak (this logic remains the same) ---
+        var streak = 0
         var lastDate: Date? = nil
         for date in sortedDates.reversed() { // Iterate from past to present
             if let previousDate = lastDate {
@@ -227,7 +240,6 @@ class StatsViewModelCD: ObservableObject {
     }
 }
 
-// --- THIS IS THE FIX: New streak view ---
 private struct StreakViewCD: View {
     @ObservedObject var viewModel: StatsViewModelCD
 

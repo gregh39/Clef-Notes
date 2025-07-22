@@ -10,33 +10,45 @@ struct CloudSharingView: View {
     @State private var error: Error?
     private let container = PersistenceController.shared.persistentContainer
     
+    @State private var selectedDetent: PresentationDetent = .medium
+    
     var body: some View {
         VStack {
-            if isPreparing {
-                ProgressView("Preparing Share...")
-            } else if let share = share {
-                Button(action: { isSharing = true }) {
-                    Label("Share Student", systemImage: "square.and.arrow.up")
-                }
-                .onAppear { error = nil }
-            } else if let error = error {
-                VStack(spacing: 12) {
-                    Text("Failed to prepare share: \(error.localizedDescription)")
-                        .foregroundStyle(.red)
-                    Button("Try Again") {
-                        Task { await prepareShare() }
-                    }
-                }
+            // --- THIS IS THE FIX: Check if the student is already shared ---
+            if student.isShared {
+                AlreadySharedView()
             } else {
-                Button(action: {
-                    Task { await prepareShare() }
-                }) {
-                    Label("Prepare Share", systemImage: "link")
+                GroupBox {
+                    VStack(spacing: 20) {
+                        if isPreparing {
+                            ProgressView {
+                                Text("Generating Secure Share Link...")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .scaleEffect(1.5)
+                            .padding()
+                        } else if let share = share {
+                            ShareReadyView(isSharing: $isSharing)
+                        } else if let error = error {
+                            ShareErrorView(error: error) {
+                                Task { await prepareShare() }
+                            }
+                        } else {
+                            ShareInitialView {
+                                Task { await prepareShare() }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
+                .padding()
             }
         }
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
         .task {
-            if share == nil && !isPreparing && error == nil {
+            // Only prepare the share if the student is not already shared.
+            if !student.isShared, share == nil, !isPreparing, error == nil {
                 await prepareShare()
             }
         }
@@ -45,10 +57,12 @@ struct CloudSharingView: View {
                 CloudSharingControllerView(share: share, container: container)
             }
         }
+        .navigationTitle("Share Student")
     }
-    
+
     @MainActor
     private func prepareShare() async {
+        
         isPreparing = true
         error = nil
         defer { isPreparing = false }
@@ -56,10 +70,8 @@ struct CloudSharingView: View {
         let backgroundContext = container.newBackgroundContext()
 
         do {
-            // Use the specific student's object ID from the main context
             let studentObjectID = student.objectID
             
-            // Fetch existing shares using the background context
             let shares = try await backgroundContext.perform {
                 try self.container.fetchShares(matching: [studentObjectID])
             }
@@ -67,21 +79,16 @@ struct CloudSharingView: View {
             if let existingShare = shares[studentObjectID] {
                 self.share = existingShare
             } else {
-                // Fetch the student in the background context before sharing
                 guard let studentInContext = backgroundContext.object(with: studentObjectID) as? StudentCD else {
-                    // Handle error if student is not found in the new context
                     self.error = NSError(domain: "ClefNotes", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find the student to share."])
                     return
                 }
 
-                // Create the share using the object from the background context
                 let (_, newShare, _) = try await container.share([studentInContext], to: nil)
                 
-                // Set share properties
                 newShare[CKShare.SystemFieldKey.title] = student.name
                 newShare.publicPermission = .readWrite
                 
-                // **THE FIX**: Save the background context to persist the share
                 try await backgroundContext.perform {
                     try backgroundContext.save()
                 }
@@ -93,6 +100,107 @@ struct CloudSharingView: View {
         }
     }
 }
+
+// Subviews for different states
+private struct ShareInitialView: View {
+    var onPrepare: () -> Void
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 50))
+                .foregroundColor(.accentColor)
+            Text("Share Student")
+                .font(.title2.bold())
+            Text("Collaborate with another Clef Notes user by sharing this student's profile. This will allow them to view and edit the student's data.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Button(action: onPrepare) {
+                Label("Generate Secure Share Link", systemImage: "link")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
+        .padding()
+    }
+}
+
+private struct ShareReadyView: View {
+    @Binding var isSharing: Bool
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 50))
+                .foregroundColor(.green)
+            Text("Share Link Ready!")
+                .font(.title2.bold())
+            Text("You can now share this student's profile with another Clef Notes user.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Button(action: { isSharing = true }) {
+                Label("Share Student Profile", systemImage: "square.and.arrow.up")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
+        .padding()
+    }
+}
+
+private struct ShareErrorView: View {
+    let error: Error
+    var onRetry: () -> Void
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 50))
+                .foregroundColor(.orange)
+            Text("Sharing Error")
+                .font(.title2.bold())
+            Text("Something went wrong while preparing the share. Please check your internet connection and try again.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Text(error.localizedDescription)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Button(action: onRetry) {
+                Label("Try Again", systemImage: "arrow.clockwise")
+                    .fontWeight(.bold)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+        }
+        .padding()
+    }
+}
+
+// --- THIS IS THE FIX: A new view for when the student is already shared ---
+private struct AlreadySharedView: View {
+    var body: some View {
+        GroupBox {
+            VStack(spacing: 16) {
+                Image(systemName: "person.2.slash.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.orange)
+                Text("Cannot Be Shared")
+                    .font(.title2.bold())
+                Text("This student's profile was shared with you by its original owner. Only the original owner can share this profile with other users.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding()
+        }
+        .padding()
+    }
+}
+
 
 struct CloudSharingControllerView: UIViewControllerRepresentable {
     let share: CKShare

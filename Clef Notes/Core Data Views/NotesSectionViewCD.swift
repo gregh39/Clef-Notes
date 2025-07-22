@@ -21,8 +21,9 @@ struct NotesSectionViewCD: View {
                 Button(action: {
                     let note = NoteCD(context: viewContext)
                     note.text = ""
+                    note.date = session.day
                     session.addToNotes(note)
-                    note.student = session.student // Add this line
+                    note.student = session.student
                     editingNote = note
                     showingAddNoteSheet = true
                 }) {
@@ -50,8 +51,9 @@ struct NotesSectionViewCD: View {
                 Button(action: {
                     let note = NoteCD(context: viewContext)
                     note.text = ""
+                    note.date = session.day
                     session.addToNotes(note)
-                    note.student = session.student // And add this line here too
+                    note.student = session.student
                     editingNote = note
                     showingAddNoteSheet = true
                 }) {

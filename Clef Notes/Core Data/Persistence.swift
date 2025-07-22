@@ -70,6 +70,9 @@ class PersistenceController: NSObject {
         }
         privateStoreDescription.url = privateStoreFolderURL.appendingPathComponent("private.sqlite")
         
+        privateStoreDescription.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+        privateStoreDescription.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
+
         privateStoreDescription.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         privateStoreDescription.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
 
@@ -86,6 +89,10 @@ class PersistenceController: NSObject {
         }
         sharedStoreDescription.url = sharedStoreFolderURL.appendingPathComponent("shared.sqlite")
         
+        // --- THIS IS THE FIX: Enable lightweight migration for the shared store ---
+        sharedStoreDescription.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+        sharedStoreDescription.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
+
         let sharedStoreOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: gCloudKitContainerIdentifier)
         sharedStoreOptions.databaseScope = .shared
         sharedStoreDescription.cloudKitContainerOptions = sharedStoreOptions

@@ -26,8 +26,10 @@
         <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="mediaReferences" inverseEntity="StudentCD"/>
     </entity>
     <entity name="NoteCD" representedClassName="NoteCD" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="drawing" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
         <attribute name="text" optional="YES" attributeType="String" defaultValueString=""/>
+        <attribute name="title" optional="YES" attributeType="String"/>
         <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PracticeSessionCD" inverseName="notes" inverseEntity="PracticeSessionCD"/>
         <relationship name="songs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SongCD" inverseName="notes" inverseEntity="SongCD"/>
         <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="notes" inverseEntity="StudentCD"/>

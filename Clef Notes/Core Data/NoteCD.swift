@@ -30,6 +30,8 @@ extension NoteCD {
 
     @NSManaged public var drawing: Data?
     @NSManaged public var text: String?
+    @NSManaged public var title: String?
+    @NSManaged public var date: Date?
     @NSManaged public var session: PracticeSessionCD?
     @NSManaged public var songs: NSSet?
     @NSManaged public var student: StudentCD?

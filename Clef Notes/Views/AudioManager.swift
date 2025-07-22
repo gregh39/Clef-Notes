@@ -9,17 +9,16 @@ class AudioManager: ObservableObject {
         case recorder, player, tuner, metronome
     }
     
-    // The current client that has control of the audio session.
     @Published private(set) var activeClient: AudioClient?
     
-    private var metronomePlayer: AVAudioPlayer?
+    // --- THIS IS THE FIX: Separate audio players for the upbeat and downbeat sounds ---
+    private var metronomeUpbeatPlayer: AVAudioPlayer?
+    private var metronomeDownbeatPlayer: AVAudioPlayer?
 
     init() {
-        setupMetronomePlayer()
+        setupMetronomePlayers()
     }
     
-    /// A component requests control of the audio session.
-    /// This function will deactivate any existing session before configuring a new one.
     func requestSession(for client: AudioClient, category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions = []) -> Bool {
         let session = AVAudioSession.sharedInstance()
         
@@ -28,16 +27,10 @@ class AudioManager: ObservableObject {
         }
         
         do {
-            // Deactivate any currently active session to prevent conflicts.
             try session.setActive(false)
-            
-            // Set the category and options requested by the new client.
             try session.setCategory(category, mode: .default, options: options)
-            
-            // Activate the new session.
             try session.setActive(true)
             
-            // Mark the new client as active.
             self.activeClient = client
             print("AudioManager: Session activated for \(client).")
             return true
@@ -49,9 +42,7 @@ class AudioManager: ObservableObject {
         }
     }
     
-    /// A component releases control of the audio session.
     func releaseSession(for client: AudioClient) {
-        // Only deactivate if the calling client is the currently active one.
         guard activeClient == client else {
             print("AudioManager: Ignoring release request from inactive client \(client). Active is \(String(describing: activeClient)).")
             return
@@ -68,28 +59,37 @@ class AudioManager: ObservableObject {
     
     // MARK: - Metronome Specific Logic
     
-    private func setupMetronomePlayer() {
-        guard let soundURL = Bundle.main.url(forResource: "tick", withExtension: "wav") else {
-            print("Could not find the sound file 'tick.wav' in the bundle.")
+    // --- THIS IS THE FIX: Updated setup function to load both sound files ---
+    private func setupMetronomePlayers() {
+        guard let upbeatURL = Bundle.main.url(forResource: "tick", withExtension: "wav"),
+              let downbeatURL = Bundle.main.url(forResource: "tick_down", withExtension: "wav") else {
+            print("Could not find the sound file 'tick.wav' or 'tick_down.wav' in the bundle.")
             return
         }
         do {
-            metronomePlayer = try AVAudioPlayer(contentsOf: soundURL)
-            metronomePlayer?.prepareToPlay()
+            metronomeUpbeatPlayer = try AVAudioPlayer(contentsOf: upbeatURL)
+            metronomeUpbeatPlayer?.prepareToPlay()
+            
+            metronomeDownbeatPlayer = try AVAudioPlayer(contentsOf: downbeatURL)
+            metronomeDownbeatPlayer?.prepareToPlay()
         } catch {
-            print("Failed to initialize metronome player: \(error.localizedDescription)")
+            print("Failed to initialize metronome players: \(error.localizedDescription)")
         }
     }
     
-    func playMetronomeTick() {
-        // The metronome is a special case. It needs to play a sound without
-        // taking permanent control of the session if another client (like the recorder)
-        // is already active.
+    // --- THIS IS THE FIX: New function to play the downbeat sound ---
+    func playMetronomeDownbeat() {
         if activeClient == .metronome || activeClient == .recorder {
-            metronomePlayer?.currentTime = 0
-            metronomePlayer?.play()
-        } else {
-            print("AudioManager: Metronome tick suppressed by active client: \(String(describing: activeClient))")
+            metronomeDownbeatPlayer?.currentTime = 0
+            metronomeDownbeatPlayer?.play()
+        }
+    }
+    
+    // --- THIS IS THE FIX: Renamed function for clarity ---
+    func playMetronomeUpbeat() {
+        if activeClient == .metronome || activeClient == .recorder {
+            metronomeUpbeatPlayer?.currentTime = 0
+            metronomeUpbeatPlayer?.play()
         }
     }
 }

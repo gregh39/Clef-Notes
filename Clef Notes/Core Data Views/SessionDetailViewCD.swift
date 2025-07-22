@@ -6,8 +6,9 @@ struct SessionDetailViewCD: View {
     @ObservedObject var session: PracticeSessionCD
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var sessionTimerManager: SessionTimerManager
+    @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
 
-    // State for controlling sheets
     @State private var showingAddPlaySheet = false
     @State private var showingAddSongSheet = false
     @State private var showingEditSessionSheet = false
@@ -15,16 +16,12 @@ struct SessionDetailViewCD: View {
     @State private var showingAddNoteSheet = false
     @State private var showingRecordingMetadataSheet = false
 
-    // State for editing specific items
     @State private var editingNote: NoteCD?
     @State private var playToEdit: PlayCD?
 
-    // State for audio recording
     @StateObject private var audioRecorderManager: AudioRecorderManager
     @StateObject private var audioPlayerManager: AudioPlayerManager
-    @State private var audioSamples: [CGFloat] = []
     
-    // State for the "Recording Metadata" sheet
     @State private var newRecordingTitle = ""
     @State private var selectedSongsForRecording: Set<SongCD> = []
 
@@ -32,6 +29,17 @@ struct SessionDetailViewCD: View {
         self.session = session
         _audioRecorderManager = StateObject(wrappedValue: AudioRecorderManager(audioManager: audioManager))
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
+    }
+    
+    private var durationString: String {
+        let totalMinutes = session.durationMinutes
+        let hours = Int(totalMinutes) / 60
+        let minutes = Int(totalMinutes) % 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
     }
 
     var body: some View {
@@ -54,13 +62,26 @@ struct SessionDetailViewCD: View {
         }
         .navigationTitle(session.title ?? "Practice Session")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            // --- THIS IS THE FIX: The toolbar now includes the recording button ---
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button(action: {
+                    if audioRecorderManager.isRecording {
+                        audioRecorderManager.stopRecording()
+                    } else {
+                        audioRecorderManager.startRecording()
+                    }
+                }) {
+                    Image(systemName: audioRecorderManager.isRecording ? "stop.circle.fill" : "record.circle")
+                        .font(.title2)
+                        .foregroundColor(audioRecorderManager.isRecording ? .red : .accentColor)
+                }
+                .animation(.spring(), value: audioRecorderManager.isRecording)
+
                 Button(action: { showingRandomSongPicker = true }) {
                     Image(systemName: "die.face.5")
                 }
                 .accessibilityLabel("Pick Random Song")
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
+                
                 Button { showingEditSessionSheet = true } label: {
                     Label("Edit", systemImage: "square.and.pencil")
                 }
@@ -99,29 +120,26 @@ struct SessionDetailViewCD: View {
                 )
             }
         }
-        .overlay(recordingOverlay)
-        .onChange(of: audioRecorderManager.finishedRecordingURL) { _, newURL in
-            if newURL != nil {
+        .onChange(of: audioRecorderManager.finishedRecordingURL) {
+            if audioRecorderManager.finishedRecordingURL != nil {
                 showingRecordingMetadataSheet = true
-            }
-        }
-        .onChange(of: audioRecorderManager.audioLevel) { _, newLevel in
-            if audioRecorderManager.isRecording {
-                audioSamples.append(newLevel)
-                if audioSamples.count > 100 {
-                    audioSamples.removeFirst()
-                }
-            }
-        }
-        .onChange(of: audioRecorderManager.isRecording) { _, isRecording in
-            if !isRecording {
-                audioSamples.removeAll()
             }
         }
     }
 
     private var sessionTab: some View {
         Form {
+            Section("Duration") {
+                ZStack {
+                    activeTimerControls
+                        .opacity(sessionTimerManager.activeSession == session ? 1 : 0)
+                    
+                    staticDurationDisplay
+                        .opacity(sessionTimerManager.activeSession == session ? 0 : 1)
+                }
+                .animation(.default, value: sessionTimerManager.activeSession == session)
+            }
+            
             PlaysSectionViewCD(session: session, showingAddPlaySheet: $showingAddPlaySheet, playToEdit: $playToEdit, context: viewContext)
             NotesSectionViewCD(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
             
@@ -141,37 +159,61 @@ struct SessionDetailViewCD: View {
         }
     }
     
-    @ViewBuilder
-    private var recordingOverlay: some View {
-        VStack {
+    private var staticDurationDisplay: some View {
+        HStack {
+            Label(durationString, systemImage: "clock")
+            
             Spacer()
-            HStack {
-                Spacer()
-                if audioRecorderManager.isRecording {
-                    Button(action: { audioRecorderManager.stopRecording() }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "stop.circle.fill").font(.title2)
-                            Text("Stop Recording").font(.headline)
-                            LiveWaveformView(samples: audioSamples).frame(height: 35)
-                        }
-                        .padding(.horizontal, 20).frame(minWidth: 250, minHeight: 50)
-                        .background(LinearGradient(colors: [.red.opacity(0.8), .red], startPoint: .top, endPoint: .bottom))
-                        .foregroundColor(.white).clipShape(Capsule())
-                        .shadow(color: .red.opacity(0.4), radius: 8, y: 4)
-                    }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-                } else {
-                    Button(action: { audioRecorderManager.startRecording() }) {
-                        Image(systemName: "waveform.badge.microphone").font(.system(size: 36))
-                        .frame(width: 50, height: 50)
-                        .background(Circle().fill(Color(.systemBackground)))
-                        .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
-                    }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            
+            if sessionTimerManager.activeSession == nil {
+                Button {
+                    sessionTimerManager.start(session: session)
+                } label: {
+                    Label("Start Timer", systemImage: "play.circle")
                 }
+                .buttonStyle(.bordered)
             }
-        }.padding(.bottom, 60).padding(.trailing, 20)
-        .animation(.easeInOut, value: audioRecorderManager.isRecording)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var activeTimerControls: some View {
+        HStack(spacing: 12) {
+            Label(sessionTimerManager.elapsedTimeString, systemImage: "timer")
+                .font(.body.monospacedDigit())
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Button {
+                if sessionTimerManager.isPaused {
+                    sessionTimerManager.resume()
+                } else {
+                    sessionTimerManager.pause()
+                }
+            } label: {
+                Image(systemName: sessionTimerManager.isPaused ? "play.fill" : "pause.fill")
+                    .font(.title3)
+                    .frame(width: 40, height: 40)
+                    .background(accentColor.color.opacity(0.2))
+                    .foregroundColor(accentColor.color)
+                    .cornerRadius(8)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                sessionTimerManager.stop()
+            } label: {
+                Image(systemName: "stop.fill")
+                    .font(.title3)
+                    .frame(width: 40, height: 40)
+                    .background(Color.red.opacity(0.2))
+                    .foregroundColor(.red)
+                    .cornerRadius(8)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
     }
     
     private func deleteRecordings(at offsets: IndexSet) {
@@ -182,8 +224,6 @@ struct SessionDetailViewCD: View {
         try? viewContext.save()
     }
     
-    // --- THIS IS THE FIX ---
-    // gregh39/clef-notes/Clef-Notes-CoreData/Clef Notes/Core Data Views/SessionDetailViewCD.swift
     private func saveRecording(title: String, songs: Set<SongCD>) {
         guard let url = audioRecorderManager.finishedRecordingURL else { return }
         do {
@@ -214,40 +254,5 @@ struct SessionDetailViewCD: View {
         audioRecorderManager.finishedRecordingURL = nil
         newRecordingTitle = ""
         selectedSongsForRecording = []
-    }
-}
-
-// MARK: - Live Waveform Display
-private struct LiveWaveformView: View {
-    var samples: [CGFloat]
-    var color: Color = .white
-    var lineWidth: CGFloat = 1.5
-
-    var body: some View {
-        Canvas { context, size in
-            guard samples.count > 1 else { return }
-
-            let middleY = size.height / 2
-            let stepX = size.width / CGFloat(samples.count - 1)
-
-            var topPath = Path()
-            var bottomPath = Path()
-
-            for i in 0..<samples.count {
-                let x = CGFloat(i) * stepX
-                let magnitude = samples[i] * middleY
-
-                if i == 0 {
-                    topPath.move(to: CGPoint(x: x, y: middleY - magnitude))
-                    bottomPath.move(to: CGPoint(x: x, y: middleY + magnitude))
-                } else {
-                    topPath.addLine(to: CGPoint(x: x, y: middleY - magnitude))
-                    bottomPath.addLine(to: CGPoint(x: x, y: middleY + magnitude))
-                }
-            }
-            
-            context.stroke(topPath, with: .color(color), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
-            context.stroke(bottomPath, with: .color(color), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
-        }
     }
 }

@@ -4,6 +4,7 @@ import CoreData
 struct AddSessionSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var sessionTimerManager: SessionTimerManager
 
     let student: StudentCD
     var onAdd: (PracticeSessionCD) -> Void
@@ -14,6 +15,8 @@ struct AddSessionSheetCD: View {
     @State private var selectedLocation: LessonLocation?
     @State private var sessionDate: Date = .now
     @State private var sessionTitle: String = "Practice"
+    
+    @State private var timeThisSession = false
     
     @State private var showingAddInstructorSheet = false
     @State private var newInstructorName: String = ""
@@ -33,7 +36,6 @@ struct AddSessionSheetCD: View {
     var body: some View {
         NavigationStack {
             Form {
-                // --- THIS IS THE FIX: A footer is added to the section ---
                 Section {
                     TextField("Session Title", text: $sessionTitle)
                     DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
@@ -65,6 +67,15 @@ struct AddSessionSheetCD: View {
                     Button("Add New Instructor") {
                         showingAddInstructorSheet = true
                     }
+                }
+                
+                // --- THIS IS THE FIX: Corrected the Section syntax ---
+                Section {
+                    Toggle("Time this session", isOn: $timeThisSession)
+                } header: {
+                    Text("Timer")
+                } footer: {
+                    Text("If enabled, a timer will start immediately for this session.")
                 }
             }
             .navigationTitle("New Practice Session")
@@ -126,6 +137,9 @@ struct AddSessionSheetCD: View {
         
         do {
             try viewContext.save()
+            if timeThisSession {
+                sessionTimerManager.start(session: newSession)
+            }
             onAdd(newSession)
         } catch {
             print("Failed to save new session: \(error)")

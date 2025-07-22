@@ -34,6 +34,8 @@ struct EditSessionSheetCD: View {
         NavigationStack {
             Form {
                 // --- THIS IS THE FIX: Section is updated with header and footer text ---
+                // In EditSessionSheetCD.swift
+
                 Section {
                     TextField("Session Title", text: $title)
                     DatePicker(selection: $date, displayedComponents: .date) {
@@ -52,7 +54,6 @@ struct EditSessionSheetCD: View {
                 } footer: {
                     Text("Update the title, date, or location for this practice session.")
                 }
-
                 Section("Instructor") {
                     Picker(selection: $selectedInstructor) {
                         Text("None").tag(Optional<InstructorCD>.none)

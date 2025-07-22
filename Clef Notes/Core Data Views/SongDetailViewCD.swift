@@ -47,9 +47,10 @@ struct SongDetailViewCD: View {
 
     // A new computed property to group and sort notes by date
     private var groupedNotes: [NoteGroup] {
-        let grouped = Dictionary(grouping: song.notesArray) { note in
-            // Group by the start of the day of the note's session.
-            Calendar.current.startOfDay(for: note.session?.day ?? .distantPast)
+        // --- THIS IS THE FIX: Safely unwrap the date and provide fallbacks ---
+        let grouped = Dictionary(grouping: song.notesArray) { note -> Date in
+            let dateToUse = note.date ?? note.session?.day ?? .distantPast
+            return Calendar.current.startOfDay(for: dateToUse)
         }
         
         // Map the dictionary to an array of NoteGroup and sort descending by date.
