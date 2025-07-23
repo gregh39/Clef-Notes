@@ -65,6 +65,7 @@ struct StudentNotesView: View {
                 }
             }
         }
+        .navigationTitle("Notes")
         .listStyle(.insetGrouped)
         .sheet(item: $noteToEdit) { note in
             AddNoteSheetCD(note: note)
@@ -106,8 +107,6 @@ private struct NoteCell: View {
     @ObservedObject var note: NoteCD
 
     var onTap: () -> Void
-
-  
 
     var body: some View {
 
@@ -226,8 +225,6 @@ private struct NoteCell: View {
         .buttonStyle(.plain)
 
         .listRowSeparator(.hidden)
-
-        // --- THIS IS THE FIX: Let the List's padding handle the insets ---
 
         .listRowInsets(EdgeInsets())
 

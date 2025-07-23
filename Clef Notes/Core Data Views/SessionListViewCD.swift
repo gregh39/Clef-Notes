@@ -1,18 +1,6 @@
 import SwiftUI
 import CoreData
 
-private struct MonthSection: Identifiable, Hashable {
-    var id: Date { date }
-    let date: Date
-    let sessions: [PracticeSessionCD]
-
-    var title: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: date)
-    }
-}
-
 struct SessionListViewCD: View {
     @ObservedObject var student: StudentCD
     @EnvironmentObject var audioManager: AudioManager
@@ -20,16 +8,6 @@ struct SessionListViewCD: View {
     var onAddSession: () -> Void
 
     @State private var sessionToDelete: PracticeSessionCD? = nil
-    @State private var expandedMonths: Set<Date> = []
-
-    private var groupedSessions: [MonthSection] {
-        let grouped = Dictionary(grouping: student.sessionsArray) { session in
-            Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: session.day ?? .now)) ?? (session.day ?? .now)
-        }
-        return grouped.map { (date, sessions) in
-            MonthSection(date: date, sessions: sessions)
-        }.sorted { $0.date > $1.date }
-    }
 
     var body: some View {
         if student.sessionsArray.isEmpty {
@@ -43,51 +21,31 @@ struct SessionListViewCD: View {
             }
         } else {
             List {
-                ForEach(groupedSessions) { section in
-                    DisclosureGroup(isExpanded: Binding(
-                        get: { expandedMonths.contains(section.id) },
-                        set: { isExpanded in
-                            if isExpanded { expandedMonths.insert(section.id) }
-                            else { expandedMonths.remove(section.id) }
-                        }
-                    )) {
-                        ForEach(section.sessions) { session in
-                            ZStack {
-                                SessionCardViewCD(session: session)
-                                NavigationLink(value: session) {
-                                    EmptyView()
-                                }
-                                .opacity(0)
+                ForEach(student.sessionsArray) { session in
+                    Section {
+                        ZStack {
+                            SessionCardViewCD(session: session)
+                            NavigationLink(value: session) {
+                                EmptyView()
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    sessionToDelete = session
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                            .opacity(0)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                sessionToDelete = session
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
                         }
-                    } label: {
-                        Text(section.title)
-                            .font(.headline).fontWeight(.bold).padding(.vertical, 4)
                     }
                 }
             }
-            .listStyle(.plain)
-            .navigationTitle("Sessions")
+            .listStyle(.insetGrouped)
             .alert("Delete Session?", isPresented: Binding(get: { sessionToDelete != nil }, set: { if !$0 { sessionToDelete = nil } }), presenting: sessionToDelete) { session in
                 Button("Delete", role: .destructive) { deleteSession(session) }
                 Button("Cancel", role: .cancel) {}
             } message: { _ in
                 Text("Are you sure you want to delete this session? All associated plays, notes, and recordings will also be permanently deleted.")
-            }
-            .onAppear {
-                if let firstMonthID = groupedSessions.first?.id {
-                    expandedMonths.insert(firstMonthID)
-                }
             }
         }
     }
@@ -104,7 +62,6 @@ struct SessionListViewCD: View {
     }
 }
 
-// --- THIS IS THE FIX: The SessionCardView is updated with at-a-glance stats ---
 struct SessionCardViewCD: View {
     @ObservedObject var session: PracticeSessionCD
     
@@ -168,9 +125,6 @@ struct SessionCardViewCD: View {
                 .foregroundColor(.secondary)
             }
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .padding(.vertical, 6)
     }
 }

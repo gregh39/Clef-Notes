@@ -13,11 +13,8 @@ struct StudentDetailViewCD: View {
     @State private var showingAddSessionSheet = false
     @State private var showingEditStudentSheet = false
     
-    @State private var showingSettingsSheet = false
-    @State private var showingMetronome = false
-    @State private var showingTuner = false
-    
     @State private var isSharePresented = false
+    @State private var showingSideMenu = false
     
     @State private var selectedTab: Int = 0
     @State private var triggerAddNote = false
@@ -63,27 +60,13 @@ struct StudentDetailViewCD: View {
                             }
                         }
                         
-                        Menu {
-                            Section("Student Actions") {
-                                Button { showingEditStudentSheet = true } label: { Label("Edit Student", systemImage: "pencil") }
-                                Button { isSharePresented = true } label: { Label("Share Student", systemImage: "square.and.arrow.up") }
-                            }
-                            Section("Tools") {
-                                Button { showingMetronome = true } label: { Label("Metronome", systemImage: "metronome") }
-                                Button { showingTuner = true } label: { Label("Tuner", systemImage: "tuningfork") }
-                                Divider()
-                                Button { showingSettingsSheet = true } label: { Label("Settings", systemImage: "gearshape") }
-                            }
-                        } label: {
+                        Button(action: {
+                            showingSideMenu = true
+                        }) {
                             Label("More", systemImage: "ellipsis.circle")
                         }
                     }
                 }
-                .withGlobalTools(
-                    showingSettings: $showingSettingsSheet,
-                    showingMetronome: $showingMetronome,
-                    showingTuner: $showingTuner
-                )
                 .navigationDestination(for: PracticeSessionCD.self) { session in
                     SessionDetailViewCD(session: session, audioManager: audioManager)
                 }
@@ -95,6 +78,15 @@ struct StudentDetailViewCD: View {
             .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
             .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
             .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
+            .sheet(isPresented: $showingSideMenu) {
+                SideMenuView(
+                    student: student,
+                    isPresented: $showingSideMenu,
+                    showingEditStudentSheet: $showingEditStudentSheet,
+                    isSharePresented: $isSharePresented
+                )
+            }
+
             
             TimerBarView()
         }

@@ -25,7 +25,6 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            // The main view is now simpler, referencing the computed property below
             studentListView
         } detail: {
             if let student = selectedStudent {
@@ -77,7 +76,6 @@ struct ContentView: View {
         } message: {
             Text("You joined a shared student or content! The share was accepted.")
         }
-        // The updated modifier is called on the root view
         .withGlobalTools(
             showingSettings: $showingSettingsSheet,
             showingMetronome: $showingMetronome,
@@ -85,29 +83,26 @@ struct ContentView: View {
         )
     }
 
-    // The complex List is broken out into its own computed property to solve the compiler issue
     private var studentListView: some View {
         List(selection: $selectedStudent) {
             ForEach(students) { student in
-                ZStack {
-                    StudentCellView(student: student)
-                    NavigationLink(value: student) {
-                        EmptyView()
+                Section {
+                    ZStack {
+                        StudentCellView(student: student)
+                        NavigationLink(value: student) {
+                            EmptyView()
+                        }
+                        .opacity(0)
                     }
-                    .opacity(0)
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
             }
             .onDelete(perform: { offsets in
                 self.offsetsToDelete = offsets
             })
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         .navigationTitle("Students")
         .toolbar {
-            // The global tools menu is re-added here
             ToolbarItem(placement: .navigationBarLeading) {
                 Menu {
                     Button { showingMetronome = true } label: {
@@ -257,9 +252,6 @@ private struct StudentCellView: View {
             }
             Spacer()
         }
-        .padding()
-        .background(.background.secondary)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+        .padding(.vertical, 6)
     }
 }

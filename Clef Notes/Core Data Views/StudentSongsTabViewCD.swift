@@ -60,18 +60,6 @@ struct StudentSongsTabViewCD: View {
                 )
             }
             .listStyle(.insetGrouped)
-            .pickerStyle(.segmented)
-            .navigationTitle("Songs")
-            .toolbar {
-                ToolbarItem {
-                    Picker("Sort By", selection: $selectedSort) {
-                        ForEach(SongSortOption.allCases) { option in
-                            Text(option.rawValue).tag(option)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-            }
             .safeAreaInset(edge: .top) {
                 typeFilterBar
                     .padding(.vertical, 8)
