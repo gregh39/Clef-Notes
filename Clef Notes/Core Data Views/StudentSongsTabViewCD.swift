@@ -39,6 +39,13 @@ struct StudentSongsTabViewCD: View {
             }
         } else {
             List {
+                Section {
+                    EmptyView()
+                } header: {
+                    typeFilterBar
+                        .padding(.vertical, 8)
+                }
+
                 songsSection
                 
                 SongSectionViewCD(
@@ -60,11 +67,6 @@ struct StudentSongsTabViewCD: View {
                 )
             }
             .listStyle(.insetGrouped)
-            .safeAreaInset(edge: .top) {
-                typeFilterBar
-                    .padding(.vertical, 8)
-                    .background(.bar)
-            }
         }
     }
 

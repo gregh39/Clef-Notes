@@ -25,7 +25,6 @@ struct StatsTabViewCD: View {
     init(student: StudentCD) {
         _viewModel = StateObject(wrappedValue: StatsViewModelCD(student: student))
     }
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
@@ -56,11 +55,12 @@ struct StatsTabViewCD: View {
             }
             .padding()
         }
-        .navigationTitle("Practice Stats")
         .onAppear {
             viewModel.setup(context: viewContext)
         }
+
     }
+     
 }
 
 @MainActor

@@ -65,7 +65,6 @@ struct StudentNotesView: View {
                 }
             }
         }
-        .navigationTitle("Notes")
         .listStyle(.insetGrouped)
         .sheet(item: $noteToEdit) { note in
             AddNoteSheetCD(note: note)
