@@ -28,45 +28,47 @@ struct StudentSongsTabViewCD: View {
     }
     
     var body: some View {
-        if student.songsArray.isEmpty {
-            ContentUnavailableView {
-                Label("No Songs Added", image: "add.song")
-            } description: {
-                Text("Tap the button to add your first song.")
-            } actions: {
-                Button("Add First Song", action: onAddSong)
-                    .buttonStyle(.borderedProminent)
-            }
-        } else {
-            List {
-                Section {
-                    EmptyView()
-                } header: {
-                    typeFilterBar
-                        .padding(.vertical, 8)
+        Group {
+            if student.songsArray.isEmpty {
+                ContentUnavailableView {
+                    Label("No Songs Added", image: "add.song")
+                } description: {
+                    Text("Tap the button to add your first song.")
+                } actions: {
+                    Button("Add First Song", action: onAddSong)
+                        .buttonStyle(.borderedProminent)
                 }
+            } else {
+                List {
+                    Section {
+                        EmptyView()
+                    } header: {
+                        typeFilterBar
+                            .padding(.vertical, 8)
+                    }
 
-                songsSection
-                
-                SongSectionViewCD(
-                    title: "Scales",
-                    songs: filteredSongs(for: .scale),
-                    editingSong: $editingSongForEditSheet
-                )
-                
-                SongSectionViewCD(
-                    title: "Warm-ups",
-                    songs: filteredSongs(for: .warmUp),
-                    editingSong: $editingSongForEditSheet
-                )
-                
-                SongSectionViewCD(
-                    title: "Exercises",
-                    songs: filteredSongs(for: .exercise),
-                    editingSong: $editingSongForEditSheet
-                )
+                    songsSection
+                    
+                    SongSectionViewCD(
+                        title: "Scales",
+                        songs: filteredSongs(for: .scale),
+                        editingSong: $editingSongForEditSheet
+                    )
+                    
+                    SongSectionViewCD(
+                        title: "Warm-ups",
+                        songs: filteredSongs(for: .warmUp),
+                        editingSong: $editingSongForEditSheet
+                    )
+                    
+                    SongSectionViewCD(
+                        title: "Exercises",
+                        songs: filteredSongs(for: .exercise),
+                        editingSong: $editingSongForEditSheet
+                    )
+                }
+                .listStyle(.insetGrouped)
             }
-            .listStyle(.insetGrouped)
         }
     }
 
