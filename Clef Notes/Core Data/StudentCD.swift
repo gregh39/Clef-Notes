@@ -23,6 +23,7 @@ extension StudentCD {
     @NSManaged public var id: UUID?
     @NSManaged public var instrument: String?
     @NSManaged public var name: String?
+    @NSManaged public var avatar: Data?
     @NSManaged public var sessions: NSSet?
     @NSManaged public var songs: NSSet?
     @NSManaged public var plays: NSSet?

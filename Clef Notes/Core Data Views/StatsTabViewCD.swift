@@ -1,6 +1,16 @@
+// Clef Notes/Core Data Views/StatsTabViewCD.swift
+
 import SwiftUI
 import CoreData
 import Combine
+
+// --- THIS IS THE FIX: New struct for the piece type chart ---
+struct PieceTypeStat: Identifiable {
+    let id = UUID()
+    let type: PieceType
+    let count: Int
+    let color: Color
+}
 
 struct MonthKey: Hashable, Comparable {
     let year: Int
@@ -26,41 +36,59 @@ struct StatsTabViewCD: View {
         _viewModel = StateObject(wrappedValue: StatsViewModelCD(student: student))
     }
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 25) {
+        Form {
+            Section {
                 StreakViewCD(viewModel: viewModel)
-                
+            }
+
+            Section(header: Text("Practice Heat Map")) {
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 24) {
+                        HStack(alignment: .top, spacing: 12) {
                             ForEach(viewModel.allMonths, id: \.self) { month in
                                 HeatMapViewCD(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
-                                    .frame(width: 350)
                                     .id(month)
                             }
-                            Color.clear.frame(width: 1, height: 1).id("HeatMapEnd")
                         }
-                        .padding(.vertical, 2)
+                        .padding(.horizontal)
+                        .padding(.bottom)
                     }
-                    .padding(.trailing, 20)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                     .onAppear {
-                        proxy.scrollTo("HeatMapEnd", anchor: .trailing)
+                        proxy.scrollTo(viewModel.allMonths.last, anchor: .trailing)
                     }
                 }
+            }
+            
+            Section(header: Text("Last 7 Days: Practiced on \(viewModel.practicedDaysLast7) day\(viewModel.practicedDaysLast7 == 1 ? "" : "s")")) {
                 WeeklyPracticeViewCD(viewModel: viewModel)
+            }
+            
+            Section(header: Text("Monthly Snapshot")) {
                 MonthlySummaryViewCD(viewModel: viewModel)
+            }
+            
+            Section(header: Text("📈 Sessions by Weekday")) {
                 WeekdayChartViewCD(viewModel: viewModel)
+            }
+            
+            // --- THIS IS THE FIX: New section for piece type breakdown ---
+            Section(header: Text("Practice Breakdown")) {
+                PieceTypeChartViewCD(viewModel: viewModel)
+            }
+            
+            Section(header: Text("Song Insights")) {
                 SongStatsViewCD(viewModel: viewModel)
+            }
+
+            Section(header: Text("All-Time Stats")) {
                 AllTimeStatsViewCD(viewModel: viewModel)
             }
-            .padding()
         }
         .onAppear {
             viewModel.setup(context: viewContext)
         }
-
     }
-     
 }
 
 @MainActor
@@ -79,6 +107,10 @@ class StatsViewModelCD: ObservableObject {
     @Published var songNeedingPractice: SongCD? = nil
     @Published var firstPracticeDate: String = "N/A"
     @Published var totalPracticeDays: Int = 0
+    // --- THIS IS THE FIX: New properties for new stats ---
+    @Published var totalPracticeTime: String = "0m"
+    @Published var pieceTypeDistribution: [PieceTypeStat] = []
+    
     @Published var allMonths: [MonthKeyCD] = []
     @Published var monthPlayCounts: [MonthKeyCD: [Int: Int]] = [:]
     @Published var currentStreak = 0
@@ -106,6 +138,12 @@ class StatsViewModelCD: ObservableObject {
         let sessions = student.sessionsArray
         let calendar = Calendar.current
         let today = Date()
+        
+        let allPlays = sessions.flatMap { $0.playsArray }
+
+        // --- THIS IS THE FIX: Calculation for new stats ---
+        calculateTotalPracticeTime(from: sessions)
+        calculatePieceTypeDistribution(from: allPlays)
         
         let monthSet = Set(sessions.map {
             let comps = calendar.dateComponents([.year, .month], from: $0.day ?? .now)
@@ -147,7 +185,6 @@ class StatsViewModelCD: ObservableObject {
             counts[weekday, default: 0] += 1
         }
         
-        let allPlays = sessions.flatMap { $0.playsArray }
         let songPlayData = allPlays.reduce(into: [SongCD: (count: Int, goal: Int)]()) { result, play in
             guard let song = play.song else { return }
             let goal = max(Int(song.goalPlays), 1)
@@ -174,8 +211,32 @@ class StatsViewModelCD: ObservableObject {
         let sortedDates = sessionDaySet.sorted(by: >)
         (currentStreak, longestStreak) = calculateStreaks(from: sortedDates)
     }
-    
-    // --- THIS IS THE FIX: The streak calculation logic is updated ---
+
+    // --- THIS IS THE FIX: New calculation functions ---
+    private func calculateTotalPracticeTime(from sessions: [PracticeSessionCD]) {
+        let totalMinutes = sessions.reduce(0) { $0 + $1.durationMinutes }
+        let hours = Int(totalMinutes) / 60
+        let minutes = Int(totalMinutes) % 60
+        if hours > 0 {
+            self.totalPracticeTime = "\(hours)h \(minutes)m"
+        } else {
+            self.totalPracticeTime = "\(minutes)m"
+        }
+    }
+
+    private func calculatePieceTypeDistribution(from plays: [PlayCD]) {
+        let counts = plays.reduce(into: [PieceType: Int]()) { counts, play in
+            let type = play.song?.pieceType ?? .song
+            counts[type, default: 0] += Int(play.count)
+        }
+        
+        let colors: [PieceType: Color] = [.song: .blue, .scale: .green, .warmUp: .orange, .exercise: .purple]
+        
+        self.pieceTypeDistribution = counts.map { type, count in
+            PieceTypeStat(type: type, count: count, color: colors[type] ?? .gray)
+        }.sorted { $0.count > $1.count }
+    }
+
     private func calculateStreaks(from sortedDates: [Date]) -> (current: Int, longest: Int) {
         guard !sortedDates.isEmpty else { return (0, 0) }
         
@@ -183,7 +244,6 @@ class StatsViewModelCD: ObservableObject {
         var current = 0
         var longest = 0
         
-        // --- Calculate Current Streak ---
         let today = calendar.startOfDay(for: .now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
 
@@ -197,26 +257,23 @@ class StatsViewModelCD: ObservableObject {
         } else if practicedYesterday {
             dateToCheck = yesterday
         } else {
-            // If the user didn't practice today or yesterday, the current streak is 0.
-            dateToCheck = .distantFuture // A date that won't match anything.
+            dateToCheck = .distantFuture
         }
 
         if dateToCheck != .distantFuture {
-            for date in sortedDates { // sortedDates is already descending
+            for date in sortedDates {
                 if date == dateToCheck {
                     current += 1
                     dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
                 } else if date < dateToCheck {
-                    // A gap was found, so the streak is over.
                     break
                 }
             }
         }
         
-        // --- Calculate Longest Streak (this logic remains the same) ---
         var streak = 0
         var lastDate: Date? = nil
-        for date in sortedDates.reversed() { // Iterate from past to present
+        for date in sortedDates.reversed() {
             if let previousDate = lastDate {
                 let diff = calendar.dateComponents([.day], from: previousDate, to: date).day ?? 0
                 if diff == 1 {
@@ -301,41 +358,41 @@ private struct HeatMapViewCD: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Section(header: Text("Practice Heat Map").font(.headline).padding(.bottom, 5)) {
-                VStack(spacing: 4) {
-                    Text(currentMonthName)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .padding(.bottom, 2)
-                    HStack(spacing: 4) {
-                        ForEach(weekdaySymbols, id: \.self) { symbol in
-                            Text(symbol).font(.caption2).fontWeight(.bold).frame(maxWidth: .infinity)
-                        }
-                    }
-                    ForEach(weekRows.indices, id: \.self) { rowIdx in
-                        HStack(spacing: 4) {
-                            ForEach(weekRows[rowIdx], id: \.self) { dayOpt in
-                                if let day = dayOpt {
-                                    let count = dayPlayCounts[day, default: 0]
-                                    let opacity = count > 0 ? min(Double(count) / 5.0, 1.0) * 0.8 + 0.2 : 0.1
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(Color.blue.opacity(opacity))
-                                        if count > 0 {
-                                            Text("\(day)").font(.caption).foregroundColor(.white).fontWeight(.bold)
-                                        }
-                                    }
-                                    .frame(height: 35).frame(maxWidth: .infinity)
-                                } else {
-                                    Color.clear.frame(height: 35).frame(maxWidth: .infinity)
+        VStack(spacing: 4) {
+            Text(currentMonthName)
+                .font(.headline)
+                .padding(.bottom, 2)
+            HStack(spacing: 4) {
+                ForEach(weekdaySymbols.indices, id: \.self) { index in
+                    Text(weekdaySymbols[index]).font(.caption2).fontWeight(.bold).frame(maxWidth: .infinity)
+                }
+            }
+            ForEach(weekRows.indices, id: \.self) { rowIdx in
+                HStack(spacing: 4) {
+                    ForEach(weekRows[rowIdx].indices, id: \.self) { dayIndex in
+                        let dayOpt = weekRows[rowIdx][dayIndex]
+                        if let day = dayOpt {
+                            let count = dayPlayCounts[day, default: 0]
+                            let opacity = count > 0 ? min(Double(count) / 5.0, 1.0) * 0.8 + 0.2 : 0.1
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.blue.opacity(opacity))
+                                if count > 0 {
+                                    Text("\(day)").font(.caption).foregroundColor(.white).fontWeight(.bold)
                                 }
                             }
+                            .frame(height: 35).frame(maxWidth: .infinity)
+                        } else {
+                            Color.clear.frame(height: 35).frame(maxWidth: .infinity)
                         }
                     }
                 }
             }
         }
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .frame(width: 320)
     }
 }
 
@@ -344,25 +401,23 @@ private struct WeeklyPracticeViewCD: View {
     @ObservedObject var viewModel: StatsViewModelCD
 
     var body: some View {
-        Section(header: Text("Last 7 Days: Practiced on \(viewModel.practicedDaysLast7) day\(viewModel.practicedDaysLast7 == 1 ? "" : "s")").font(.headline)) {
-            HStack(spacing: 0) {
-                ForEach(viewModel.last7Days, id: \.self) { date in
-                    VStack(spacing: 8) {
-                        Text(date.formatted(.dateTime.weekday(.narrow)))
+        HStack(spacing: 0) {
+            ForEach(viewModel.last7Days, id: \.self) { date in
+                VStack(spacing: 8) {
+                    Text(date.formatted(.dateTime.weekday(.narrow)))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    ZStack {
+                        Circle()
+                            .fill(viewModel.didPracticeOn(date: date) ? Color.green : Color(UIColor.systemGray5))
+                            .frame(width: 35, height: 35)
+                        Text(date.formatted(.dateTime.day()))
                             .font(.caption)
-                            .foregroundColor(.secondary)
-                        ZStack {
-                            Circle()
-                                .fill(viewModel.didPracticeOn(date: date) ? Color.green : Color(UIColor.systemGray5))
-                                .frame(width: 35, height: 35)
-                            Text(date.formatted(.dateTime.day()))
-                                .font(.caption)
-                                .foregroundColor(viewModel.didPracticeOn(date: date) ? .white : .primary)
-                                .fontWeight(.bold)
-                        }
+                            .foregroundColor(viewModel.didPracticeOn(date: date) ? .white : .primary)
+                            .fontWeight(.bold)
                     }
-                    .frame(maxWidth: .infinity)
                 }
+                .frame(maxWidth: .infinity)
             }
         }
     }
@@ -372,12 +427,10 @@ private struct MonthlySummaryViewCD: View {
     @ObservedObject var viewModel: StatsViewModelCD
 
     var body: some View {
-        Section(header: Text("Monthly Snapshot").font(.headline)) {
-            HStack(spacing: 12) {
-                StatItemCD(label: "Sessions", value: "\(viewModel.totalSessionsThisMonth)", icon: "📅")
-                StatItemCD(label: "Plays", value: "\(viewModel.totalPlaysThisMonth)", icon: "🎯")
-                StatItemCD(label: "Avg Plays/Session", value: "\(viewModel.avgPlaysPerSession)", icon: "⚖️")
-            }
+        HStack(spacing: 12) {
+            StatItemCD(label: "Sessions", value: "\(viewModel.totalSessionsThisMonth)", icon: "📅")
+            StatItemCD(label: "Plays", value: "\(viewModel.totalPlaysThisMonth)", icon: "🎯")
+            StatItemCD(label: "Avg Plays/Session", value: "\(viewModel.avgPlaysPerSession)", icon: "⚖️")
         }
     }
 }
@@ -389,54 +442,78 @@ private struct WeekdayChartViewCD: View {
     }
 
     var body: some View {
-        Section(header: Text("📈 Sessions by Weekday").font(.headline)) {
-            HStack(alignment: .bottom, spacing: 12) {
-                ForEach(1...7, id: \.self) { weekday in
-                    VStack(spacing: 6) {
-                        Text("\(viewModel.weekdayCounts[weekday, default: 0])")
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                        let count = CGFloat(viewModel.weekdayCounts[weekday, default: 0])
-                        let barHeight = (count / maxCount) * 60
-                        
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.purple.gradient)
-                            .frame(height: max(barHeight, 2))
-                        Text(viewModel.shortWeekdaySymbols[weekday - 1])
+        HStack(alignment: .bottom, spacing: 12) {
+            ForEach(1...7, id: \.self) { weekday in
+                VStack(spacing: 6) {
+                    Text("\(viewModel.weekdayCounts[weekday, default: 0])")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                    let count = CGFloat(viewModel.weekdayCounts[weekday, default: 0])
+                    let barHeight = (count / maxCount) * 60
+                    
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.purple.gradient)
+                        .frame(height: max(barHeight, 2))
+                    Text(viewModel.shortWeekdaySymbols[weekday - 1])
+                        .font(.caption)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.top, 5)
+    }
+}
+
+// --- THIS IS THE FIX: New chart view ---
+private struct PieceTypeChartViewCD: View {
+    @ObservedObject var viewModel: StatsViewModelCD
+    private var totalPlays: Int {
+        viewModel.pieceTypeDistribution.reduce(0) { $0 + $1.count }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(viewModel.pieceTypeDistribution) { stat in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(stat.type.rawValue)
+                            .font(.caption.bold())
+                        Spacer()
+                        Text("\(stat.count) plays")
                             .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
+                    ProgressView(value: Double(stat.count), total: Double(totalPlays))
+                        .tint(stat.color)
                 }
             }
-            .padding(.top, 5)
         }
     }
 }
+
 
 private struct SongStatsViewCD: View {
     @ObservedObject var viewModel: StatsViewModelCD
     @EnvironmentObject var audioManager: AudioManager
 
     var body: some View {
-        Section(header: Text("Song Insights").font(.headline)) {
-            VStack(spacing: 12) {
-                if let song = viewModel.mostPracticedSong {
-                    NavigationLink(value: song) {
-                        StatItemCD(label: "Most Practiced", value: song.title ?? "N/A", icon: "🎵")
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    StatItemCD(label: "Most Practiced", value: "N/A", icon: "🎵")
+        VStack(spacing: 12) {
+            if let song = viewModel.mostPracticedSong {
+                NavigationLink(value: song) {
+                    StatItemCD(label: "Most Practiced", value: song.title ?? "N/A", icon: "🎵")
                 }
+                .buttonStyle(.plain)
+            } else {
+                StatItemCD(label: "Most Practiced", value: "N/A", icon: "🎵")
+            }
 
-                if let song = viewModel.songNeedingPractice {
-                    NavigationLink(value: song) {
-                        StatItemCD(label: "Needs Practice", value: song.title ?? "N/A", icon: "⏳")
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    StatItemCD(label: "Needs Practice", value: "N/A", icon: "⏳")
+            if let song = viewModel.songNeedingPractice {
+                NavigationLink(value: song) {
+                    StatItemCD(label: "Needs Practice", value: song.title ?? "N/A", icon: "⏳")
                 }
+                .buttonStyle(.plain)
+            } else {
+                StatItemCD(label: "Needs Practice", value: "N/A", icon: "⏳")
             }
         }
     }
@@ -446,11 +523,11 @@ private struct AllTimeStatsViewCD: View {
     @ObservedObject var viewModel: StatsViewModelCD
 
     var body: some View {
-        Section(header: Text("All-Time Stats").font(.headline)) {
-            VStack(spacing: 12) {
-                StatItemCD(label: "First Practice Date", value: viewModel.firstPracticeDate, icon: "📆")
-                StatItemCD(label: "Total Days Practiced", value: "\(viewModel.totalPracticeDays)", icon: "🗓️")
-            }
+        // --- THIS IS THE FIX: Added total practice time ---
+        VStack(spacing: 12) {
+            StatItemCD(label: "First Practice Date", value: viewModel.firstPracticeDate, icon: "📆")
+            StatItemCD(label: "Total Days Practiced", value: "\(viewModel.totalPracticeDays)", icon: "🗓️")
+            StatItemCD(label: "Total Practice Time", value: viewModel.totalPracticeTime, icon: "⏱️")
         }
     }
 }
@@ -481,3 +558,4 @@ private struct StatItemCD: View {
         .cornerRadius(10)
     }
 }
+

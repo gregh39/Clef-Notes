@@ -1,5 +1,8 @@
+// Clef Notes/Views/ContentView.swift
+
 import SwiftUI
 import CoreData
+import PhotosUI
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -21,6 +24,8 @@ struct ContentView: View {
     
     @State private var newName = ""
     @State private var newInstrument: Instrument? = nil
+    @State private var selectedAvatarItem: PhotosPickerItem?
+    @State private var selectedAvatarData: Data?
     @AppStorage("shareAccepted") private var shareAccepted: Bool = false
 
     var body: some View {
@@ -36,13 +41,38 @@ struct ContentView: View {
         .sheet(isPresented: $showingAddSheet) {
             NavigationStack {
                 Form {
-                    TextField("Name", text: $newName)
-                    Picker("Instrument", selection: $newInstrument) {
-                        Text("Select an Instrument").tag(Optional<Instrument>.none)
-                        ForEach(instrumentSections) { section in
-                            Section(header: Text(section.name)) {
-                                ForEach(section.instruments) { instrument in
-                                    Text(instrument.rawValue).tag(Optional(instrument))
+                    Section("Avatar") {
+                        HStack {
+                            Spacer()
+                            VStack {
+                                if let avatarData = selectedAvatarData, let uiImage = UIImage(data: avatarData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(Circle())
+                                } else {
+                                    Image(systemName: "person.circle.fill")
+                                        .font(.system(size: 100))
+                                        .foregroundColor(.gray)
+                                }
+                                PhotosPicker("Choose Avatar", selection: $selectedAvatarItem, matching: .images)
+                                    .buttonStyle(.bordered)
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical)
+                    }
+                    
+                    Section("Student Details") {
+                        TextField("Name", text: $newName)
+                        Picker("Instrument", selection: $newInstrument) {
+                            Text("Select an Instrument").tag(Optional<Instrument>.none)
+                            ForEach(instrumentSections) { section in
+                                Section(header: Text(section.name)) {
+                                    ForEach(section.instruments) { instrument in
+                                        Text(instrument.rawValue).tag(Optional(instrument))
+                                    }
                                 }
                             }
                         }
@@ -64,6 +94,13 @@ struct ContentView: View {
                         }
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty ||
                                   newInstrument == nil)
+                    }
+                }
+            }
+            .onChange(of: selectedAvatarItem) {
+                Task {
+                    if let data = try? await selectedAvatarItem?.loadTransferable(type: Data.self) {
+                        selectedAvatarData = data
                     }
                 }
             }
@@ -151,6 +188,7 @@ struct ContentView: View {
         newStudent.id = UUID()
         newStudent.name = newName
         newStudent.instrumentType = newInstrument
+        newStudent.avatar = selectedAvatarData
         do {
             try viewContext.save()
         } catch {
@@ -175,6 +213,8 @@ struct ContentView: View {
     private func clearForm() {
         newName = ""
         newInstrument = nil
+        selectedAvatarItem = nil
+        selectedAvatarData = nil
     }
 }
 
@@ -218,9 +258,18 @@ private struct StudentCellView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 44))
-                .foregroundColor(.accentColor)
+            // --- THIS IS THE FIX ---
+            if let avatarData = student.avatar, let uiImage = UIImage(data: avatarData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 54, height: 54)
+                    .clipShape(Circle())
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 54))
+                    .foregroundColor(.accentColor)
+            }
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {

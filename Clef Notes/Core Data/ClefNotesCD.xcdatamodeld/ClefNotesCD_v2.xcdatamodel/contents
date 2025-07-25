@@ -67,6 +67,7 @@
         <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="songs" inverseEntity="StudentCD"/>
     </entity>
     <entity name="StudentCD" representedClassName="StudentCD" syncable="YES">
+        <attribute name="avatar" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="instrument" attributeType="String" defaultValueString=""/>
         <attribute name="name" attributeType="String" defaultValueString=""/>

@@ -1,3 +1,5 @@
+// Clef Notes/Core Data Views/SongDetailViewCD.swift
+
 import SwiftUI
 import CoreData
 import AVKit
@@ -15,6 +17,16 @@ enum DisplayableMedia: Identifiable, Hashable {
             return rec.objectID
         }
     }
+
+    // Helper property to get a consistent type name for grouping
+    var mediaType: String {
+        switch self {
+        case .mediaReference(let ref):
+            return ref.type?.rawValue ?? "Media"
+        case .audioRecording:
+            return MediaType.audioRecording.rawValue
+        }
+    }
 }
 
 // A new struct to hold grouped notes
@@ -30,6 +42,7 @@ struct SongDetailViewCD: View {
     @ObservedObject var song: SongCD
 
     @State private var showingEditSheet = false
+    @State private var showingAddMediaSheet = false
     @StateObject private var audioPlayerManager: AudioPlayerManager
     
     @State private var noteToEdit: NoteCD?
@@ -47,7 +60,6 @@ struct SongDetailViewCD: View {
 
     // A new computed property to group and sort notes by date
     private var groupedNotes: [NoteGroup] {
-        // --- THIS IS THE FIX: Safely unwrap the date and provide fallbacks ---
         let grouped = Dictionary(grouping: song.notesArray) { note -> Date in
             let dateToUse = note.date ?? note.session?.day ?? .distantPast
             return Calendar.current.startOfDay(for: dateToUse)
@@ -70,12 +82,21 @@ struct SongDetailViewCD: View {
         }
         .navigationTitle(song.title ?? "Song")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddMediaSheet = true
+                } label: {
+                    Label("Add Media", systemImage: "plus")
+                }
+                
                 Button("Edit") { showingEditSheet = true }
             }
         }
         .sheet(isPresented: $showingEditSheet) {
             EditSongSheetCD(song: song)
+        }
+        .sheet(isPresented: $showingAddMediaSheet) {
+            AddMediaSheetCD(song: song)
         }
         .sheet(item: $noteToEdit) { note in
             AddNoteSheetCD(note: note)
@@ -86,31 +107,39 @@ struct SongDetailViewCD: View {
         PlaysListViewCD(song: song, context: viewContext)
     }
 
+    // --- THIS IS THE FIX: The media tab is now sectioned by type ---
     private var mediaTab: some View {
-        List {
-            Section("Media") {
-                if allMediaItems.isEmpty {
-                    Text("No media has been added to this song.")
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(allMediaItems) { item in
-                        switch item {
-                        case .mediaReference(let media):
-                            MediaCellCD(media: media, audioPlayerManager: audioPlayerManager)
+        let groupedMedia = Dictionary(grouping: allMediaItems, by: { $0.mediaType })
+        let sortedKeys = groupedMedia.keys.sorted()
+
+        return List {
+            if allMediaItems.isEmpty {
+                Text("No media has been added to this song.")
+                    .foregroundColor(.secondary)
+            } else {
+                ForEach(sortedKeys, id: \.self) { key in
+                    Section(header: Text(key)) {
+                        ForEach(groupedMedia[key] ?? []) { item in
+                            switch item {
+                            case .mediaReference(let media):
+                                MediaCellCD(media: media, audioPlayerManager: audioPlayerManager)
+                                    .padding(.vertical, 4)
+                            case .audioRecording(let recording):
+                                AudioPlaybackCellCD(
+                                    title: recording.title ?? "Recording",
+                                    subtitle: (recording.dateRecorded ?? .now).formatted(date: .abbreviated, time: .shortened),
+                                    data: recording.data,
+                                    duration: recording.duration,
+                                    id: recording.objectID,
+                                    audioPlayerManager: audioPlayerManager
+                                )
                                 .padding(.vertical, 4)
-                        case .audioRecording(let recording):
-                            AudioPlaybackCellCD(
-                                title: recording.title ?? "Recording",
-                                subtitle: (recording.dateRecorded ?? .now).formatted(date: .abbreviated, time: .shortened),
-                                data: recording.data,
-                                duration: recording.duration,
-                                id: recording.objectID,
-                                audioPlayerManager: audioPlayerManager
-                            )
-                            .padding(.vertical, 4)
+                            }
+                        }
+                        .onDelete { indexSet in
+                            deleteMedia(at: indexSet, from: groupedMedia[key] ?? [])
                         }
                     }
-                    .onDelete(perform: deleteMedia)
                 }
             }
         }
@@ -118,7 +147,6 @@ struct SongDetailViewCD: View {
     
     private var notesTab: some View {
         List {
-            // The list now iterates over the grouped notes
             ForEach(groupedNotes) { group in
                 Section(header: Text(group.date, style: .date)) {
                     ForEach(group.notes) { note in
@@ -130,7 +158,6 @@ struct SongDetailViewCD: View {
                         .buttonStyle(.plain)
                     }
                     .onDelete { indexSet in
-                        // The deletion logic is now scoped to the specific group
                         deleteNote(at: indexSet, from: group.notes)
                     }
                 }
@@ -138,9 +165,9 @@ struct SongDetailViewCD: View {
         }
     }
     
-    private func deleteMedia(at offsets: IndexSet) {
+    private func deleteMedia(at offsets: IndexSet, from mediaGroup: [DisplayableMedia]) {
         for index in offsets {
-            let itemToDelete = allMediaItems[index]
+            let itemToDelete = mediaGroup[index]
             switch itemToDelete {
             case .mediaReference(let ref):
                 viewContext.delete(ref)

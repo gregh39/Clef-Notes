@@ -1,3 +1,5 @@
+// Clef Notes/Core Data Views/EditSongSheetCD.swift
+
 import SwiftUI
 import CoreData
 import PhotosUI
@@ -13,13 +15,6 @@ struct EditSongSheetCD: View {
     @State private var composer: String = ""
     @State private var songStatus: PlayType?
     @State private var pieceType: PieceType?
-
-    @State private var newMediaType: MediaType = .youtubeVideo
-    @State private var newMediaURLString: String = ""
-    
-    @State private var selectedVideoItem: PhotosPickerItem?
-    @State private var isImportingAudio = false
-    @State private var selectedAudioURL: URL?
 
     var body: some View {
         NavigationStack {
@@ -51,40 +46,6 @@ struct EditSongSheetCD: View {
                         Label("Status", systemImage: "tag.fill")
                     }
                 }
-
-                Section {
-                    Picker("Type", selection: $newMediaType) {
-                        ForEach(MediaType.allCases) { type in
-                            Text(type.rawValue.capitalized).tag(type)
-                        }
-                    }
-
-                    switch newMediaType {
-                    case .localVideo:
-                        PhotosPicker("Select Video", selection: $selectedVideoItem, matching: .videos)
-                        if selectedVideoItem != nil {
-                            Text("Video selected").font(.caption).foregroundColor(.secondary)
-                        }
-                    case .audioRecording:
-                        Button("Select Audio File") { isImportingAudio = true }
-                        if let url = selectedAudioURL {
-                            Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
-                        }
-                    default:
-                        TextField("Enter media URL", text: $newMediaURLString)
-                            .keyboardType(.URL)
-                            .autocapitalization(.none)
-                    }
-
-                    Button("Add Media to Song") {
-                        Task { await addMedia() }
-                    }
-                    .disabled(isAddMediaButtonDisabled)
-                } header: {
-                    Text("Add Media")
-                } footer: {
-                    Text("Any media added here will be linked to this song.")
-                }
             }
             .navigationTitle("Edit Song")
             .toolbar {
@@ -95,11 +56,6 @@ struct EditSongSheetCD: View {
                     Button("Save") { saveChanges() }
                 }
             }
-            .fileImporter(isPresented: $isImportingAudio, allowedContentTypes: [.audio]) { result in
-                if case .success(let url) = result {
-                    selectedAudioURL = url
-                }
-            }
             .onAppear {
                 title = song.title ?? ""
                 // --- THIS IS THE FIX: Populate composer state ---
@@ -108,54 +64,6 @@ struct EditSongSheetCD: View {
                 pieceType = song.pieceType
             }
         }
-    }
-
-    private var isAddMediaButtonDisabled: Bool {
-        switch newMediaType {
-        case .localVideo:
-            return selectedVideoItem == nil
-        case .audioRecording:
-            return selectedAudioURL == nil
-        default:
-            return newMediaURLString.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-    }
-
-    private func addMedia() async {
-        let mediaReference = MediaReferenceCD(context: viewContext)
-        mediaReference.song = song
-        mediaReference.student = song.student
-
-        switch newMediaType {
-        case .localVideo:
-            if let item = selectedVideoItem, let data = try? await item.loadTransferable(type: Data.self) {
-                mediaReference.type = .localVideo
-                mediaReference.data = data
-                mediaReference.title = "Local Video"
-            }
-        case .audioRecording:
-            if let url = selectedAudioURL, url.startAccessingSecurityScopedResource(), let data = try? Data(contentsOf: url) {
-                url.stopAccessingSecurityScopedResource()
-                mediaReference.type = .audioRecording
-                mediaReference.data = data
-                mediaReference.title = url.deletingPathExtension().lastPathComponent
-            }
-        default:
-            if let url = URL(string: newMediaURLString) {
-                mediaReference.type = newMediaType
-                mediaReference.url = url
-                mediaReference.title = newMediaType.rawValue
-            }
-        }
-
-        resetMediaInputFields()
-    }
-    
-    private func resetMediaInputFields() {
-        newMediaType = .youtubeVideo
-        newMediaURLString = ""
-        selectedVideoItem = nil
-        selectedAudioURL = nil
     }
 
     private func saveChanges() {

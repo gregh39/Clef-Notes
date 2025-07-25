@@ -1,19 +1,49 @@
-//
-//  MediaCellCD.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/16/25.
-//
-
+// Clef Notes/Core Data Views/MediaCellCD.swift
 
 import SwiftUI
 import CoreData
 import AVKit
 import WebKit
+import MusicKit
+import PDFKit
+
+// A new detail view for presenting sheet music full screen.
+private struct SheetMusicDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let data: Data
+    let title: String
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                if let uiImage = UIImage(data: data) {
+                    ScrollView([.horizontal, .vertical]) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                    }
+                } else {
+                    PDFKitView(data: data)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
 
 struct MediaCellCD: View {
+    @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject var media: MediaReferenceCD
     @ObservedObject var audioPlayerManager: AudioPlayerManager
+    
+    // State to control the presentation of the sheet music detail view.
+    @State private var showingSheetMusicDetail = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,7 +59,6 @@ struct MediaCellCD: View {
                 )
                 
             case .localVideo:
-                Text(media.type?.rawValue.capitalized ?? "Video").font(.headline)
                 if let videoData = media.data,
                    let tempURL = saveToTemporaryFile(data: videoData) {
                     VideoPlayer(player: AVPlayer(url: tempURL))
@@ -39,8 +68,19 @@ struct MediaCellCD: View {
                 }
 
             case .youtubeVideo, .spotifyLink, .appleMusicLink, .sheetMusic:
-                Text(media.type?.rawValue.capitalized ?? "Media").font(.headline)
-                if let url = media.url {
+                
+                // --- THIS IS THE FIX: Updated sheet music case ---
+                if media.type == .sheetMusic {
+                    if let data = media.data {
+                        Button(action: { showingSheetMusicDetail = true }) {
+                            SheetMusicPreview(data: data)
+                        }
+                        .buttonStyle(.plain)
+                        .sheet(isPresented: $showingSheetMusicDetail) {
+                            SheetMusicDetailView(data: data, title: media.title ?? "Sheet Music")
+                        }
+                    }
+                } else if let url = media.url {
                     switch media.type {
                     case .youtubeVideo:
                         if let id = extractYouTubeID(from: url) {
@@ -48,12 +88,12 @@ struct MediaCellCD: View {
                         }
                     case .spotifyLink:
                         if let embedURL = URL(string: url.absoluteString.replacingOccurrences(of: "/track/", with: "/embed/track/")) {
-                             WebView(url: embedURL).frame(height: 80).cornerRadius(8)
+                             WebView(url: embedURL).frame(height: 200).cornerRadius(8)
                         }
                     case .appleMusicLink:
-                        Link("Open in Apple Music", destination: url)
-                    case .sheetMusic:
-                        Link("Open Sheet Music", destination: url)
+                        if let songID = extractAppleMusicID(from: url) {
+                            AppleMusicPlayerView(songID: songID)
+                        }
                     default: EmptyView()
                     }
                 }
@@ -75,6 +115,34 @@ struct MediaCellCD: View {
     }
 }
 
+// A new view for the sheet music preview in the list.
+private struct SheetMusicPreview: View {
+    let data: Data
+    
+    var body: some View {
+        HStack {
+            if let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 80, height: 80)
+                    .clipped()
+                    .cornerRadius(8)
+            } else {
+                Image(systemName: "doc.text.fill")
+                    .font(.system(size: 40))
+                    .frame(width: 80, height: 80)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(8)
+            }
+            Text("Tap to view")
+                .font(.headline)
+            Spacer()
+        }
+    }
+}
+
+
 struct NoteCellCD: View {
     @ObservedObject var note: NoteCD
     
@@ -94,7 +162,12 @@ struct NoteCellCD: View {
 
 private struct WebView: UIViewRepresentable {
     let url: URL
-    func makeUIView(context: Context) -> WKWebView { WKWebView() }
+    func makeUIView(context: Context) -> WKWebView {
+        let webViewConfiguration = WKWebViewConfiguration()
+        webViewConfiguration.allowsInlineMediaPlayback = true
+        let webView = WKWebView(frame: .zero, configuration: webViewConfiguration)
+        return webView
+    }
     func updateUIView(_ uiView: WKWebView, context: Context) {
         uiView.load(URLRequest(url: url))
     }
@@ -103,9 +176,11 @@ private struct WebView: UIViewRepresentable {
 private struct YouTubePlayerView: View {
     let videoID: String
     var body: some View {
-        WebView(url: URL(string: "https://www.youtube.com/embed/\(videoID)")!)
-            .frame(height: 200)
-            .cornerRadius(8)
+        if let url = URL(string: "https://www.youtube.com/embed/\(videoID)") {
+            WebView(url: url)
+                .frame(height: 200)
+                .cornerRadius(8)
+        }
     }
 }
 
@@ -121,4 +196,96 @@ private func extractYouTubeID(from url: URL) -> String? {
         return String(path.dropFirst())
     }
     return nil
+}
+
+private struct AppleMusicPlayerView: View {
+    let songID: MusicItemID
+    @State private var song: Song?
+    @State private var isPlaying = false
+
+    var body: some View {
+        VStack {
+            if let song = song {
+                HStack(spacing: 15) {
+                    AsyncImage(url: song.artwork?.url(width: 100, height: 100)) { image in
+                        image.resizable().aspectRatio(contentMode: .fit)
+                    } placeholder: {
+                        Image(systemName: "music.note").font(.largeTitle)
+                    }
+                    .frame(width: 100, height: 100)
+                    .cornerRadius(8)
+
+                    VStack(alignment: .leading) {
+                        Text(song.title).font(.headline).lineLimit(2)
+                        Text(song.artistName).font(.subheadline).foregroundColor(.secondary)
+                        Spacer()
+                        Button(action: togglePlayback) {
+                            HStack {
+                                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                Text(isPlaying ? "Pause" : "Play")
+                            }
+                            .frame(maxWidth: 100)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.pink)
+                    }
+                    Spacer()
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(12)
+
+            } else {
+                ProgressView().onAppear(perform: fetchSong)
+            }
+        }
+        .onAppear(perform: requestAuthorization)
+        .onReceive(SystemMusicPlayer.shared.state.objectWillChange) { _ in
+            updatePlaybackState()
+        }
+    }
+
+    private func requestAuthorization() {
+        Task {
+            await MusicAuthorization.request()
+        }
+    }
+    
+    private func fetchSong() {
+        Task {
+            do {
+                let request = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: songID)
+                let response = try await request.response()
+                self.song = response.items.first
+            } catch {
+                print("Failed to fetch song: \(error)")
+            }
+        }
+    }
+
+    private func togglePlayback() {
+        Task {
+            if isPlaying {
+                SystemMusicPlayer.shared.pause()
+            } else {
+                guard let song = song else { return }
+                SystemMusicPlayer.shared.queue = [song]
+                try await SystemMusicPlayer.shared.play()
+            }
+            isPlaying.toggle()
+        }
+    }
+    
+    private func updatePlaybackState() {
+        self.isPlaying = SystemMusicPlayer.shared.state.playbackStatus == .playing
+    }
+}
+
+private func extractAppleMusicID(from url: URL) -> MusicItemID? {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          let queryItems = components.queryItems,
+          let idString = queryItems.first(where: { $0.name == "i" })?.value else {
+        return nil
+    }
+    return MusicItemID(idString)
 }
