@@ -23,6 +23,8 @@ struct MediaEntry: Identifiable {
 struct AddSongSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var usageManager: UsageManager
+
     
     let student: StudentCD
 
@@ -149,6 +151,7 @@ struct AddSongSheetCD: View {
         newSong.goalPlays = Int64(goalPlays) ?? 0
         newSong.songStatus = songStatus
         newSong.pieceType = pieceType
+        usageManager.incrementSongCreations()
 
         Task {
             for entry in mediaEntries {

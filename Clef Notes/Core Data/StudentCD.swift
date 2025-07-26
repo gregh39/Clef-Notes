@@ -31,6 +31,9 @@ extension StudentCD {
     @NSManaged public var mediaReferences: NSSet?
     @NSManaged public var instructors: NSSet?
     @NSManaged public var audioRecordings: NSSet?
+    @NSManaged public var sessionCreations: Int64
+    @NSManaged public var songCreations: Int64
+
     
     public var instrumentType: Instrument? {
         get {
@@ -103,3 +106,4 @@ extension StudentCD {
 extension StudentCD : Identifiable {
 
 }
+

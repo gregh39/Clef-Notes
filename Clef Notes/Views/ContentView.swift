@@ -6,11 +6,15 @@ import PhotosUI
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    
+    @EnvironmentObject var usageManager: UsageManager
+
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
         animation: .default)
     private var students: FetchedResults<StudentCD>
+    
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var showingPaywall = false
 
     @State private var selectedStudent: StudentCD?
     @State private var showingAddSheet = false
@@ -118,6 +122,9 @@ struct ContentView: View {
             showingMetronome: $showingMetronome,
             showingTuner: $showingTuner
         )
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+        }
     }
 
     private var studentListView: some View {
@@ -159,7 +166,11 @@ struct ContentView: View {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 EditButton()
                 Button {
-                    showingAddSheet = true
+                    if subscriptionManager.isAllowedToCreateStudent() {
+                        showingAddSheet = true
+                    } else {
+                        showingPaywall = true
+                    }
                 } label: {
                     Label("Add Student", systemImage: "plus")
                 }
@@ -189,6 +200,7 @@ struct ContentView: View {
         newStudent.name = newName
         newStudent.instrumentType = newInstrument
         newStudent.avatar = selectedAvatarData
+        usageManager.incrementStudentCreations()
         do {
             try viewContext.save()
         } catch {

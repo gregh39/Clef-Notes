@@ -5,6 +5,8 @@ struct AddSessionSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var sessionTimerManager: SessionTimerManager
+    @EnvironmentObject var usageManager: UsageManager
+
 
     let student: StudentCD
     var onAdd: (PracticeSessionCD) -> Void
@@ -134,7 +136,8 @@ struct AddSessionSheetCD: View {
         newSession.student = student
         newSession.instructor = selectedInstructor
         newSession.location = selectedLocation
-        
+        usageManager.incrementSessionCreations()
+
         do {
             try viewContext.save()
             if timeThisSession {

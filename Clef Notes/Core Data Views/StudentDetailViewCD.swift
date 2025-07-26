@@ -7,6 +7,9 @@ struct StudentDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var showingPaywall = false
+    
     @State private var path = NavigationPath()
     
     @State private var showingAddSongSheet = false
@@ -58,10 +61,22 @@ struct StudentDetailViewCD: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
                         if selectedTab <= 1 {
-                            Button { showingAddSongSheet = true } label: {
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSong() { 
+                                    showingAddSongSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
                                 Label("Add Song", image: "add.song")
                             }
-                            Button { showingAddSessionSheet = true } label: {
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSession() {
+                                    showingAddSessionSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
                                 Label("Add Session", systemImage: "calendar.badge.plus")
                             }
                         } else if selectedTab == 3 {
@@ -96,6 +111,10 @@ struct StudentDetailViewCD: View {
                     isSharePresented: $isSharePresented
                 )
             }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+            }
+
 
             
             TimerBarView()

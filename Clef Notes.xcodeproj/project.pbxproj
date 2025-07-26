@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		370336322E3479FA005157A3 /* ReceiptParser in Frameworks */ = {isa = PBXBuildFile; productRef = 370336312E3479FA005157A3 /* ReceiptParser */; };
+		370336342E3479FA005157A3 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 370336332E3479FA005157A3 /* RevenueCat */; };
+		370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 370336352E3479FA005157A3 /* RevenueCatUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		37F1716D2DF91DFF009C3656 /* Clef Notes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Clef Notes.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +42,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				370336342E3479FA005157A3 /* RevenueCat in Frameworks */,
+				370336322E3479FA005157A3 /* ReceiptParser in Frameworks */,
+				370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +87,9 @@
 			);
 			name = "Clef Notes";
 			packageProductDependencies = (
+				370336312E3479FA005157A3 /* ReceiptParser */,
+				370336332E3479FA005157A3 /* RevenueCat */,
+				370336352E3479FA005157A3 /* RevenueCatUI */,
 			);
 			productName = "Clef Notes";
 			productReference = 37F1716D2DF91DFF009C3656 /* Clef Notes.app */;
@@ -108,7 +120,7 @@
 			mainGroup = 37F171642DF91DFF009C3656;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				370335202E331BEC005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 37F1716E2DF91DFF009C3656 /* Products */;
@@ -366,15 +378,33 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		370335202E331BEC005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+		370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
+				minimumVersion = 5.33.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		370336312E3479FA005157A3 /* ReceiptParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = ReceiptParser;
+		};
+		370336332E3479FA005157A3 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		370336352E3479FA005157A3 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 37F171652DF91DFF009C3656 /* Project object */;
 }

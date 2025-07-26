@@ -1,17 +1,24 @@
 import SwiftUI
 import CoreData
+import RevenueCat
 
 @main
 struct Clef_NotesApp: App {
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    // --- THIS IS THE FIX: Create and manage the session timer ---
     @StateObject private var sessionTimerManager: SessionTimerManager
-
+    @StateObject private var subscriptionManager: SubscriptionManager // Add this
+    @StateObject private var usageManager: UsageManager
+    
     init() {
         let context = PersistenceController.shared.persistentContainer.viewContext
         _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager(context: context))
+        _subscriptionManager = StateObject(wrappedValue: SubscriptionManager(context: context)) // And this
+        _usageManager = StateObject(wrappedValue: UsageManager(context: context)) // And this
+
+        Purchases.logLevel = .debug
+        Purchases.configure(withAPIKey: rc_key)
     }
         
     var body: some Scene {
@@ -19,8 +26,10 @@ struct Clef_NotesApp: App {
             ContentView()
                .environment(\.managedObjectContext, PersistenceController.shared.persistentContainer.viewContext)
                .environmentObject(AudioManager())
-               // --- THIS IS THE FIX: Inject the timer manager into the environment ---
                .environmentObject(sessionTimerManager)
+               .environmentObject(subscriptionManager) // Inject the manager
+               .environmentObject(usageManager) // Inject the manager
+
         }
     }
 }

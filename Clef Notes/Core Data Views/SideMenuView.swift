@@ -3,6 +3,8 @@ import SwiftUI
 struct SideMenuView: View {
     @ObservedObject var student: StudentCD
     @Binding var isPresented: Bool
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+
 
     // Bindings for sheets that are NOT part of the navigation
     @Binding var showingEditStudentSheet: Bool
@@ -49,9 +51,12 @@ struct SideMenuView: View {
                         NavigationLink(destination: MetronomeSectionView()) {
                             Label("Metronome", systemImage: "metronome")
                         }
+                        .disabled(!subscriptionManager.canAccessPaidFeatures) // Add this
+
                         NavigationLink(destination: TunerTabView()) {
                             Label("Tuner", systemImage: "tuningfork")
                         }
+                        .disabled(!subscriptionManager.canAccessPaidFeatures) // And this
                         NavigationLink(destination: SettingsView()) {
                             Label("Settings", systemImage: "gearshape")
                         }
