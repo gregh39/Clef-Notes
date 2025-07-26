@@ -37,7 +37,7 @@ struct ContentView: View {
             studentListView
         } detail: {
             if let student = selectedStudent {
-                StudentDetailViewCD(student: student)
+                StudentDetailNavigationView(student: student)
             } else {
                 Text("Select a student")
             }
