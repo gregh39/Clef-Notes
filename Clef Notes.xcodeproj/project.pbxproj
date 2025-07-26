@@ -10,6 +10,8 @@
 		370336322E3479FA005157A3 /* ReceiptParser in Frameworks */ = {isa = PBXBuildFile; productRef = 370336312E3479FA005157A3 /* ReceiptParser */; };
 		370336342E3479FA005157A3 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 370336332E3479FA005157A3 /* RevenueCat */; };
 		370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 370336352E3479FA005157A3 /* RevenueCatUI */; };
+		3712E1962E348DBD005E3518 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3712E1952E348DBD005E3518 /* AudioKit */; };
+		371DFAE92E348FD000DEF10A /* SoundpipeAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,7 +45,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				370336342E3479FA005157A3 /* RevenueCat in Frameworks */,
+				371DFAE92E348FD000DEF10A /* SoundpipeAudioKit in Frameworks */,
 				370336322E3479FA005157A3 /* ReceiptParser in Frameworks */,
+				3712E1962E348DBD005E3518 /* AudioKit in Frameworks */,
 				370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -51,10 +55,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3712E1942E348DBD005E3518 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		37F171642DF91DFF009C3656 = {
 			isa = PBXGroup;
 			children = (
 				37F1716F2DF91DFF009C3656 /* Clef Notes */,
+				3712E1942E348DBD005E3518 /* Frameworks */,
 				37F1716E2DF91DFF009C3656 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +102,8 @@
 				370336312E3479FA005157A3 /* ReceiptParser */,
 				370336332E3479FA005157A3 /* RevenueCat */,
 				370336352E3479FA005157A3 /* RevenueCatUI */,
+				3712E1952E348DBD005E3518 /* AudioKit */,
+				371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */,
 			);
 			productName = "Clef Notes";
 			productReference = 37F1716D2DF91DFF009C3656 /* Clef Notes.app */;
@@ -121,6 +135,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */,
+				371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 37F1716E2DF91DFF009C3656 /* Products */;
@@ -386,6 +402,22 @@
 				minimumVersion = 5.33.1;
 			};
 		};
+		3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/AudioKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.6.5;
+			};
+		};
+		371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/SoundpipeAudioKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.7.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -403,6 +435,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCatUI;
+		};
+		3712E1952E348DBD005E3518 /* AudioKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */;
+			productName = AudioKit;
+		};
+		371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */;
+			productName = SoundpipeAudioKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

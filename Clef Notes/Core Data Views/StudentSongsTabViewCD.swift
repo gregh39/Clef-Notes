@@ -10,6 +10,8 @@ struct StudentSongsTabViewCD: View {
     @State private var selectedSort: SongSortOption = .title
     @State private var selectedPieceType: PieceType? = nil
     @State private var editingSongForEditSheet: SongCD? = nil
+    
+    @State private var path = NavigationPath()
 
     private var availablePieceTypes: [PieceType] {
         let allTypes = student.songsArray.compactMap { $0.pieceType }
@@ -28,47 +30,53 @@ struct StudentSongsTabViewCD: View {
     }
     
     var body: some View {
-        Group {
-            if student.songsArray.isEmpty {
-                ContentUnavailableView {
-                    Label("No Songs Added", image: "add.song")
-                } description: {
-                    Text("Tap the button to add your first song.")
-                } actions: {
-                    Button("Add First Song", action: onAddSong)
-                        .buttonStyle(.borderedProminent)
-                }
-            } else {
-                List {
-                    Section {
-                        EmptyView()
-                    } header: {
-                        typeFilterBar
-                            .padding(.vertical, 8)
+        NavigationStack(path: $path) {
+            Group {
+                if student.songsArray.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Songs Added", image: "add.song")
+                    } description: {
+                        Text("Tap the button to add your first song.")
+                    } actions: {
+                        Button("Add First Song", action: onAddSong)
+                            .buttonStyle(.borderedProminent)
                     }
-
-                    songsSection
-                    
-                    SongSectionViewCD(
-                        title: "Scales",
-                        songs: filteredSongs(for: .scale),
-                        editingSong: $editingSongForEditSheet
-                    )
-                    
-                    SongSectionViewCD(
-                        title: "Warm-ups",
-                        songs: filteredSongs(for: .warmUp),
-                        editingSong: $editingSongForEditSheet
-                    )
-                    
-                    SongSectionViewCD(
-                        title: "Exercises",
-                        songs: filteredSongs(for: .exercise),
-                        editingSong: $editingSongForEditSheet
-                    )
+                } else {
+                    List {
+                        Section {
+                            EmptyView()
+                        } header: {
+                            typeFilterBar
+                                .padding(.vertical, 8)
+                        }
+                        
+                        songsSection
+                        
+                        SongSectionViewCD(
+                            title: "Scales",
+                            songs: filteredSongs(for: .scale),
+                            editingSong: $editingSongForEditSheet
+                        )
+                        
+                        SongSectionViewCD(
+                            title: "Warm-ups",
+                            songs: filteredSongs(for: .warmUp),
+                            editingSong: $editingSongForEditSheet
+                        )
+                        
+                        SongSectionViewCD(
+                            title: "Exercises",
+                            songs: filteredSongs(for: .exercise),
+                            editingSong: $editingSongForEditSheet
+                        )
+                    }
+                    .listStyle(.insetGrouped)
                 }
-                .listStyle(.insetGrouped)
             }
+            .navigationDestination(for: SongCD.self) { song in
+                SongDetailViewCD(song: song, audioManager: audioManager)
+            }
+            .navigationTitle("Songs")
         }
     }
 

@@ -1,22 +1,139 @@
 import SwiftUI
 import AVFoundation
+import Combine
 
-struct TuningNote: Hashable, Identifiable {
-    let id = UUID()
-    let name: String
-    let frequency: Double
+// An enum to manage the tuner state
+private enum TunerMode: String, CaseIterable, Identifiable {
+    case listening = "Listening"
+    case drone = "Drone"
+    var id: String { self.rawValue }
 }
 
+// This is a wrapper view that correctly initializes the StateObjects
+// using the audioManager from the environment.
 struct TunerTabView: View {
     @EnvironmentObject var audioManager: AudioManager
-    
-    @State private var viewModel: TunerViewModel
-    
-    @State private var selectedOctave: Int = 4
-    
-    init() {
-        _viewModel = State(initialValue: TunerViewModel(audioManager: AudioManager()))
+
+    var body: some View {
+        TunerTabContentView(audioManager: audioManager)
     }
+}
+
+private struct TunerTabContentView: View {
+    @StateObject private var droneViewModel: TunerViewModel
+    @StateObject private var pitchTunerViewModel: PitchTunerViewModel
+    
+    @State private var tunerMode: TunerMode = .listening
+    
+    init(audioManager: AudioManager) {
+        _droneViewModel = StateObject(wrappedValue: TunerViewModel(audioManager: audioManager))
+        _pitchTunerViewModel = StateObject(wrappedValue: PitchTunerViewModel())
+    }
+
+    var body: some View {
+        VStack {
+            Picker("Tuner Mode", selection: $tunerMode) {
+                ForEach(TunerMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding()
+
+            if tunerMode == .listening {
+                PitchListeningView(tuner: pitchTunerViewModel)
+            } else {
+                DroneView(viewModel: droneViewModel)
+            }
+        }
+        .onDisappear {
+            // Stop both engines when the view disappears
+            droneViewModel.stopAll()
+            pitchTunerViewModel.stop()
+        }
+        .onChange(of: tunerMode) {
+            // Stop the inactive tuner to release audio resources
+            if tunerMode == .listening {
+                droneViewModel.stopAll()
+            } else {
+                pitchTunerViewModel.stop()
+            }
+        }
+    }
+}
+
+
+// MARK: - Pitch Listening UI
+private struct PitchListeningView: View {
+    @ObservedObject var tuner: PitchTunerViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            Text("Play a note on your instrument...")
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+            // The main tuner display
+            VStack {
+                Text(tuner.detectedNoteName)
+                    .font(.system(size: 120, weight: .bold, design: .rounded))
+                Text("\(tuner.detectedFrequency, specifier: "%.1f") Hz")
+                    .font(.title2)
+            }
+            .padding(.vertical, 40)
+
+            // Visual feedback meter
+            TunerMeter(distance: $tuner.distance)
+
+            Spacer()
+            
+            Button(tuner.isListening ? "Stop" : "Start Listening") {
+                if tuner.isListening {
+                    tuner.stop()
+                } else {
+                    tuner.start()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(tuner.isListening ? .red : .accentColor)
+            .padding(.bottom, 40)
+        }
+    }
+}
+
+private struct TunerMeter: View {
+    @Binding var distance: Double
+    
+    private var isPerfectTune: Bool { abs(distance) < 0.05 }
+
+    var body: some View {
+        ZStack(alignment: .center) {
+            Capsule()
+                .fill(Color.gray.opacity(0.2))
+                .frame(height: 30)
+                .overlay(Capsule().stroke(Color.gray.opacity(0.4), lineWidth: 1))
+            
+            Rectangle()
+                .fill(isPerfectTune ? .green : Color.accentColor)
+                .frame(width: 4, height: 40)
+                .offset(x: CGFloat(distance) * 150)
+                .animation(.spring(), value: distance)
+                .shadow(radius: 3)
+            
+            Rectangle()
+                .fill(.green.opacity(0.5))
+                .frame(width: 2, height: 30)
+        }
+        .padding()
+    }
+}
+
+// MARK: - Drone Tone UI
+private struct DroneView: View {
+    @ObservedObject var viewModel: TunerViewModel
+    @State private var selectedOctave: Int = 4
 
     var body: some View {
         VStack {
@@ -86,48 +203,52 @@ struct TunerTabView: View {
             .tint(viewModel.isPlayingDrone ? .red : .accentColor)
             .padding(.bottom, 40)
         }
-        .onAppear {
-            viewModel.audioManager = audioManager
-        }
-        .onDisappear {
-            viewModel.stopAll()
-        }
-        // --- THIS IS THE FIX ---
-        // The logic is updated to find the same note in the new octave.
         .onChange(of: selectedOctave) { _, newOctave in
-            // Get the base name of the current note (e.g., "C#" from "C#4").
             let currentNoteName = viewModel.selectedNote.name
             let baseName = currentNoteName.trimmingCharacters(in: .decimalDigits)
-
-            // Get the list of notes for the new octave.
             let newNotes = TunerViewModel.availableNotes(for: newOctave)
-
-            // Find the note in the new list that matches the base name.
             if let newNote = newNotes.first(where: { $0.name.starts(with: baseName) }) {
                 viewModel.selectedNote = newNote
             } else {
-                // Fallback to 'A' if, for some reason, the note isn't found.
-                viewModel.selectedNote = newNotes[9]
+                viewModel.selectedNote = newNotes[9] // Fallback to 'A'
             }
         }
     }
 }
 
-@MainActor
-@Observable
-class TunerViewModel {
+// MARK: - Drone ViewModel and Helpers
+
+struct TuningNote: Hashable, Identifiable {
+    let id = UUID()
+    let name: String
+    let frequency: Double
+}
+
+class TunerViewModel: ObservableObject {
+    @Published var isPlayingDrone = false
+    @Published var selectedNote: TuningNote = TunerViewModel.availableNotes(for: 4)[9]
+    @Published var droneVolume: Float = 1.0 {
+        didSet {
+            if isEngineSetup {
+                droneMixerNode.outputVolume = isPlayingDrone ? droneVolume : 0.0
+            }
+        }
+    }
+    
     var audioManager: AudioManager
     
     private var audioEngine: AVAudioEngine
     private var dronePlayerNode: AVAudioSourceNode?
     private var droneMixerNode: AVAudioMixerNode
     private var phase: Float = 0
+    private var isEngineSetup = false
     
-    var isPlayingDrone = false
-    var droneVolume: Float = 1.0 {
-        didSet {
-            droneMixerNode.outputVolume = isPlayingDrone ? droneVolume : 0.0
-        }
+    var targetFrequency: Double { selectedNote.frequency }
+
+    init(audioManager: AudioManager) {
+        self.audioManager = audioManager
+        self.audioEngine = AVAudioEngine()
+        self.droneMixerNode = AVAudioMixerNode()
     }
     
     static func availableNotes(for octave: Int) -> [TuningNote] {
@@ -141,16 +262,6 @@ class TunerViewModel {
             let frequency = baseFreq * pow(2.0, Double(octave))
             return TuningNote(name: "\(name)\(octave)", frequency: frequency)
         }
-    }
-    
-    var selectedNote: TuningNote = TunerViewModel.availableNotes(for: 4)[9]
-    var targetFrequency: Double { selectedNote.frequency }
-
-    init(audioManager: AudioManager) {
-        self.audioManager = audioManager
-        self.audioEngine = AVAudioEngine()
-        self.droneMixerNode = AVAudioMixerNode()
-        setupDroneNode()
     }
 
     func toggleDrone() {
@@ -171,8 +282,8 @@ class TunerViewModel {
 
     func stopAll() {
         if isPlayingDrone {
-            droneMixerNode.outputVolume = 0.0
             if audioEngine.isRunning {
+                droneMixerNode.outputVolume = 0.0
                 audioEngine.stop()
             }
             isPlayingDrone = false
@@ -181,6 +292,11 @@ class TunerViewModel {
     }
     
     private func startEngine() {
+        if !isEngineSetup {
+            setupDroneNode()
+            isEngineSetup = true
+        }
+
         guard !audioEngine.isRunning else { return }
         do {
             try audioEngine.start()

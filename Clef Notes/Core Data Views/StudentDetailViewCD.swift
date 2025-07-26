@@ -27,14 +27,14 @@ struct StudentDetailViewCD: View {
             case 0: return "Sessions"
             case 1: return "Songs"
             case 2: return "Stats"
-            case 3: return "All Notes"
+            case 3: return "Awards" // Add this case
+            case 4: return "All Notes" // Update this to 4
             default: return student.name ?? "Student"
         }
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            NavigationStack(path: $path) {
                 TabView(selection: $selectedTab) {
                     SessionListViewCD(student: student) {
                         showingAddSessionSheet = true
@@ -51,13 +51,16 @@ struct StudentDetailViewCD: View {
                     StatsTabViewCD(student: student)
                         .tabItem { Label("Stats", systemImage: "chart.bar") }
                         .tag(2)
+
+                    // Add the new AwardsView tab
+                    AwardsView(student: student, context: viewContext)
+                        .tabItem { Label("Awards", systemImage: "rosette") }
+                        .tag(3)
                     
                     StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
                         .tabItem { Label("Notes", systemImage: "note.text") }
-                        .tag(3)
+                        .tag(4) // Update this tag to 4
                 }
-                .navigationTitle(navigationTitle)
-                .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
                         if selectedTab <= 1 {
@@ -92,13 +95,6 @@ struct StudentDetailViewCD: View {
                         }
                     }
                 }
-                .navigationDestination(for: PracticeSessionCD.self) { session in
-                    SessionDetailViewCD(session: session, audioManager: audioManager)
-                }
-                .navigationDestination(for: SongCD.self) { song in
-                    SongDetailViewCD(song: song, audioManager: audioManager)
-                }
-            }
             .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
             .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
             .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
@@ -114,8 +110,6 @@ struct StudentDetailViewCD: View {
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
             }
-
-
             
             TimerBarView()
         }

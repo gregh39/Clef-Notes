@@ -4,51 +4,59 @@ import CoreData
 struct SessionListViewCD: View {
     @ObservedObject var student: StudentCD
     @EnvironmentObject var audioManager: AudioManager
-    
+    @State private var path = NavigationPath()
+
     var onAddSession: () -> Void
 
     @State private var sessionToDelete: PracticeSessionCD? = nil
 
     var body: some View {
-        Group {
-            if student.sessionsArray.isEmpty {
-                ContentUnavailableView {
-                    Label("No Sessions Yet", systemImage: "calendar.badge.plus")
-                } description: {
-                    Text("Tap the button to log your first practice session.")
-                } actions: {
-                    Button("Add First Session", action: onAddSession)
-                        .buttonStyle(.borderedProminent)
-                }
-            } else {
-                List {
-                    ForEach(student.sessionsArray) { session in
-                        Section {
-                            ZStack {
-                                SessionCardViewCD(session: session)
-                                NavigationLink(value: session) {
-                                    EmptyView()
+        NavigationStack(path: $path) {
+            Group {
+                if student.sessionsArray.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Sessions Yet", systemImage: "calendar.badge.plus")
+                    } description: {
+                        Text("Tap the button to log your first practice session.")
+                    } actions: {
+                        Button("Add First Session", action: onAddSession)
+                            .buttonStyle(.borderedProminent)
+                    }
+                } else {
+                    List {
+                        ForEach(student.sessionsArray) { session in
+                            Section {
+                                ZStack {
+                                    SessionCardViewCD(session: session)
+                                    NavigationLink(value: session) {
+                                        EmptyView()
+                                    }
+                                    .opacity(0)
                                 }
-                                .opacity(0)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    sessionToDelete = session
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        sessionToDelete = session
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                .listStyle(.insetGrouped)
-                .alert("Delete Session?", isPresented: Binding(get: { sessionToDelete != nil }, set: { if !$0 { sessionToDelete = nil } }), presenting: sessionToDelete) { session in
-                    Button("Delete", role: .destructive) { deleteSession(session) }
-                    Button("Cancel", role: .cancel) {}
-                } message: { _ in
-                    Text("Are you sure you want to delete this session? All associated plays, notes, and recordings will also be permanently deleted.")
+                    .listStyle(.insetGrouped)
+                    .alert("Delete Session?", isPresented: Binding(get: { sessionToDelete != nil }, set: { if !$0 { sessionToDelete = nil } }), presenting: sessionToDelete) { session in
+                        Button("Delete", role: .destructive) { deleteSession(session) }
+                        Button("Cancel", role: .cancel) {}
+                    } message: { _ in
+                        Text("Are you sure you want to delete this session? All associated plays, notes, and recordings will also be permanently deleted.")
+                    }
                 }
             }
+            .navigationTitle("Sessions")
+            .navigationDestination(for: PracticeSessionCD.self) { session in
+                SessionDetailViewCD(session: session, audioManager: audioManager)
+            }
+
         }
     }
     
@@ -97,11 +105,17 @@ struct SessionCardViewCD: View {
             }
             HStack(spacing: 8) {
                 if let location = session.location {
-                    Label(location.rawValue, systemImage: "mappin.and.ellipse")
+                    HStack{
+                        Image(systemName: "mappin.and.ellipse")
+                        Text(location.rawValue)
+                    }
                 }
                 Spacer()
                 if let instructor = session.instructor {
-                    Label(instructor.name ?? "Unknown", systemImage: "person.fill")
+                    HStack{
+                        Image(systemName: "person.fill")
+                        Text(instructor.name ?? "Unknown")
+                    }
                 }
             }
             .font(.subheadline).foregroundColor(.secondary)
@@ -110,17 +124,35 @@ struct SessionCardViewCD: View {
                 Divider()
                 HStack(spacing: 16) {
                     if totalPlays > 0 {
-                        Label("\(totalPlays)", systemImage: "music.note.list")
+                        HStack{
+                            Image(systemName: "music.note.list")
+                            Text("\(totalPlays)")
+                        }
+                        .foregroundStyle(.blue)
+                        //Label("\(totalPlays)", systemImage: "music.note.list")
+                          //  .foregroundStyle(.blue)
                     }
                     if noteCount > 0 {
-                        Label("\(noteCount)", systemImage: "note.text")
+                        HStack{
+                            Image(systemName: "note.text")
+                            Text("\(noteCount)")
+                        }
+                        .foregroundStyle(.orange)
                     }
                     if recordingCount > 0 {
-                        Label("\(recordingCount)", systemImage: "mic.fill")
+                        HStack{
+                            Image(systemName: "mic.fill")
+                            Text("\(recordingCount)")
+                        }
+                        .foregroundStyle(.red)
                     }
                     Spacer()
                     if session.durationMinutes > 0 {
-                        Label(durationString, systemImage: "clock.fill")
+                        HStack{
+                            Image(systemName: "clock.fill")
+                            Text("\(durationString)")
+                        }
+                        .foregroundStyle(.purple)
                     }
                 }
                 .font(.caption)

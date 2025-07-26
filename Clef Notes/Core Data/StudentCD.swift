@@ -33,6 +33,7 @@ extension StudentCD {
     @NSManaged public var audioRecordings: NSSet?
     @NSManaged public var sessionCreations: Int64
     @NSManaged public var songCreations: Int64
+    @NSManaged public var earnedAwards: NSSet?
 
     
     public var instrumentType: Instrument? {
@@ -66,6 +67,21 @@ extension StudentCD {
             lhs.day ?? .distantPast > rhs.day ?? .distantPast
         }
     }
+    
+    public var notesArray: [NoteCD] {
+            let set = notes as? Set<NoteCD> ?? []
+            return Array(set)
+        }
+        
+        public var audioRecordingsArray: [AudioRecordingCD] {
+            let set = audioRecordings as? Set<AudioRecordingCD> ?? []
+            return Array(set)
+        }
+        
+        public var earnedAwardsArray: [EarnedAwardCD] {
+            let set = earnedAwards as? Set<EarnedAwardCD> ?? []
+            return Array(set)
+        }
 
 }
 
@@ -107,3 +123,18 @@ extension StudentCD : Identifiable {
 
 }
 
+extension StudentCD {
+
+    @objc(addEarnedAwardsObject:)
+    @NSManaged public func addToEarnedAwards(_ value: EarnedAwardCD)
+
+    @objc(removeEarnedAwardsObject:)
+    @NSManaged public func removeFromEarnedAwards(_ value: EarnedAwardCD)
+
+    @objc(addEarnedAwards:)
+    @NSManaged public func addToEarnedAwards(_ values: NSSet)
+
+    @objc(removeEarnedAwards:)
+    @NSManaged public func removeFromEarnedAwards(_ values: NSSet)
+
+}

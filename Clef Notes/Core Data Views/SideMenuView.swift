@@ -48,6 +48,10 @@ struct SideMenuView: View {
                     }
 
                     Section("Tools") {
+                        NavigationLink(destination: PitchGameView()) {
+                            Label("Pitch Game", systemImage: "gamecontroller")
+                        }
+
                         NavigationLink(destination: MetronomeSectionView()) {
                             Label("Metronome", systemImage: "metronome")
                         }

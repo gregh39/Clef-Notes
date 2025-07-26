@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23788.4" systemVersion="25A5295e" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24270" systemVersion="25A5295e" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
     <entity name="AudioRecordingCD" representedClassName="AudioRecordingCD" syncable="YES">
         <attribute name="data" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
         <attribute name="dateRecorded" attributeType="Date" defaultDateTimeInterval="774326640" usesScalarValueType="NO"/>
@@ -9,6 +9,12 @@
         <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PracticeSessionCD" inverseName="recordings" inverseEntity="PracticeSessionCD"/>
         <relationship name="songs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SongCD" inverseName="recordings" inverseEntity="SongCD"/>
         <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="audioRecordings" inverseEntity="StudentCD"/>
+    </entity>
+    <entity name="EarnedAwardCD" representedClassName="EarnedAwardCD" syncable="YES">
+        <attribute name="awardRawValue" optional="YES" attributeType="String"/>
+        <attribute name="count" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="dateWon" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="earnedAwards" inverseEntity="StudentCD"/>
     </entity>
     <entity name="InstructorCD" representedClassName="InstructorCD" syncable="YES">
         <attribute name="name" attributeType="String" defaultValueString=""/>
@@ -74,6 +80,7 @@
         <attribute name="sessionCreations" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="songCreations" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="audioRecordings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AudioRecordingCD" inverseName="student" inverseEntity="AudioRecordingCD"/>
+        <relationship name="earnedAwards" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="EarnedAwardCD" inverseName="student" inverseEntity="EarnedAwardCD"/>
         <relationship name="instructors" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="InstructorCD" inverseName="student" inverseEntity="InstructorCD"/>
         <relationship name="mediaReferences" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="MediaReferenceCD" inverseName="student" inverseEntity="MediaReferenceCD"/>
         <relationship name="notes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NoteCD" inverseName="student" inverseEntity="NoteCD"/>

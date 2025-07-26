@@ -31,63 +31,68 @@ struct MonthKey: Hashable, Comparable {
 struct StatsTabViewCD: View {
     @StateObject private var viewModel: StatsViewModelCD
     @Environment(\.managedObjectContext) private var viewContext
+    @State private var path = NavigationPath()
+
 
     init(student: StudentCD) {
         _viewModel = StateObject(wrappedValue: StatsViewModelCD(student: student))
     }
     var body: some View {
-        Form {
-            Section {
-                StreakViewCD(viewModel: viewModel)
-            }
-
-            Section(header: Text("Practice Heat Map")) {
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 12) {
-                            ForEach(viewModel.allMonths, id: \.self) { month in
-                                HeatMapViewCD(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
-                                    .id(month)
+        NavigationStack(path: $path) {
+            Form {
+                Section {
+                    StreakViewCD(viewModel: viewModel)
+                }
+                
+                Section(header: Text("Practice Heat Map")) {
+                    ScrollViewReader { proxy in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .top, spacing: 12) {
+                                ForEach(viewModel.allMonths, id: \.self) { month in
+                                    HeatMapViewCD(year: month.year, month: month.month, dayPlayCounts: viewModel.monthPlayCounts[month] ?? [:])
+                                        .id(month)
+                                }
                             }
+                            .padding(.horizontal)
+                            .padding(.bottom)
                         }
-                        .padding(.horizontal)
-                        .padding(.bottom)
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                    .onAppear {
-                        proxy.scrollTo(viewModel.allMonths.last, anchor: .trailing)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        .onAppear {
+                            proxy.scrollTo(viewModel.allMonths.last, anchor: .trailing)
+                        }
                     }
                 }
+                
+                Section(header: Text("Last 7 Days: Practiced on \(viewModel.practicedDaysLast7) day\(viewModel.practicedDaysLast7 == 1 ? "" : "s")")) {
+                    WeeklyPracticeViewCD(viewModel: viewModel)
+                }
+                
+                Section(header: Text("Monthly Snapshot")) {
+                    MonthlySummaryViewCD(viewModel: viewModel)
+                }
+                
+                Section(header: Text("📈 Sessions by Weekday")) {
+                    WeekdayChartViewCD(viewModel: viewModel)
+                }
+                
+                // --- THIS IS THE FIX: New section for piece type breakdown ---
+                Section(header: Text("Practice Breakdown")) {
+                    PieceTypeChartViewCD(viewModel: viewModel)
+                }
+                
+                Section(header: Text("Song Insights")) {
+                    SongStatsViewCD(viewModel: viewModel)
+                }
+                
+                Section(header: Text("All-Time Stats")) {
+                    AllTimeStatsViewCD(viewModel: viewModel)
+                }
             }
-            
-            Section(header: Text("Last 7 Days: Practiced on \(viewModel.practicedDaysLast7) day\(viewModel.practicedDaysLast7 == 1 ? "" : "s")")) {
-                WeeklyPracticeViewCD(viewModel: viewModel)
-            }
-            
-            Section(header: Text("Monthly Snapshot")) {
-                MonthlySummaryViewCD(viewModel: viewModel)
-            }
-            
-            Section(header: Text("📈 Sessions by Weekday")) {
-                WeekdayChartViewCD(viewModel: viewModel)
-            }
-            
-            // --- THIS IS THE FIX: New section for piece type breakdown ---
-            Section(header: Text("Practice Breakdown")) {
-                PieceTypeChartViewCD(viewModel: viewModel)
-            }
-            
-            Section(header: Text("Song Insights")) {
-                SongStatsViewCD(viewModel: viewModel)
-            }
-
-            Section(header: Text("All-Time Stats")) {
-                AllTimeStatsViewCD(viewModel: viewModel)
+            .onAppear {
+                viewModel.setup(context: viewContext)
             }
         }
-        .onAppear {
-            viewModel.setup(context: viewContext)
-        }
+        .navigationTitle("Stats")
     }
 }
 

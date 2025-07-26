@@ -1,15 +1,105 @@
-//
-//  Enums.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/18/25.
-//
-
-// --- THIS IS THE FIX: A new, comprehensive enum for instruments ---
-
 import SwiftUI
 import Foundation
 import CoreData
+
+// A new enum for the award categories
+public enum AwardCategory: String, CaseIterable {
+    case consistency = "Consistency"
+    case milestones = "Milestones"
+    case variety = "Variety"
+    case featureUsage = "Feature Usage"
+}
+
+public enum Award: String, CaseIterable, Identifiable {
+    // Original Awards
+    case firstSession = "First Session"
+    case sevenDayStreak = "7-Day Streak"
+    case thirtyDayStreak = "30-Day Streak"
+    case hundredPlays = "100 Total Plays"
+    case songMastery = "Song Mastery"
+
+    // New Awards
+    case perfectWeek = "Perfect Week"
+    case weekendWarrior = "Weekend Warrior"
+    case dedicatedHour = "Dedicated Hour"
+    case marathonMusician = "Marathon Musician"
+    case repertoireBuilder = "Repertoire Builder"
+    case virtuosoVolume = "Virtuoso Volume"
+    case wellRounded = "Well-Rounded"
+    case composerCollector = "Composer Collector"
+    case doodlePad = "Doodle Pad"
+    case recordKeeper = "Record Keeper"
+
+    public var id: String { self.rawValue }
+
+    // This new property assigns each award to a category
+    var category: AwardCategory {
+        switch self {
+        case .firstSession, .sevenDayStreak, .thirtyDayStreak, .perfectWeek, .weekendWarrior:
+            return .consistency
+        
+        case .hundredPlays, .songMastery, .marathonMusician, .repertoireBuilder, .virtuosoVolume, .dedicatedHour:
+            return .milestones
+
+        case .wellRounded, .composerCollector:
+            return .variety
+            
+        case .doodlePad, .recordKeeper:
+            return .featureUsage
+        }
+    }
+    
+    // This new property identifies awards that can be won multiple times.
+    var isRepeatable: Bool {
+        switch self {
+        case .sevenDayStreak, .thirtyDayStreak, .hundredPlays, .virtuosoVolume, .songMastery, .perfectWeek, .weekendWarrior:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .firstSession: "Log your very first practice session."
+        case .sevenDayStreak: "Maintain a practice streak for 7 days in a row."
+        case .thirtyDayStreak: "Keep a practice streak going for a full 30 days."
+        case .hundredPlays: "Accumulate 100 total plays across all songs."
+        case .songMastery: "Complete the play goal for any song."
+        case .perfectWeek: "Practice every day of a calendar week."
+        case .weekendWarrior: "Practice on both Saturday and Sunday in the same week."
+        case .dedicatedHour: "Log a single session that lasts 60 minutes or more."
+        case .marathonMusician: "Accumulate 10 hours of total practice time."
+        case .repertoireBuilder: "Add 10 different songs to a student's list."
+        case .virtuosoVolume: "Reach a total of 500 plays across all songs."
+        case .wellRounded: "Practice a Song, a Scale, and an Exercise in a single session."
+        case .composerCollector: "Add songs from 5 different composers."
+        case .doodlePad: "Add a sketch to one of your notes."
+        case .recordKeeper: "Make your first audio recording during a session."
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .firstSession: "sparkles"
+        case .sevenDayStreak: "flame.fill"
+        case .thirtyDayStreak: "crown.fill"
+        case .hundredPlays: "music.mic"
+        case .songMastery: "star.fill"
+        case .perfectWeek: "calendar.badge.checkmark"
+        case .weekendWarrior: "figure.walk"
+        case .dedicatedHour: "hourglass"
+        case .marathonMusician: "medal.fill"
+        case .repertoireBuilder: "music.note.house.fill"
+        case .virtuosoVolume: "guitars.fill"
+        case .wellRounded: "chart.pie.fill"
+        case .composerCollector: "books.vertical.fill"
+        case .doodlePad: "pencil.and.scribble"
+        case .recordKeeper: "waveform.badge.mic"
+        }
+    }
+}
+
 
 public enum Instrument: String, CaseIterable, Identifiable {
     public var id: String { self.rawValue }
@@ -108,6 +198,15 @@ public enum LessonLocation: String, Codable, CaseIterable {
     case school = "School"
     case privateLesson = "Private Lesson"
     case clinic = "Clinic"
+    
+    var color: Color {
+        switch self {
+        case .home: .blue
+        case .school: .orange
+        case .privateLesson: .purple
+        case .clinic: .green
+        }
+    }
 }
 
 public enum PlayType: String, Codable, CaseIterable {

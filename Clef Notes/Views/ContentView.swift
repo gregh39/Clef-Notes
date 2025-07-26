@@ -269,17 +269,16 @@ private struct StudentCellView: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
-            // --- THIS IS THE FIX ---
+        HStack(spacing: 8) {
             if let avatarData = student.avatar, let uiImage = UIImage(data: avatarData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 54, height: 54)
+                    .frame(width: 70, height: 70)
                     .clipShape(Circle())
             } else {
                 Image(systemName: "person.circle.fill")
-                    .font(.system(size: 54))
+                    .font(.system(size: 70))
                     .foregroundColor(.accentColor)
             }
 
@@ -301,11 +300,17 @@ private struct StudentCellView: View {
                 Divider().padding(.vertical, 2)
                 
                 HStack(spacing: 16) {
-                    Label("\(currentStreak) Day Streak", systemImage: "flame.fill")
-                        .foregroundColor(currentStreak > 0 ? .orange : .secondary)
-                    
+                    HStack{
+                        Image(systemName: "flame.fill")
+                        Text("\(currentStreak) Day Streak")
+                    }
+                    .foregroundColor(currentStreak > 0 ? .orange : .secondary)
+                    Spacer()
                     if let lastSessionDate = student.sessionsArray.first?.day {
-                        Label(Self.dateFormatter.string(from: lastSessionDate), systemImage: "clock.arrow.circlepath")
+                        HStack{
+                            Image(systemName: "clock.arrow.circlepath")
+                            Text(Self.dateFormatter.string(from: lastSessionDate))
+                        }
                     }
                 }
                 .font(.caption)

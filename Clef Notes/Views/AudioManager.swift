@@ -92,4 +92,78 @@ class AudioManager: ObservableObject {
             metronomeUpbeatPlayer?.play()
         }
     }
+    
+    func playSineWave(frequency: Double, duration: TimeInterval) {
+        let hasSession = requestSession(for: .player, category: .playback)
+        guard hasSession else { return }
+
+        // Use a local engine instance for this one-off sound
+        let audioEngine = AVAudioEngine()
+        let mainMixer = audioEngine.mainMixerNode
+        let output = audioEngine.outputNode
+        let format = output.inputFormat(forBus: 0)
+
+        // Create an instance of our generator
+        let sineGenerator = SineWaveGenerator(sampleRate: format.sampleRate, frequency: frequency)
+
+        // The render closure is now much simpler for the compiler to understand
+        let sourceNode = AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
+            let abl = UnsafeMutableAudioBufferListPointer(audioBufferList)
+            // It just calls the render method on our helper class
+            sineGenerator.render(bufferList: abl, frameCount: frameCount)
+            return noErr
+        }
+
+        audioEngine.attach(sourceNode)
+        audioEngine.connect(sourceNode, to: mainMixer, format: format)
+        audioEngine.connect(mainMixer, to: output, format: nil)
+
+        do {
+            try audioEngine.start()
+            // Schedule the engine to stop after the desired duration
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                audioEngine.stop()
+                self.releaseSession(for: .player)
+            }
+        } catch {
+            print("Error playing sine wave: \(error)")
+            releaseSession(for: .player)
+        }
+    }
+
 }
+
+// Helper class to manage sine wave generation state
+private class SineWaveGenerator {
+    var phase: Float = 0
+    let sampleRate: Double
+    let frequency: Double
+
+    init(sampleRate: Double, frequency: Double) {
+        self.sampleRate = sampleRate
+        self.frequency = frequency
+    }
+
+    func render(bufferList: UnsafeMutableAudioBufferListPointer, frameCount: UInt32) {
+        let sampleRate = Float(self.sampleRate)
+        let frequency = Float(self.frequency)
+
+        for frame in 0..<Int(frameCount) {
+            // Calculate the sine wave value
+            let value = sin(2 * .pi * self.phase) * 0.5
+            
+            // Increment the phase for the next sample
+            self.phase += frequency / sampleRate
+            if self.phase > 1.0 {
+                self.phase -= 1.0
+            }
+            
+            // Fill the audio buffer
+            for buffer in bufferList {
+                let typedBuffer = buffer.mData!.assumingMemoryBound(to: Float.self)
+                typedBuffer[frame] = value
+            }
+        }
+    }
+}
+

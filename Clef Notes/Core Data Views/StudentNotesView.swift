@@ -10,6 +10,9 @@ struct StudentNotesView: View {
 
     @State private var noteToEdit: NoteCD?
     @Binding var triggerAddNote: Bool
+    
+    @State private var path = NavigationPath()
+
 
     private var generalNotes: [NoteCD] {
         notes.filter { $0.session?.day == nil && $0.date == nil }
@@ -36,44 +39,47 @@ struct StudentNotesView: View {
 
     var body: some View {
         // --- THIS IS THE FIX: Changed list style to .insetGrouped for consistency ---
-        List {
-            if notes.isEmpty {
-                ContentUnavailableView {
-                    Label("No Notes Yet", systemImage: "note.text.badge.plus")
-                } description: {
-                    Text("Tap the '+' button in the navigation bar to add a general note for this student.")
-                }
-            } else {
-                if !generalNotes.isEmpty {
-                    Section("General Notes") {
-                        ForEach(generalNotes) { note in
-                            NoteCell(note: note) { self.noteToEdit = note }
-                        }
-                        .onDelete(perform: deleteGeneralNote)
+        NavigationStack(path: $path) {
+            List {
+                if notes.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Notes Yet", systemImage: "note.text.badge.plus")
+                    } description: {
+                        Text("Tap the '+' button in the navigation bar to add a general note for this student.")
                     }
-                }
-
-                ForEach(groupedDatedNotes) { group in
-                    Section(header: Text(group.date, style: .date)) {
-                        ForEach(group.notes) { note in
-                            NoteCell(note: note) { self.noteToEdit = note }
+                } else {
+                    if !generalNotes.isEmpty {
+                        Section("General Notes") {
+                            ForEach(generalNotes) { note in
+                                NoteCell(note: note) { self.noteToEdit = note }
+                            }
+                            .onDelete(perform: deleteGeneralNote)
                         }
-                        .onDelete { indexSet in
-                            deleteDatedNote(at: indexSet, from: group.notes)
+                    }
+                    
+                    ForEach(groupedDatedNotes) { group in
+                        Section(header: Text(group.date, style: .date)) {
+                            ForEach(group.notes) { note in
+                                NoteCell(note: note) { self.noteToEdit = note }
+                            }
+                            .onDelete { indexSet in
+                                deleteDatedNote(at: indexSet, from: group.notes)
+                            }
                         }
                     }
                 }
             }
-        }
-        .listStyle(.insetGrouped)
-        .sheet(item: $noteToEdit) { note in
-            AddNoteSheetCD(note: note)
-        }
-        .onChange(of: triggerAddNote) {
-            if triggerAddNote {
-                addNote()
-                triggerAddNote = false
+            .listStyle(.insetGrouped)
+            .sheet(item: $noteToEdit) { note in
+                AddNoteSheetCD(note: note)
             }
+            .onChange(of: triggerAddNote) {
+                if triggerAddNote {
+                    addNote()
+                    triggerAddNote = false
+                }
+            }
+            .navigationTitle("Notes")
         }
     }
 
