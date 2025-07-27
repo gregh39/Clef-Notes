@@ -5,69 +5,83 @@ struct SideMenuView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var subscriptionManager: SubscriptionManager
 
-
     // Bindings for sheets that are NOT part of the navigation
     @Binding var showingEditStudentSheet: Bool
     @Binding var isSharePresented: Bool
 
     var body: some View {
         NavigationView {
-            VStack(alignment: .leading) {
-                // Header with student info
-                VStack(alignment: .leading) {
-                    Text(student.name ?? "Student")
-                        .font(.largeTitle)
-                        .bold()
-                    Text(student.instrument ?? "No Instrument")
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-
-                // List with sections and navigation links
-                List {
-                    Section("Student Actions") {
-                        Button {
-                            isPresented = false // Dismiss this sheet first
-                            // Use a slight delay to ensure the sheet is dismissed before presenting the next one
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                showingEditStudentSheet = true
-                            }
-                        } label: {
-                            Label("Edit Student", systemImage: "pencil")
+            // The content is now wrapped in a List to get the desired styling
+            List {
+                // Section for the header content
+                Section {
+                    HStack(spacing: 15) {
+                        if let avatarData = student.avatar, let uiImage = UIImage(data: avatarData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 60, height: 60)
+                                .clipShape(Circle())
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.secondary)
                         }
-
-                        Button {
-                            isPresented = false // Dismiss this sheet first
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isSharePresented = true
-                            }
-                        } label: {
-                            Label("Share Student", systemImage: "square.and.arrow.up")
+                        
+                        VStack(alignment: .leading) {
+                            Text(student.name ?? "Student")
+                                .font(.title2)
+                                .bold()
+                            Text(student.instrument ?? "No Instrument")
+                                .font(.body)
+                                .foregroundColor(.secondary)
                         }
                     }
+                    .padding(.vertical, 8)
+                }
 
-                    Section("Tools") {
-                        NavigationLink(destination: PitchGameView()) {
-                            Label("Pitch Game", systemImage: "gamecontroller")
+                Section("Student Actions") {
+                    Button {
+                        isPresented = false // Dismiss this sheet first
+                        // Use a slight delay to ensure the sheet is dismissed before presenting the next one
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            showingEditStudentSheet = true
                         }
+                    } label: {
+                        Label("Edit Student", systemImage: "pencil")
+                    }
 
-                        NavigationLink(destination: MetronomeSectionView()) {
-                            Label("Metronome", systemImage: "metronome")
+                    Button {
+                        isPresented = false // Dismiss this sheet first
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isSharePresented = true
                         }
-                        .disabled(!subscriptionManager.canAccessPaidFeatures) // Add this
-
-                        NavigationLink(destination: TunerTabView()) {
-                            Label("Tuner", systemImage: "tuningfork")
-                        }
-                        .disabled(!subscriptionManager.canAccessPaidFeatures) // And this
-                        NavigationLink(destination: SettingsView()) {
-                            Label("Settings", systemImage: "gearshape")
-                        }
+                    } label: {
+                        Label("Share Student", systemImage: "square.and.arrow.up")
                     }
                 }
-                .listStyle(.insetGrouped)
+
+                Section("Tools") {
+                    NavigationLink(destination: PitchGameView()) {
+                        Label("Pitch Game", systemImage: "gamecontroller")
+                    }
+
+                    NavigationLink(destination: MetronomeSectionView()) {
+                        Label("Metronome", systemImage: "metronome")
+                    }
+                    .disabled(!subscriptionManager.canAccessPaidFeatures)
+
+                    NavigationLink(destination: TunerTabView()) {
+                        Label("Tuner", systemImage: "tuningfork")
+                    }
+                    .disabled(!subscriptionManager.canAccessPaidFeatures)
+                    
+                    NavigationLink(destination: SettingsView()) {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                }
             }
+            .listStyle(.insetGrouped) // Explicitly setting the list style
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
