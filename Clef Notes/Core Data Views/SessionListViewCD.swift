@@ -2,21 +2,8 @@ import SwiftUI
 import CoreData
 
 struct SessionListViewCD: View {
-    @Binding var student: StudentCD
+    @ObservedObject var student: StudentCD
     @EnvironmentObject var audioManager: AudioManager
-    @EnvironmentObject var subscriptionManager: SubscriptionManager
-    @State private var showingPaywall = false
-    
-    @State private var showingAddSongSheet = false
-    @State private var showingAddSessionSheet = false
-    @State private var showingEditStudentSheet = false
-    
-    @State private var isSharePresented = false
-    @State private var showingSideMenu = false
-    
-    @State private var selectedTab: Int = 0
-    @State private var triggerAddNote = false
-
     @State private var path = NavigationPath()
 
     var onAddSession: () -> Void
@@ -65,33 +52,10 @@ struct SessionListViewCD: View {
                     }
                 }
             }
-            .withGlobalToolbar(
-                selectedTab: $selectedTab,
-                showingAddSongSheet: $showingAddSongSheet,
-                showingAddSessionSheet: $showingAddSessionSheet,
-                showingPaywall: $showingPaywall,
-                triggerAddNote: $triggerAddNote,
-                showingSideMenu: $showingSideMenu
-            )
-
             .navigationTitle("Sessions")
             .navigationDestination(for: PracticeSessionCD.self) { session in
                 SessionDetailViewCD(session: session, audioManager: audioManager)
             }
-            .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { _ in } }
-            .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
-            .sheet(isPresented: $showingSideMenu) {
-                SideMenuView(
-                    student: $student,
-                    isPresented: $showingSideMenu,
-                    showingEditStudentSheet: $showingEditStudentSheet,
-                    isSharePresented: $isSharePresented
-                )
-            }
-            .sheet(isPresented: $showingPaywall) {
-                PaywallView()
-            }
-
 
         }
     }

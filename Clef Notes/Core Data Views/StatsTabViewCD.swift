@@ -33,25 +33,10 @@ struct StatsTabViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var path = NavigationPath()
 
-    @State private var showingPaywall = false
-    
-    @State private var showingAddSongSheet = false
-    @State private var showingAddSessionSheet = false
-    @State private var showingEditStudentSheet = false
-    
-    @State private var isSharePresented = false
-    @State private var showingSideMenu = false
-    
-    @Binding var selectedTab: Int
-    @State private var triggerAddNote = false
 
-
-
-    init(student: StudentCD, selectedTab: Binding<Int>) {
+    init(student: StudentCD) {
         _viewModel = StateObject(wrappedValue: StatsViewModelCD(student: student))
-        _selectedTab = selectedTab
     }
-    
     var body: some View {
         NavigationStack(path: $path) {
             Form {
@@ -103,20 +88,11 @@ struct StatsTabViewCD: View {
                     AllTimeStatsViewCD(viewModel: viewModel)
                 }
             }
-            .withGlobalToolbar(
-                selectedTab: $selectedTab,
-                showingAddSongSheet: $showingAddSongSheet,
-                showingAddSessionSheet: $showingAddSessionSheet,
-                showingPaywall: $showingPaywall,
-                triggerAddNote: $triggerAddNote,
-                showingSideMenu: $showingSideMenu
-            )
-
             .onAppear {
                 viewModel.setup(context: viewContext)
             }
-            .navigationTitle("Stats")
         }
+        .navigationTitle("Stats")
     }
 }
 

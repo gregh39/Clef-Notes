@@ -3,12 +3,14 @@ import CoreData
 import CloudKit
 
 struct StudentDetailViewCD: View {
-    @Binding var student: StudentCD
+    @ObservedObject var student: StudentCD
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showingPaywall = false
+    
+    @State private var path = NavigationPath()
     
     @State private var showingAddSongSheet = false
     @State private var showingAddSessionSheet = false
@@ -34,24 +36,21 @@ struct StudentDetailViewCD: View {
     var body: some View {
         ZStack(alignment: .bottom) {
                 TabView(selection: $selectedTab) {
-                    SessionListViewCD(student: $student) {
+                    SessionListViewCD(student: student) {
                         showingAddSessionSheet = true
-                        selectedTab = selectedTab
                     }
                     .tabItem { Label("Sessions", systemImage: "calendar") }
                     .tag(0)
                     
                     StudentSongsTabViewCD(student: student) {
                         showingAddSongSheet = true
-                        selectedTab = selectedTab
-
                     }
                     .tabItem { Label("Songs", systemImage: "music.note.list") }
                     .tag(1)
 
-                    StatsTabViewCD(student: student, selectedTab: $selectedTab) 
-                    .tabItem { Label("Stats", systemImage: "chart.bar") }
-                    .tag(2)
+                    StatsTabViewCD(student: student)
+                        .tabItem { Label("Stats", systemImage: "chart.bar") }
+                        .tag(2)
 
                     // Add the new AwardsView tab
                     AwardsView(student: student, context: viewContext)
@@ -62,13 +61,47 @@ struct StudentDetailViewCD: View {
                         .tabItem { Label("Notes", systemImage: "note.text") }
                         .tag(4) // Update this tag to 4
                 }
-            .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { _ in } }
+                .toolbar {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        if selectedTab <= 1 {
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSong() {
+                                    showingAddSongSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
+                                Label("Add Song", image: "add.song")
+                            }
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSession() {
+                                    showingAddSessionSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
+                                Label("Add Session", systemImage: "calendar.badge.plus")
+                            }
+                        } else if selectedTab == 3 {
+                            Button(action: { triggerAddNote = true }) {
+                                Label("Add Note", systemImage: "plus")
+                            }
+                        }
+                        
+                        Button(action: {
+                            showingSideMenu = true
+                        }) {
+                            Label("More", systemImage: "ellipsis.circle")
+                        }
+                    }
+                }
+            .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
             .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
             .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
             .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
             .sheet(isPresented: $showingSideMenu) {
                 SideMenuView(
-                    student: $student,
+                    student: student,
                     isPresented: $showingSideMenu,
                     showingEditStudentSheet: $showingEditStudentSheet,
                     isSharePresented: $isSharePresented

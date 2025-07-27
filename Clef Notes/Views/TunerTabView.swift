@@ -12,24 +12,12 @@ private enum TunerMode: String, CaseIterable, Identifiable {
 // This is a wrapper view that correctly initializes the StateObjects
 // using the audioManager from the environment.
 struct TunerTabView: View {
-    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var settingsManager: SettingsManager
 
     var body: some View {
-        NavigationStack {
-            TunerTabContentView(audioManager: audioManager)
-                .environmentObject(settingsManager)
-                .navigationTitle("Tuner")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
-                            dismiss()
-                        }
-                    }
-                }
-        }
+        TunerTabContentView(audioManager: audioManager)
+            .environmentObject(settingsManager)
     }
 }
 

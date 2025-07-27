@@ -11,19 +11,6 @@ struct StudentSongsTabViewCD: View {
     @State private var selectedPieceType: PieceType? = nil
     @State private var editingSongForEditSheet: SongCD? = nil
     
-    @State private var showingPaywall = false
-    
-    @State private var showingAddSongSheet = false
-    @State private var showingAddSessionSheet = false
-    @State private var showingEditStudentSheet = false
-    
-    @State private var isSharePresented = false
-    @State private var showingSideMenu = false
-    
-    @State private var selectedTab: Int = 0
-    @State private var triggerAddNote = false
-
-    
     @State private var path = NavigationPath()
 
     private var availablePieceTypes: [PieceType] {
@@ -86,14 +73,6 @@ struct StudentSongsTabViewCD: View {
                     .listStyle(.insetGrouped)
                 }
             }
-            .withGlobalToolbar(
-                selectedTab: $selectedTab,
-                showingAddSongSheet: $showingAddSongSheet,
-                showingAddSessionSheet: $showingAddSessionSheet,
-                showingPaywall: $showingPaywall,
-                triggerAddNote: $triggerAddNote,
-                showingSideMenu: $showingSideMenu
-            )
             .navigationDestination(for: SongCD.self) { song in
                 SongDetailViewCD(song: song, audioManager: audioManager)
             }

@@ -43,19 +43,13 @@ struct SongDetailViewCD: View {
 
     @State private var showingEditSheet = false
     @State private var showingAddMediaSheet = false
-    
-    // ViewModel for the plays list, integrated directly
-    @StateObject private var playsViewModel: PlaysListViewModel
     @StateObject private var audioPlayerManager: AudioPlayerManager
     
     @State private var noteToEdit: NoteCD?
-    @State private var playToEdit: PlayCD?
 
     init(song: SongCD, audioManager: AudioManager) {
         self.song = song
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
-        // The context is retrieved from the persistence controller to initialize the view model
-        _playsViewModel = StateObject(wrappedValue: PlaysListViewModel(song: song, context: PersistenceController.shared.persistentContainer.viewContext))
     }
 
     private var allMediaItems: [DisplayableMedia] {
@@ -76,35 +70,15 @@ struct SongDetailViewCD: View {
     }
 
     var body: some View {
-        List {
-            Section("Details") {
-                NavigationLink(destination: mediaTab) {
-                    Label("View Media", systemImage: "photo.on.rectangle.angled")
-                }
-                NavigationLink(destination: notesTab) {
-                    Label("View Notes", systemImage: "note.text")
-                }
-            }
+        TabView {
+            playsTab
+                .tabItem { Label("Plays", systemImage: "music.note.list") }
             
-            // The content of the plays list is now directly embedded in this view
-            ForEach(playsViewModel.groupedPlays, id: \.key?.objectID) { session, playsInSession in
-                Section(header: Text(session?.day?.formatted(date: .abbreviated, time: .omitted) ?? "Recent Plays")) {
-                    ForEach(playsInSession) { play in
-                        PlayRowCD(play: play, song: song)
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    playToEdit = play
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.orange)
-                            }
-                    }
-                    .onDelete { indexSet in
-                        deletePlay(at: indexSet, from: playsInSession)
-                    }
-                }
-            }
+            mediaTab
+                .tabItem { Label("Media", systemImage: "link") }
+
+            notesTab
+                .tabItem { Label("Notes", systemImage: "note.text") }
         }
         .navigationTitle(song.title ?? "Song")
         .toolbar {
@@ -118,9 +92,6 @@ struct SongDetailViewCD: View {
                 Button("Edit") { showingEditSheet = true }
             }
         }
-        .sheet(item: $playToEdit) { play in
-            PlayEditSheetCD(play: play)
-        }
         .sheet(isPresented: $showingEditSheet) {
             EditSongSheetCD(song: song)
         }
@@ -132,13 +103,19 @@ struct SongDetailViewCD: View {
         }
     }
 
+    private var playsTab: some View {
+        PlaysListViewCD(song: song, context: viewContext)
+    }
+
+    // --- THIS IS THE FIX: The media tab is now sectioned by type ---
     private var mediaTab: some View {
         let groupedMedia = Dictionary(grouping: allMediaItems, by: { $0.mediaType })
         let sortedKeys = groupedMedia.keys.sorted()
 
         return List {
             if allMediaItems.isEmpty {
-                ContentUnavailableView("No Media", systemImage: "photo.stack", description: Text("No media has been added to this song."))
+                Text("No media has been added to this song.")
+                    .foregroundColor(.secondary)
             } else {
                 ForEach(sortedKeys, id: \.self) { key in
                     Section(header: Text(key)) {
@@ -166,40 +143,26 @@ struct SongDetailViewCD: View {
                 }
             }
         }
-        .navigationTitle("Media")
     }
     
     private var notesTab: some View {
         List {
-            if song.notesArray.isEmpty {
-                 ContentUnavailableView("No Notes", systemImage: "note.text.badge.plus", description: Text("No notes have been tagged with this song."))
-            } else {
-                ForEach(groupedNotes) { group in
-                    Section(header: Text(group.date, style: .date)) {
-                        ForEach(group.notes) { note in
-                            Button(action: {
-                                noteToEdit = note
-                            }) {
-                                NoteCellCD(note: note)
-                            }
-                            .buttonStyle(.plain)
+            ForEach(groupedNotes) { group in
+                Section(header: Text(group.date, style: .date)) {
+                    ForEach(group.notes) { note in
+                        Button(action: {
+                            noteToEdit = note
+                        }) {
+                            NoteCellCD(note: note)
                         }
-                        .onDelete { indexSet in
-                            deleteNote(at: indexSet, from: group.notes)
-                        }
+                        .buttonStyle(.plain)
+                    }
+                    .onDelete { indexSet in
+                        deleteNote(at: indexSet, from: group.notes)
                     }
                 }
             }
         }
-        .navigationTitle("Notes")
-    }
-    
-    private func deletePlay(at offsets: IndexSet, from playsInSession: [PlayCD]) {
-        for offset in offsets {
-            let playToDelete = playsInSession[offset]
-            viewContext.delete(playToDelete)
-        }
-        try? viewContext.save()
     }
     
     private func deleteMedia(at offsets: IndexSet, from mediaGroup: [DisplayableMedia]) {

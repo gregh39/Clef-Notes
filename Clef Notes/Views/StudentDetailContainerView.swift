@@ -1,4 +1,4 @@
-/*import SwiftUI
+import SwiftUI
 import CoreData
 
 // Enum to represent the different sections in the student detail view.
@@ -187,4 +187,3 @@ struct FloatingBottomNavBar: View {
         .padding(.bottom, 8)
     }
 }
-*/

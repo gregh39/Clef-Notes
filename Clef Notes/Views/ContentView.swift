@@ -22,8 +22,10 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if let studentBinding = Binding($selectedStudent) {
-                StudentDetailViewCD(student: studentBinding)
+            if let student = selectedStudent {
+                NavigationStack(){
+                    StudentDetailNavigationView(student: student)
+                }
             } else {
                 // If no students exist, show the view to add a new student.
                 NavigationSplitView {
