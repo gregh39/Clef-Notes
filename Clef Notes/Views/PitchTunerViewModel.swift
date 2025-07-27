@@ -23,7 +23,11 @@ class PitchTunerViewModel: ObservableObject {
     
     // Note names for manual calculation
     private static let noteNamesWithSharps = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
-    private static let a4Frequency = 440.0
+    private var a4Frequency: Double = SettingsManager.shared.a4Frequency
+    private var transposition: Int = SettingsManager.shared.tunerTransposition
+    
+    private var settingsCancellable: AnyCancellable?
+
 
     // MARK: - Initialization
 
@@ -38,6 +42,11 @@ class PitchTunerViewModel: ObservableObject {
             DispatchQueue.main.async {
                 self?.update(pitch: pitch[0], amp: amp[0])
             }
+        }
+        
+        settingsCancellable = SettingsManager.shared.objectWillChange.sink { [weak self] _ in
+            self?.a4Frequency = SettingsManager.shared.a4Frequency
+            self?.transposition = SettingsManager.shared.tunerTransposition
         }
     }
 
@@ -85,13 +94,13 @@ class PitchTunerViewModel: ObservableObject {
         self.detectedFrequency = detectedFrequency
 
         // Manual Pitch Calculation
-        let halfStepsFromA4 = 12 * log2(detectedFrequency / PitchTunerViewModel.a4Frequency)
+        let halfStepsFromA4 = 12 * log2(detectedFrequency / a4Frequency)
         let closestHalfStep = Int(round(halfStepsFromA4))
-        let perfectFrequency = PitchTunerViewModel.a4Frequency * pow(2.0, Double(closestHalfStep) / 12.0)
+        let perfectFrequency = a4Frequency * pow(2.0, Double(closestHalfStep) / 12.0)
         let distanceInCents = 1200 * log2(detectedFrequency / perfectFrequency)
 
-        let noteIndex = (closestHalfStep + 9 + 120) % 12
-        let octave = 4 + (closestHalfStep + 9) / 12
+        let noteIndex = (closestHalfStep + 9 + 120 + transposition) % 12
+        let octave = 4 + (closestHalfStep + 9 + transposition) / 12
         
         self.detectedNoteName = "\(PitchTunerViewModel.noteNamesWithSharps[noteIndex])\(octave)"
         self.distance = min(max(distanceInCents / 50.0, -1.0), 1.0)

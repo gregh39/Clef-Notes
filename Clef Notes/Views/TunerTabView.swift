@@ -13,9 +13,11 @@ private enum TunerMode: String, CaseIterable, Identifiable {
 // using the audioManager from the environment.
 struct TunerTabView: View {
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var settingsManager: SettingsManager
 
     var body: some View {
         TunerTabContentView(audioManager: audioManager)
+            .environmentObject(settingsManager)
     }
 }
 

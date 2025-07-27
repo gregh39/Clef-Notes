@@ -6,6 +6,7 @@ struct AddSessionSheetCD: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var sessionTimerManager: SessionTimerManager
     @EnvironmentObject var usageManager: UsageManager
+    @EnvironmentObject var settingsManager: SettingsManager
 
 
     let student: StudentCD
@@ -16,7 +17,7 @@ struct AddSessionSheetCD: View {
     @State private var selectedInstructor: InstructorCD?
     @State private var selectedLocation: LessonLocation?
     @State private var sessionDate: Date = .now
-    @State private var sessionTitle: String = "Practice"
+    @State private var sessionTitle: String = ""
     
     @State private var timeThisSession = false
     
@@ -54,7 +55,7 @@ struct AddSessionSheetCD: View {
                 } header: {
                     Text("Session Details")
                 } footer: {
-                    Text("The session title defaults to 'Practice' but can be changed to whatever you like.")
+                    Text("The session title defaults to your preference in Settings but can be changed here.")
                 }
 
                 Section("Instructor") {
@@ -79,6 +80,9 @@ struct AddSessionSheetCD: View {
                 } footer: {
                     Text("If enabled, a timer will start immediately for this session.")
                 }
+            }
+            .onAppear {
+                sessionTitle = settingsManager.defaultSessionTitle
             }
             .navigationTitle("New Practice Session")
             .toolbar {
@@ -130,7 +134,7 @@ struct AddSessionSheetCD: View {
     private func addSession() {
         let newSession = PracticeSessionCD(context: viewContext)
         newSession.day = sessionDate
-        newSession.durationMinutes = 0
+        newSession.durationMinutes = Int64(settingsManager.defaultSessionDuration)
         newSession.studentID = student.id
         newSession.title = sessionTitle
         newSession.student = student

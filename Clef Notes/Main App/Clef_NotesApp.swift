@@ -11,11 +11,13 @@ struct Clef_NotesApp: App {
     // Use the shared instance of SubscriptionManager
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     @StateObject private var usageManager: UsageManager
+    @StateObject private var settingsManager = SettingsManager.shared
     
     init() {
         let context = PersistenceController.shared.persistentContainer.viewContext
         _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager(context: context))
         _usageManager = StateObject(wrappedValue: UsageManager(context: context))
+        NotificationManager.shared.requestAuthorization()
     }
         
     var body: some Scene {
@@ -26,7 +28,11 @@ struct Clef_NotesApp: App {
                .environmentObject(sessionTimerManager)
                .environmentObject(subscriptionManager)
                .environmentObject(usageManager)
-
+               .environmentObject(settingsManager)
+               .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
+               .onAppear {
+                   settingsManager.setAppIcon()
+               }
         }
     }
 }

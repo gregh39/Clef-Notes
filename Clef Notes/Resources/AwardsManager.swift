@@ -9,6 +9,7 @@ class AwardsManager: ObservableObject {
     private let student: StudentCD
     private let viewContext: NSManagedObjectContext
     private let calendar = Calendar.current
+    private let notificationManager = NotificationManager.shared
 
     // Lazily computed properties to avoid redundant calculations
     private lazy var allSessions: [PracticeSessionCD] = student.sessionsArray
@@ -40,12 +41,18 @@ class AwardsManager: ObservableObject {
                     existingAward.count = Int64(currentProgress)
                     existingAward.dateWon = Date()
                     didUpdate = true
+                    if SettingsManager.shared.awardNotificationsEnabled {
+                        notificationManager.sendAwardNotification(award: award)
+                    }
                 }
             } else if currentProgress > 0 {
                 // If the award has never been won before
                 let newAward = createEarnedAward(for: award, count: currentProgress)
                 earnedAwards[award] = newAward
                 didUpdate = true
+                if SettingsManager.shared.awardNotificationsEnabled {
+                    notificationManager.sendAwardNotification(award: award)
+                }
             }
         }
         

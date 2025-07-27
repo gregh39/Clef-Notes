@@ -3,6 +3,7 @@ import UIKit
 import RevenueCat
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
         Purchases.logLevel = .debug
@@ -10,7 +11,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // Set the delegate for the shared instance of SubscriptionManager
         Purchases.shared.delegate = SubscriptionManager.shared
-
         
         return true
     }
@@ -22,4 +22,3 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return configuration
     }
 }
-
