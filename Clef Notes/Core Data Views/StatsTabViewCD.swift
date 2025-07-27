@@ -91,8 +91,8 @@ struct StatsTabViewCD: View {
             .onAppear {
                 viewModel.setup(context: viewContext)
             }
+            .navigationTitle("Stats")
         }
-        .navigationTitle("Stats")
     }
 }
 

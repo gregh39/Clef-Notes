@@ -10,8 +10,6 @@ struct StudentDetailViewCD: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showingPaywall = false
     
-    @State private var path = NavigationPath()
-    
     @State private var showingAddSongSheet = false
     @State private var showingAddSessionSheet = false
     @State private var showingEditStudentSheet = false
@@ -65,7 +63,7 @@ struct StudentDetailViewCD: View {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
                         if selectedTab <= 1 {
                             Button {
-                                if subscriptionManager.isAllowedToCreateSong() { 
+                                if subscriptionManager.isAllowedToCreateSong() {
                                     showingAddSongSheet = true
                                 } else {
                                     showingPaywall = true
@@ -95,7 +93,7 @@ struct StudentDetailViewCD: View {
                         }
                     }
                 }
-            .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
+            .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { _ in } }
             .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
             .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
             .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
