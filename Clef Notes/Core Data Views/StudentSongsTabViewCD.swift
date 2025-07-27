@@ -156,7 +156,6 @@ private struct SongSectionViewCD: View {
     }
 }
 
-// --- THIS IS THE FIX: The simple SongRowViewCD is replaced with the more attractive SongCardView ---
 private struct SongCardView: View {
     @ObservedObject var song: SongCD
     
@@ -223,6 +222,7 @@ private struct FilterButton: View {
     var body: some View {
         Button(action: { selectedType = type }) {
             Text(title)
+                .textCase(.none)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
                 .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))

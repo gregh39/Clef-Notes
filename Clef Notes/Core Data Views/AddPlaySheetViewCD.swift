@@ -60,72 +60,76 @@ struct AddPlaySheetViewCD: View {
             }
             .padding(.horizontal)
         }
-        .padding(.bottom, 8)
     }
     
     var body: some View {
         NavigationStack {
-            // --- THIS IS THE FIX: A VStack now separates the scrolling content from the footer ---
             VStack(spacing: 0) {
-                // The ScrollView contains the song list
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Section {
-                            Button {
-                                showingAddPlaySheet = false
-                                showingAddSongSheet = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "plus.circle.fill").foregroundColor(.green)
-                                    Text("Add New Song")
-                                    Spacer()
-                                    Image(systemName: "chevron.right").foregroundColor(.secondary)
-                                }
-                                .padding()
-                                .background(.background.secondary)
-                                .cornerRadius(10)
-                            }
+                // --- THIS IS THE FIX ---
+                // The view now uses a List with the .insetGrouped style to match the Songs tab.
+                List {
+                    Section {
+                        Button {
+                            showingAddPlaySheet = false
+                            showingAddSongSheet = true
+                        } label: {
+                            Label("Add New Song", systemImage: "plus.circle.fill")
                         }
-                        .listRowInsets(EdgeInsets())
+                    }
 
-                        if !availablePieceTypes.isEmpty {
-                            typeFilterBar
+                    if !availablePieceTypes.isEmpty {
+                        Section {
+                           EmptyView()
+                        } header: {
+                            typeFilterBar.padding(.vertical, 8)
                         }
+                    }
+                    
+                    if filteredSongs.isEmpty {
+                        ContentUnavailableView.search(text: searchText)
+                    } else {
+                        // Grouping logic is now identical to the StudentSongsTabViewCD
+                        let normalSongs = filteredSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
+                        let groupedByStatus = Dictionary(grouping: normalSongs, by: { $0.songStatus })
                         
-                        if filteredSongs.isEmpty {
-                            ContentUnavailableView.search(text: searchText)
-                                .padding(.top, 50)
-                        } else {
-                            let grouped = Dictionary(grouping: filteredSongs, by: { $0.pieceType })
-                            let sortedKeys = grouped.keys.sorted {
-                                let order: [PieceType?] = [nil, .song, .scale, .warmUp, .exercise]
-                                let firstIndex = order.firstIndex(of: $0) ?? 99
-                                let secondIndex = order.firstIndex(of: $1) ?? 99
-                                return firstIndex < secondIndex
-                            }
-                            
-                            ForEach(sortedKeys, id: \.self) { key in
-                                if let songsInGroup = grouped[key], !songsInGroup.isEmpty {
-                                    Section(header: Text(key?.rawValue ?? "Songs").font(.title3.bold())) {
-                                        ForEach(songsInGroup) { song in
-                                            Button(action: {
-                                                selectedSong = song
-                                                selectedPlayType = song.songStatus
-                                            }) {
-                                                SongPickerCardView(song: song, isSelected: selectedSong == song)
-                                            }
+                        let sortedStatusKeys = PlayType.allCases.map { Optional($0) } + [nil]
+
+                        ForEach(sortedStatusKeys, id: \.self) { status in
+                            if let songsInGroup = groupedByStatus[status], !songsInGroup.isEmpty {
+                                Section(header: Text(status?.rawValue ?? "No Status")) {
+                                    ForEach(songsInGroup) { song in
+                                        Button(action: {
+                                            selectedSong = song
+                                            selectedPlayType = song.songStatus
+                                        }) {
+                                            // The new SongPickerRowView mimics the exact look of the original song list cells.
+                                            SongPickerRowView(song: song, isSelected: selectedSong == song)
                                         }
                                     }
-                                    .padding(.bottom, 8)
+                                }
+                            }
+                        }
+                        
+                        // Sections for other piece types
+                        ForEach(PieceType.allCases.filter { $0 != .song }, id: \.self) { type in
+                            let specificSongs = filteredSongs.filter { $0.pieceType == type }
+                            if !specificSongs.isEmpty {
+                                Section(header: Text(type.rawValue)) {
+                                    ForEach(specificSongs) { song in
+                                        Button(action: {
+                                            selectedSong = song
+                                            selectedPlayType = song.songStatus
+                                        }) {
+                                            SongPickerRowView(song: song, isSelected: selectedSong == song)
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                    .padding()
                 }
-                .background(Color(UIColor.systemGroupedBackground))
+                .listStyle(.insetGrouped)
 
-                // The "footer" view is outside the ScrollView, so it's always visible.
                 if selectedSong != nil {
                     VStack(spacing: 8) {
                         Divider()
@@ -199,6 +203,7 @@ private struct FilterButton: View {
             withAnimation { selectedType = type }
         }) {
             Text(title)
+                .textCase(.none)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
                 .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
@@ -208,7 +213,10 @@ private struct FilterButton: View {
     }
 }
 
-private struct SongPickerCardView: View {
+// --- THIS IS THE FIX ---
+// This new view is a simple row that doesn't have its own background,
+// so it looks correct inside a List. A checkmark is used to show selection.
+private struct SongPickerRowView: View {
     @ObservedObject var song: SongCD
     let isSelected: Bool
     
@@ -228,46 +236,46 @@ private struct SongPickerCardView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(song.title ?? "Unknown Song")
-                    .font(.headline)
-                    .lineLimit(1)
-                Spacer()
-                if let status = song.songStatus {
-                    Text(status.rawValue.uppercased())
-                        .font(.caption.bold())
-                        .foregroundColor(statusColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(statusColor.opacity(0.15))
-                        .clipShape(Capsule())
+        HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(song.title ?? "Unknown Song")
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer()
+                    if let status = song.songStatus {
+                        Text(status.rawValue.uppercased())
+                            .font(.caption.bold())
+                            .foregroundColor(statusColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(statusColor.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+                
+                if song.songStatus == .practice {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ProgressView(value: progress)
+                            .progressViewStyle(LinearProgressViewStyle(tint: statusColor))
+                        
+                        HStack {
+                            Text("Goal")
+                            Spacer()
+                            Text("\(song.totalGoalPlayCount) / \(song.goalPlays) Plays")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    }
                 }
             }
             
-            if song.songStatus == .practice {
-                VStack(alignment: .leading, spacing: 4) {
-                    ProgressView(value: progress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: statusColor))
-                    
-                    HStack {
-                        Text("Goal")
-                        Spacer()
-                        Text("\(song.totalGoalPlayCount) / \(song.goalPlays) Plays")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundColor(.accentColor)
+                    .font(.headline.bold())
             }
         }
-        .padding()
-        .background(.background.secondary)
-        .cornerRadius(10)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-        )
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        .padding(.vertical, 6)
     }
 }

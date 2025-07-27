@@ -13,6 +13,11 @@ struct EditSessionSheetCD: View {
     @State private var selectedInstructor: InstructorCD?
     @State private var selectedLocation: LessonLocation?
     @State private var date: Date = .now
+    
+    // State for editing duration
+    @State private var hours: String = ""
+    @State private var minutes: String = ""
+
 
     init(session: PracticeSessionCD) {
         self.session = session
@@ -33,9 +38,6 @@ struct EditSessionSheetCD: View {
     var body: some View {
         NavigationStack {
             Form {
-                // --- THIS IS THE FIX: Section is updated with header and footer text ---
-                // In EditSessionSheetCD.swift
-
                 Section {
                     TextField("Session Title", text: $title)
                     DatePicker(selection: $date, displayedComponents: .date) {
@@ -54,6 +56,19 @@ struct EditSessionSheetCD: View {
                 } footer: {
                     Text("Update the title, date, or location for this practice session.")
                 }
+                
+                // --- THIS IS THE NEW SECTION ---
+                Section("Duration") {
+                    HStack {
+                        TextField("Hours", text: $hours)
+                            .keyboardType(.numberPad)
+                        Text("hr")
+                        TextField("Minutes", text: $minutes)
+                            .keyboardType(.numberPad)
+                        Text("min")
+                    }
+                }
+                
                 Section("Instructor") {
                     Picker(selection: $selectedInstructor) {
                         Text("None").tag(Optional<InstructorCD>.none)
@@ -73,23 +88,38 @@ struct EditSessionSheetCD: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        session.title = title
-                        session.instructor = selectedInstructor
-                        session.location = selectedLocation
-                        session.day = date
-                        
-                        try? viewContext.save()
+                        saveChanges()
                         dismiss()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .onAppear {
+                // Populate state when the view appears
                 title = session.title ?? ""
                 selectedInstructor = session.instructor
                 selectedLocation = session.location
                 date = session.day ?? .now
+                
+                // Convert total minutes into hours and minutes
+                let totalMinutes = session.durationMinutes
+                hours = "\(totalMinutes / 60)"
+                minutes = "\(totalMinutes % 60)"
             }
         }
+    }
+    
+    private func saveChanges() {
+        session.title = title
+        session.instructor = selectedInstructor
+        session.location = selectedLocation
+        session.day = date
+        
+        // Convert hours and minutes back to total minutes
+        let hoursInMinutes = (Int64(hours) ?? 0) * 60
+        let minutesValue = Int64(minutes) ?? 0
+        session.durationMinutes = hoursInMinutes + minutesValue
+        
+        try? viewContext.save()
     }
 }

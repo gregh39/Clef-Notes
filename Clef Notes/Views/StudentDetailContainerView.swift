@@ -113,7 +113,6 @@ struct StudentDetailNavigationView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 TimerBarView()
-                
                 if #available(iOS 26.0, *) {
                     FloatingBottomNavBar(selectedSection: $selectedSection)
                 } else {
@@ -130,7 +129,6 @@ struct BottomNavBar: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        if #available(iOS 26.0, *) {
             HStack {
                 ForEach(StudentDetailSection.allCases) { section in
                     Button(action: {
@@ -142,43 +140,18 @@ struct BottomNavBar: View {
                             Image(systemName: section.systemImageName)
                                 .font(.system(size: 22))
                             Text(section.rawValue)
-                                .font(.caption2)
+                                .font(.system(size: 10))
                         }
                         .foregroundColor(selectedSection == section ? .accentColor : .gray)
                         .frame(maxWidth: .infinity)
                     }
                 }
             }
-            .padding(.top, 10)
-            .padding(.bottom, 30)
+            .padding(.top, 5)
+            .padding(.bottom, 35)
             .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
-            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: -5)
-            .glassEffect()
-        } else {
-            HStack {
-                ForEach(StudentDetailSection.allCases) { section in
-                    Button(action: {
-                        withAnimation {
-                            selectedSection = section
-                        }
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: section.systemImageName)
-                                .font(.system(size: 22))
-                            Text(section.rawValue)
-                                .font(.caption2)
-                        }
-                        .foregroundColor(selectedSection == section ? .accentColor : .gray)
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-            }
-            .padding(.top, 10)
-            .padding(.bottom, 30)
-            .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
-            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: -5)
         }
-    }
+    
 }
 
 struct FloatingBottomNavBar: View {
