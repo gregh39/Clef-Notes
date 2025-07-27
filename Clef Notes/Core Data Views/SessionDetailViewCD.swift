@@ -46,13 +46,14 @@ struct SessionDetailViewCD: View {
         TabView {
             sessionTab
                 .tabItem { Label("Session", systemImage: "calendar") }
-            
+            /*
             if let student = session.student {
                 StudentSongsTabViewCD(student: student) {
                     showingAddSongSheet = true
                 }
                 .tabItem { Label("Songs", systemImage: "music.note.list") }
             }
+            */
             
             MetronomeSectionView()
                 .tabItem { Label("Metronome", systemImage: "metronome") }
