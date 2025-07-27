@@ -29,12 +29,12 @@ private struct TimeSignature: Hashable, Identifiable {
 }
 
 struct MetronomeSectionView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var audioManager: AudioManager
     @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
     
     @AppStorage("metronomeVisualizerType") private var visualizerType: MetronomeVisualizerType = .pulse
     @AppStorage("metronomeTimeSignatureID") private var timeSignatureID: String = "4/4"
-    // --- THIS IS THE FIX: AppStorage to save the user's downbeat preference ---
     @AppStorage("metronomeHighlightDownbeat") private var highlightDownbeat: Bool = true
 
     @State private var bpm: Double = 60.0
@@ -53,94 +53,105 @@ struct MetronomeSectionView: View {
     }
 
     var body: some View {
-        VStack {
-            // --- THIS IS THE FIX: Grouped the metronome settings ---
-            VStack(spacing: 12) {
-                Picker("Visualizer", selection: $visualizerType) {
-                    ForEach(MetronomeVisualizerType.allCases) { type in
-                        Text(type.rawValue).tag(type)
-                    }
-                }
-                .pickerStyle(.segmented)
-                
-                Toggle("Highlight Downbeat", isOn: $highlightDownbeat)
-            }
-            .padding(.horizontal)
-
-            Spacer()
-            
-            ZStack {
-                switch visualizerType {
-                case .pulse:
-                    PulseVisualizer(pulseRadius: $pulseRadius, beatCount: $beatCount, accentColor: accentColor.color, highlightDownbeat: highlightDownbeat)
-                case .arm:
-                    MetronomeArmView(rotation: $armRotation, beatCount: $beatCount, highlightDownbeat: highlightDownbeat)
-                }
-            }
-            .frame(height: 300)
-            
-            Spacer()
-            
+        NavigationStack {
             VStack {
-                Button {
-                    showingTimeSignatureSheet = true
-                } label: {
-                    VStack {
-                        Text("Time Signature")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(selectedTimeSignature.description)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(accentColor.color)
+                // Grouped the metronome settings
+                VStack(spacing: 12) {
+                    Picker("Visualizer", selection: $visualizerType) {
+                        ForEach(MetronomeVisualizerType.allCases) { type in
+                            Text(type.rawValue).tag(type)
+                        }
                     }
-                }
-                .padding(.bottom)
-
-                HStack {
-                    Button(action: { if bpm > tempoRange.lowerBound { bpm -= 1 } }) {
-                        Image(systemName: "minus.circle.fill")
-                    }
-                    .font(.system(size: 40))
-                    .foregroundColor(bpm > tempoRange.lowerBound ? accentColor.color : .gray)
-                    .disabled(bpm <= tempoRange.lowerBound)
+                    .pickerStyle(.segmented)
                     
-                    Text("\(Int(bpm)) BPM")
-                        .font(.system(size: 24, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.primary)
-                        .frame(width: 130)
-
-                    Button(action: { if bpm < tempoRange.upperBound { bpm += 1 } }) {
-                        Image(systemName: "plus.circle.fill")
-                    }
-                    .font(.system(size: 40))
-                    .foregroundColor(bpm < tempoRange.upperBound ? accentColor.color : .gray)
-                    .disabled(bpm >= tempoRange.upperBound)
+                    Toggle("Highlight Downbeat", isOn: $highlightDownbeat)
                 }
-                .onChange(of: bpm) {
-                    if isPlaying { rescheduleTimer(for: bpm) }
+                .padding(.horizontal)
+
+                Spacer()
+                
+                ZStack {
+                    switch visualizerType {
+                    case .pulse:
+                        PulseVisualizer(pulseRadius: $pulseRadius, beatCount: $beatCount, accentColor: accentColor.color, highlightDownbeat: highlightDownbeat)
+                    case .arm:
+                        MetronomeArmView(rotation: $armRotation, beatCount: $beatCount, highlightDownbeat: highlightDownbeat)
+                    }
+                }
+                .frame(height: 300)
+                
+                Spacer()
+                
+                VStack {
+                    Button {
+                        showingTimeSignatureSheet = true
+                    } label: {
+                        VStack {
+                            Text("Time Signature")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(selectedTimeSignature.description)
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundColor(accentColor.color)
+                        }
+                    }
+                    .padding(.bottom)
+
+                    HStack {
+                        Button(action: { if bpm > tempoRange.lowerBound { bpm -= 1 } }) {
+                            Image(systemName: "minus.circle.fill")
+                        }
+                        .font(.system(size: 40))
+                        .foregroundColor(bpm > tempoRange.lowerBound ? accentColor.color : .gray)
+                        .disabled(bpm <= tempoRange.lowerBound)
+                        
+                        Text("\(Int(bpm)) BPM")
+                            .font(.system(size: 24, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.primary)
+                            .frame(width: 130)
+
+                        Button(action: { if bpm < tempoRange.upperBound { bpm += 1 } }) {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .font(.system(size: 40))
+                        .foregroundColor(bpm < tempoRange.upperBound ? accentColor.color : .gray)
+                        .disabled(bpm >= tempoRange.upperBound)
+                    }
+                    .onChange(of: bpm) {
+                        if isPlaying { rescheduleTimer(for: bpm) }
+                    }
+                    
+                    Slider(value: $bpm, in: tempoRange, step: 1)
+                        .tint(accentColor.color)
+                        .padding(.horizontal)
+                        .padding(.vertical)
                 }
                 
-                Slider(value: $bpm, in: tempoRange, step: 1)
-                    .tint(accentColor.color)
-                    .padding(.horizontal)
-                    .padding(.vertical)
+                Spacer()
+                
+                Button(action: toggleMetronome) {
+                    Label(isPlaying ? "Stop" : "Start", systemImage: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                        .frame(maxWidth: 250)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(isPlaying ? .red : accentColor.color)
+                .padding(.bottom, 40)
             }
-            
-            Spacer()
-            
-            Button(action: toggleMetronome) {
-                Label(isPlaying ? "Stop" : "Start", systemImage: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                    .frame(maxWidth: 250)
+            .navigationTitle("Metronome")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(isPlaying ? .red : accentColor.color)
-            .padding(.bottom, 40)
-        }
-        .onDisappear(perform: stopMetronome)
-        .sheet(isPresented: $showingTimeSignatureSheet) {
-            TimeSignatureSelectionSheet(selectedID: $timeSignatureID)
-                .presentationDetents([.medium])
+            .onDisappear(perform: stopMetronome)
+            .sheet(isPresented: $showingTimeSignatureSheet) {
+                TimeSignatureSelectionSheet(selectedID: $timeSignatureID)
+                    .presentationDetents([.medium])
+            }
         }
     }
 
@@ -190,7 +201,6 @@ struct MetronomeSectionView: View {
     private func performTick(with timeInterval: TimeInterval) {
         beatCount = (beatCount % selectedTimeSignature.beats) + 1
         
-        // --- THIS IS THE FIX: Check the highlightDownbeat flag before playing the sound ---
         if beatCount == 1 && highlightDownbeat {
             audioManager.playMetronomeDownbeat()
         } else {

@@ -4,6 +4,7 @@
 //
 //  Created by Greg Holland on 7/26/25.
 //
+/*
 import SwiftUI
 import Combine
 import CoreData
@@ -99,3 +100,4 @@ private struct StudentCellView: View {
         .padding(.vertical, 6)
     }
 }
+*/

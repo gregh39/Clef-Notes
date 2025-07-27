@@ -16,23 +16,36 @@ struct ContentView: View {
     @State private var newInstrument: Instrument? = nil
     @State private var selectedAvatarItem: PhotosPickerItem?
     @State private var selectedAvatarData: Data?
+    
+    @State private var selectedStudent: StudentCD?
+    @AppStorage("selectedStudentID") private var selectedStudentID: String?
 
     var body: some View {
-        if let student = students.first {
-            // If at least one student exists, show the detail view for the first one.
-            //NavigationStack {
-            StudentDetailViewCD(student: student)
-            //}
-        } else {
-            // If no students exist, show the view to add a new student.
-            NavigationSplitView {
-                studentListView
-            } detail: {
-                Text("Select a student")
+        Group {
+            if let studentBinding = Binding($selectedStudent) {
+                StudentDetailViewCD(student: studentBinding)
+            } else {
+                // If no students exist, show the view to add a new student.
+                NavigationSplitView {
+                    studentListView
+                } detail: {
+                    Text("Select a student")
+                }
+                .sheet(isPresented: $showingAddSheet) {
+                    addStudentSheet
+                }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                addStudentSheet
+        }
+        .onAppear {
+            if let studentID = selectedStudentID,
+               let student = students.first(where: { $0.id?.uuidString == studentID }) {
+                selectedStudent = student
+            } else {
+                selectedStudent = students.first
             }
+        }
+        .onChange(of: selectedStudent) {
+            selectedStudentID = selectedStudent?.id?.uuidString
         }
     }
 
@@ -127,6 +140,7 @@ struct ContentView: View {
         newStudent.avatar = selectedAvatarData
         do {
             try viewContext.save()
+            selectedStudent = newStudent
         } catch {
             let nsError = error as NSError
             fatalError("Unresolved error \(nsError), \(nsError.userInfo)")

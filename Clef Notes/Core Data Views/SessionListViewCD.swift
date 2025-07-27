@@ -2,7 +2,7 @@ import SwiftUI
 import CoreData
 
 struct SessionListViewCD: View {
-    @ObservedObject var student: StudentCD
+    @Binding var student: StudentCD
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showingPaywall = false
@@ -13,6 +13,9 @@ struct SessionListViewCD: View {
     
     @State private var isSharePresented = false
     @State private var showingSideMenu = false
+    
+    @State private var selectedTab: Int = 0
+    @State private var triggerAddNote = false
 
     @State private var path = NavigationPath()
 
@@ -62,44 +65,24 @@ struct SessionListViewCD: View {
                     }
                 }
             }
+            .withGlobalToolbar(
+                selectedTab: $selectedTab,
+                showingAddSongSheet: $showingAddSongSheet,
+                showingAddSessionSheet: $showingAddSessionSheet,
+                showingPaywall: $showingPaywall,
+                triggerAddNote: $triggerAddNote,
+                showingSideMenu: $showingSideMenu
+            )
+
             .navigationTitle("Sessions")
             .navigationDestination(for: PracticeSessionCD.self) { session in
                 SessionDetailViewCD(session: session, audioManager: audioManager)
-            }
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    Button(action: {
-                        showingSideMenu = true
-                    }) {
-                        Label("More", systemImage: "ellipsis.circle")
-                    }
-                }
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        Button {
-                            if subscriptionManager.isAllowedToCreateSong() {
-                                showingAddSongSheet = true
-                            } else {
-                                showingPaywall = true
-                            }
-                        } label: {
-                            Label("Add Song", image: "add.song")
-                        }
-                        Button {
-                            if subscriptionManager.isAllowedToCreateSession() {
-                                showingAddSessionSheet = true
-                            } else {
-                                showingPaywall = true
-                            }
-                        } label: {
-                            Label("Add Session", systemImage: "calendar.badge.plus")
-                        }
-                }
             }
             .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { _ in } }
             .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
             .sheet(isPresented: $showingSideMenu) {
                 SideMenuView(
-                    student: student,
+                    student: $student,
                     isPresented: $showingSideMenu,
                     showingEditStudentSheet: $showingEditStudentSheet,
                     isSharePresented: $isSharePresented

@@ -1,13 +1,21 @@
 import SwiftUI
 
 struct SideMenuView: View {
-    @ObservedObject var student: StudentCD
+    @Binding var student: StudentCD
     @Binding var isPresented: Bool
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @Environment(\.managedObjectContext) private var viewContext
+
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
+        animation: .default)
+    private var students: FetchedResults<StudentCD>
 
     // Bindings for sheets that are NOT part of the navigation
     @Binding var showingEditStudentSheet: Bool
     @Binding var isSharePresented: Bool
+    
+    @State private var isStudentListExpanded: Bool = false
 
     var body: some View {
         NavigationView {
@@ -15,29 +23,62 @@ struct SideMenuView: View {
             List {
                 // Section for the header content
                 Section {
-                    HStack(spacing: 15) {
-                        if let avatarData = student.avatar, let uiImage = UIImage(data: avatarData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 60, height: 60)
-                                .clipShape(Circle())
-                        } else {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(.secondary)
+                    DisclosureGroup(isExpanded: $isStudentListExpanded) {
+                        ForEach(students) { aStudent in
+                            if aStudent != student {
+                                Button(action: {
+                                    student = aStudent
+                                    isStudentListExpanded = false
+                                }) {
+                                    HStack {
+                                        if let avatarData = aStudent.avatar, let uiImage = UIImage(data: avatarData) {
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 40, height: 40)
+                                                .clipShape(Circle())
+                                        } else {
+                                            Image(systemName: "person.circle.fill")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        VStack(alignment: .leading) {
+                                            Text(aStudent.name ?? "Student")
+                                                .font(.headline)
+                                            Text(aStudent.instrument ?? "No Instrument")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        
-                        VStack(alignment: .leading) {
-                            Text(student.name ?? "Student")
-                                .font(.title2)
-                                .bold()
-                            Text(student.instrument ?? "No Instrument")
-                                .font(.body)
-                                .foregroundColor(.secondary)
+                    } label: {
+                        HStack(spacing: 15) {
+                            if let avatarData = student.avatar, let uiImage = UIImage(data: avatarData) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            VStack(alignment: .leading) {
+                                Text(student.name ?? "Student")
+                                    .font(.title2)
+                                    .bold()
+                                Text(student.instrument ?? "No Instrument")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
                 }
 
                 Section("Student Actions") {

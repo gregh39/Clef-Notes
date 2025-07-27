@@ -15,6 +15,8 @@ struct SessionDetailViewCD: View {
     @State private var showingRandomSongPicker = false
     @State private var showingAddNoteSheet = false
     @State private var showingRecordingMetadataSheet = false
+    @State private var showingMetronome = false
+    @State private var showingTuner = false
 
     @State private var editingNote: NoteCD?
     @State private var playToEdit: PlayCD?
@@ -43,27 +45,68 @@ struct SessionDetailViewCD: View {
     }
 
     var body: some View {
-        TabView {
-            sessionTab
-                .tabItem { Label("Session", systemImage: "calendar") }
-            /*
-            if let student = session.student {
-                StudentSongsTabViewCD(student: student) {
-                    showingAddSongSheet = true
+        ZStack(alignment: .bottom) {
+            Form {
+                Section("Duration") {
+                    ZStack {
+                        activeTimerControls
+                            .opacity(sessionTimerManager.activeSession == session ? 1 : 0)
+                        
+                        staticDurationDisplay
+                            .opacity(sessionTimerManager.activeSession == session ? 0 : 1)
+                    }
+                    .animation(.default, value: sessionTimerManager.activeSession == session)
                 }
-                .tabItem { Label("Songs", systemImage: "music.note.list") }
+                
+                PlaysSectionViewCD(session: session, showingAddPlaySheet: $showingAddPlaySheet, playToEdit: $playToEdit, context: viewContext)
+                NotesSectionViewCD(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
+                
+                Section("Recordings") {
+                    ForEach(session.recordingsArray) { recording in
+                        AudioPlaybackCellCD(
+                            title: recording.title ?? "Recording",
+                            subtitle: (recording.dateRecorded ?? .now).formatted(date: .abbreviated, time: .shortened),
+                            data: recording.data,
+                            duration: recording.duration,
+                            id: recording.objectID,
+                            audioPlayerManager: audioPlayerManager
+                        )
+                    }
+                    .onDelete(perform: deleteRecordings)
+                }
             }
-            */
-            
-            MetronomeSectionView()
-                .tabItem { Label("Metronome", systemImage: "metronome") }
-            
-            TunerTabView()
-                .tabItem { Label("Tuner", systemImage: "tuningfork") }
+
+            // Floating Buttons
+            HStack {
+                Button {
+                    showingMetronome = true
+                } label: {
+                    Image(systemName: "metronome")
+                        .font(.title2)
+                        .frame(width: 60, height: 60)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                        .shadow(radius: 5)
+                }
+
+                Spacer()
+
+                Button {
+                    showingTuner = true
+                } label: {
+                    Image(systemName: "tuningfork")
+                        .font(.title2)
+                        .frame(width: 60, height: 60)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                        .shadow(radius: 5)
+                }
+            }
+            .padding(.horizontal, 30)
+            .padding(.bottom, 20)
         }
         .navigationTitle(session.title ?? "Practice Session")
         .toolbar {
-            // --- THIS IS THE FIX: The toolbar now includes the recording button ---
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button(action: {
                     if audioRecorderManager.isRecording {
@@ -121,6 +164,8 @@ struct SessionDetailViewCD: View {
                 )
             }
         }
+        .sheet(isPresented: $showingMetronome) { MetronomeSectionView() }
+        .sheet(isPresented: $showingTuner) { TunerTabView() }
         .onChange(of: audioRecorderManager.finishedRecordingURL) {
             if audioRecorderManager.finishedRecordingURL != nil {
                 showingRecordingMetadataSheet = true
@@ -128,38 +173,6 @@ struct SessionDetailViewCD: View {
         }
     }
 
-    private var sessionTab: some View {
-        Form {
-            Section("Duration") {
-                ZStack {
-                    activeTimerControls
-                        .opacity(sessionTimerManager.activeSession == session ? 1 : 0)
-                    
-                    staticDurationDisplay
-                        .opacity(sessionTimerManager.activeSession == session ? 0 : 1)
-                }
-                .animation(.default, value: sessionTimerManager.activeSession == session)
-            }
-            
-            PlaysSectionViewCD(session: session, showingAddPlaySheet: $showingAddPlaySheet, playToEdit: $playToEdit, context: viewContext)
-            NotesSectionViewCD(session: session, editingNote: $editingNote, showingAddNoteSheet: $showingAddNoteSheet)
-            
-            Section("Recordings") {
-                ForEach(session.recordingsArray) { recording in
-                    AudioPlaybackCellCD(
-                        title: recording.title ?? "Recording",
-                        subtitle: (recording.dateRecorded ?? .now).formatted(date: .abbreviated, time: .shortened),
-                        data: recording.data,
-                        duration: recording.duration,
-                        id: recording.objectID,
-                        audioPlayerManager: audioPlayerManager
-                    )
-                }
-                .onDelete(perform: deleteRecordings)
-            }
-        }
-    }
-    
     private var staticDurationDisplay: some View {
         HStack {
             Label(durationString, systemImage: "clock")
