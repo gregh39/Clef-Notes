@@ -19,14 +19,18 @@ struct ContentView: View {
     @AppStorage("selectedStudentID") private var selectedStudentID: String?
     @State private var showingSideMenu = false
 
+    // This property tracks if the user has completed the onboarding flow.
+    // It's stored in UserDefaults and will persist across app launches.
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     var body: some View {
-        NavigationStack {
-            Group {
-                if let student = selectedStudent {
+        Group {
+            if let student = selectedStudent {
+                NavigationStack(){
                     StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
-                } else {
-                    noStudentView
                 }
+            } else {
+                noStudentView
             }
         }
         .sheet(isPresented: $showingSideMenu) {
@@ -34,6 +38,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingAddSheet) {
             addStudentSheet
+        }
+        .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
+            // This presents the OnboardingView if the flag is false.
+            OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
         }
         .onAppear {
             if let studentID = selectedStudentID,
@@ -78,7 +86,7 @@ struct ContentView: View {
             }
         }
     }
-
+    
     private var addStudentSheet: some View {
         NavigationStack {
             Form {

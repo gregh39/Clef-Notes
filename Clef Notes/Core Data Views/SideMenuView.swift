@@ -69,24 +69,30 @@ struct SideMenuView: View {
                             Label("Share Student", systemImage: "square.and.arrow.up")
                         }
                     }
+                }
+                
+                Section("Account") {
+                    NavigationLink(destination: SubscriptionView()) {
+                        Label("Manage Subscription", systemImage: "creditcard.fill")
+                    }
+                }
 
-                    Section("Tools") {
-                        NavigationLink(destination: PitchGameView()) {
-                            Label("Pitch Game", systemImage: "gamecontroller")
-                        }
+                Section("Tools") {
+                    NavigationLink(destination: PitchGameView()) {
+                        Label("Pitch Game", systemImage: "gamecontroller")
+                    }
 
-                        NavigationLink(destination: MetronomeSectionView()) {
-                            Label("Metronome", systemImage: "metronome")
-                        }
-                        .disabled(!subscriptionManager.canAccessPaidFeatures)
+                    NavigationLink(destination: MetronomeSectionView()) {
+                        Label("Metronome", systemImage: "metronome")
+                    }
+                    .disabled(!subscriptionManager.canAccessPaidFeatures)
 
-                        NavigationLink(destination: TunerTabView()) {
-                            Label("Tuner", systemImage: "tuningfork")
-                        }
-                        .disabled(!subscriptionManager.canAccessPaidFeatures)
-                        NavigationLink(destination: SettingsView()) {
-                            Label("Settings", systemImage: "gearshape")
-                        }
+                    NavigationLink(destination: TunerTabView()) {
+                        Label("Tuner", systemImage: "tuningfork")
+                    }
+                    .disabled(!subscriptionManager.canAccessPaidFeatures)
+                    NavigationLink(destination: SettingsView()) {
+                        Label("Settings", systemImage: "gearshape")
                     }
                 }
             }

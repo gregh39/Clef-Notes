@@ -1,0 +1,71 @@
+# Created by https://www.toptal.com/developers/gitignore/api/swift,xcode
+# Edit at https://www.toptal.com/developers/gitignore?templates=swift,xcode
+
+### Custom Rules ###
+# Ignore the configuration file containing secret keys
+Config.xcconfig
+
+### Swift ###
+# Swift Package Manager
+#
+# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
+# Packages/
+#
+# Xcode generated
+#
+# Usually builds intermediate files in a derived data folder, but they can
+# be configured to build in the project directory.
+build/
+.build/
+.swiftpm/
+
+# Swift Package Manager cache
+Packages/
+*.xcodeproj
+*.xcworkspace
+
+# Binaries
+.build/apple/Products/
+
+# Package manager resolver state
+Package.resolved
+
+### Xcode ###
+# Xcode
+#
+# gitignore contributors: remember to keep this file platform-agnostic
+#
+# Swift version-specific files
+.swift-version
+
+# Xcode temporary files
+.DS_Store
+/build/
+/DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# User-specific files
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.xcscheme
+
+# Private settings
+xcuserdata/
+
+# Localizations
+*.strings
+*.stringsdict
+
+# Pods-related
+Pods/
+!Podfile
+!Podfile.lock

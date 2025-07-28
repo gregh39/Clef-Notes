@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreData
 import RevenueCat
+import TipKit // 1. Import TipKit
 
 @main
 struct Clef_NotesApp: App {
@@ -8,7 +9,6 @@ struct Clef_NotesApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     @StateObject private var sessionTimerManager: SessionTimerManager
-    // Use the shared instance of SubscriptionManager
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     @StateObject private var usageManager: UsageManager
     @StateObject private var settingsManager = SettingsManager.shared
@@ -32,6 +32,13 @@ struct Clef_NotesApp: App {
                .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
                .onAppear {
                    settingsManager.setAppIcon()
+               }
+               // 2. Add a task to configure TipKit when the app starts.
+               .task {
+                    try? Tips.configure([
+                        // You can add options here, like displaying tips more frequently for debugging.
+                        // .displayFrequency(.immediate)
+                    ])
                }
         }
     }

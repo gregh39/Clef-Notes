@@ -1,7 +1,8 @@
 import SwiftUI
 import CoreData
+import TipKit // 1. Import TipKit
 
-// Enum to represent the different sections in the student detail view.
+// (Your StudentDetailSection enum remains the same)
 enum StudentDetailSection: String, CaseIterable, Identifiable {
     case sessions = "Sessions"
     case songs = "Songs"
@@ -22,6 +23,7 @@ enum StudentDetailSection: String, CaseIterable, Identifiable {
     }
 }
 
+
 struct StudentDetailNavigationView: View {
     @ObservedObject var student: StudentCD
     @Binding var showingSideMenu: Bool
@@ -38,11 +40,13 @@ struct StudentDetailNavigationView: View {
     @State private var triggerAddNote = false
 
     @State private var path = NavigationPath()
-
+    
+    // 2. Create an instance of your tip
+    private let menuButtonTip = MenuButtonTip()
 
     var body: some View {
         VStack {
-            // Content view based on the selected section
+            // ... (The switch statement for your content remains the same)
             switch selectedSection {
             case .sessions:
                 SessionListViewCD(student: student) {
@@ -68,7 +72,10 @@ struct StudentDetailNavigationView: View {
                 }) {
                     Label("Menu", systemImage: "line.3.horizontal")
                 }
+                // 3. Attach the popoverTip modifier to the button
+                .popoverTip(menuButtonTip)
             }
+            // ... (The rest of your toolbar remains the same)
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 if selectedSection == .sessions || selectedSection == .songs {
                     Button {
@@ -106,7 +113,7 @@ struct StudentDetailNavigationView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 TimerBarView()
-                if #available(iOS 26.0, *) {
+                if #available(iOS 17.0, *) {
                     FloatingBottomNavBar(selectedSection: $selectedSection)
                 } else {
                     BottomNavBar(selectedSection: $selectedSection)
@@ -117,7 +124,7 @@ struct StudentDetailNavigationView: View {
     }
 }
 
-
+// ... (Your BottomNavBar and FloatingBottomNavBar structs remain the same)
 struct BottomNavBar: View {
     @Binding var selectedSection: StudentDetailSection
     @Environment(\.colorScheme) var colorScheme
@@ -126,8 +133,9 @@ struct BottomNavBar: View {
             HStack {
                 ForEach(StudentDetailSection.allCases) { section in
                     Button(action: {
+                        withAnimation {
                             selectedSection = section
-                        
+                        }
                     }) {
                         VStack(spacing: 4) {
                             Image(systemName: section.systemImageName)

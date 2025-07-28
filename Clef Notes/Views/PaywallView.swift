@@ -7,6 +7,7 @@ struct PaywallView: View {
     
     @State private var offerings: Offerings? = nil
     @State private var isPurchasing = false
+    @State private var alertMessage: String?
 
     var body: some View {
         VStack {
@@ -14,6 +15,7 @@ struct PaywallView: View {
                 VStack(spacing: 20) {
                     header
                     features
+                    Spacer()
                     packages
                 }
                 .padding()
@@ -38,6 +40,13 @@ struct PaywallView: View {
                     .cornerRadius(10)
             }
         }
+        .alert("An Error Occurred", isPresented: .constant(alertMessage != nil), actions: {
+            Button("OK") {
+                alertMessage = nil // Dismiss the alert
+            }
+        }, message: {
+            Text(alertMessage ?? "Something went wrong.")
+        })
     }
 
     private var header: some View {
@@ -102,7 +111,11 @@ struct PaywallView: View {
         isPurchasing = true
         Purchases.shared.purchase(package: package) { (transaction, customerInfo, error, userCancelled) in
             isPurchasing = false
-            if customerInfo?.entitlements["pro"]?.isActive == true {
+            if let error = error, !userCancelled {
+                self.alertMessage = error.localizedDescription
+                return
+            }
+            if customerInfo?.entitlements["ClefNotes Pro"]?.isActive == true {
                 subscriptionManager.updateSubscriptionStatus()
                 dismiss()
             }
@@ -113,9 +126,15 @@ struct PaywallView: View {
         isPurchasing = true
         Purchases.shared.restorePurchases { (customerInfo, error) in
             isPurchasing = false
-            if customerInfo?.entitlements["pro"]?.isActive == true {
+            if let error = error {
+                self.alertMessage = error.localizedDescription
+                return
+            }
+            if customerInfo?.entitlements["ClefNotes Pro"]?.isActive == true {
                 subscriptionManager.updateSubscriptionStatus()
                 dismiss()
+            } else {
+                self.alertMessage = "No active subscription found to restore."
             }
         }
     }
