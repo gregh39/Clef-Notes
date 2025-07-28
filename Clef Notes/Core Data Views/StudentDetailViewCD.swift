@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreData
 import CloudKit
-
+/*
 struct StudentDetailViewCD: View {
     @ObservedObject var student: StudentCD
     @Environment(\.managedObjectContext) private var viewContext
@@ -116,7 +116,7 @@ struct StudentDetailViewCD: View {
     }
     
 }
-
+*/
 struct TimerBarView: View {
     @EnvironmentObject var sessionTimerManager: SessionTimerManager
     @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue

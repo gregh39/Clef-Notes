@@ -9,6 +9,37 @@ struct SessionListViewCD: View {
     var onAddSession: () -> Void
 
     @State private var sessionToDelete: PracticeSessionCD? = nil
+    @State private var searchText = ""
+
+    private var filteredSessions: [PracticeSessionCD] {
+        if searchText.isEmpty {
+            return student.sessionsArray
+        } else {
+            return student.sessionsArray.filter { session in
+                let searchTextLowercased = searchText.lowercased()
+
+                // Check session title
+                if let title = session.title, title.lowercased().contains(searchTextLowercased) {
+                    return true
+                }
+                // Check instructor name
+                if let instructor = session.instructor?.name, instructor.lowercased().contains(searchTextLowercased) {
+                    return true
+                }
+                // Check location
+                if let location = session.location?.rawValue, location.lowercased().contains(searchTextLowercased) {
+                    return true
+                }
+                // Check songs played in the session
+                for play in session.playsArray {
+                    if let songTitle = play.song?.title, songTitle.lowercased().contains(searchTextLowercased) {
+                        return true
+                    }
+                }
+                return false
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -22,9 +53,11 @@ struct SessionListViewCD: View {
                         Button("Add First Session", action: onAddSession)
                             .buttonStyle(.borderedProminent)
                     }
+                } else if filteredSessions.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 } else {
                     List {
-                        ForEach(student.sessionsArray) { session in
+                        ForEach(filteredSessions) { session in
                             Section {
                                 ZStack {
                                     SessionCardViewCD(session: session)
@@ -56,7 +89,7 @@ struct SessionListViewCD: View {
             .navigationDestination(for: PracticeSessionCD.self) { session in
                 SessionDetailViewCD(session: session, audioManager: audioManager)
             }
-
+            .searchable(text: $searchText, prompt: "Search Sessions")
         }
     }
     
@@ -129,8 +162,6 @@ struct SessionCardViewCD: View {
                             Text("\(totalPlays)")
                         }
                         .foregroundStyle(.blue)
-                        //Label("\(totalPlays)", systemImage: "music.note.list")
-                          //  .foregroundStyle(.blue)
                     }
                     if noteCount > 0 {
                         HStack{

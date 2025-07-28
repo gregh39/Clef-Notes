@@ -7,25 +7,47 @@ struct StudentSongsTabViewCD: View {
     
     @EnvironmentObject var audioManager: AudioManager
     
+    // State for sorting and filtering
     @State private var selectedSort: SongSortOption = .title
     @State private var selectedPieceType: PieceType? = nil
-    @State private var editingSongForEditSheet: SongCD? = nil
+    @State private var searchText = ""
     
+    // State for sheets and navigation
+    @State private var editingSongForEditSheet: SongCD? = nil
     @State private var path = NavigationPath()
 
+    // Computed property for available piece types to build the filter bar
     private var availablePieceTypes: [PieceType] {
         let allTypes = student.songsArray.compactMap { $0.pieceType }
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
-    private var sortedSongs: [SongCD] {
+    // Computed property that handles sorting AND filtering
+    private var filteredAndSortedSongs: [SongCD] {
+        // Start with the base array
+        var filteredSongs = Array(student.songs as? Set<SongCD> ?? [])
+
+        // Apply piece type filter
+        if let type = selectedPieceType {
+            filteredSongs = filteredSongs.filter { $0.pieceType == type }
+        }
+
+        // Apply search text filter
+        if !searchText.isEmpty {
+            filteredSongs = filteredSongs.filter {
+                ($0.title?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+                ($0.composer?.localizedCaseInsensitiveContains(searchText) ?? false)
+            }
+        }
+
+        // Apply sorting
         switch selectedSort {
         case .title:
-            return student.songsArray.sorted { ($0.title ?? "") < ($1.title ?? "") }
+            return filteredSongs.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case .playCount:
-            return student.songsArray.sorted { $0.totalPlayCount > $1.totalPlayCount }
+            return filteredSongs.sorted { $0.totalPlayCount > $1.totalPlayCount }
         case .recentlyPlayed:
-            return student.songsArray.sorted { ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast) }
+            return filteredSongs.sorted { ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast) }
         }
     }
     
@@ -42,41 +64,64 @@ struct StudentSongsTabViewCD: View {
                             .buttonStyle(.borderedProminent)
                     }
                 } else {
-                    List {
-                        Section {
-                            EmptyView()
-                        } header: {
-                            typeFilterBar
-                                .padding(.vertical, 8)
-                        }
-                        
-                        songsSection
-                        
-                        SongSectionViewCD(
-                            title: "Scales",
-                            songs: filteredSongs(for: .scale),
-                            editingSong: $editingSongForEditSheet
-                        )
-                        
-                        SongSectionViewCD(
-                            title: "Warm-ups",
-                            songs: filteredSongs(for: .warmUp),
-                            editingSong: $editingSongForEditSheet
-                        )
-                        
-                        SongSectionViewCD(
-                            title: "Exercises",
-                            songs: filteredSongs(for: .exercise),
-                            editingSong: $editingSongForEditSheet
-                        )
-                    }
-                    .listStyle(.insetGrouped)
+                    songList
                 }
             }
             .navigationDestination(for: SongCD.self) { song in
                 SongDetailViewCD(song: song, audioManager: audioManager)
             }
             .navigationTitle("Songs")
+            .searchable(text: $searchText, prompt: "Search Songs or Composers")
+        }
+    }
+
+    @ViewBuilder
+    private var songList: some View {
+        if filteredAndSortedSongs.isEmpty {
+            ContentUnavailableView.search(text: searchText)
+        } else {
+            List {
+                Section {
+                    EmptyView()
+                } header: {
+                    typeFilterBar
+                        .padding(.vertical, 2)
+                }
+                
+                songsSection
+                
+                SongSectionViewCD(
+                    title: "Scales",
+                    songs: filteredSongs(for: .scale),
+                    editingSong: $editingSongForEditSheet
+                )
+                
+                SongSectionViewCD(
+                    title: "Warm-ups",
+                    songs: filteredSongs(for: .warmUp),
+                    editingSong: $editingSongForEditSheet
+                )
+                
+                SongSectionViewCD(
+                    title: "Exercises",
+                    songs: filteredSongs(for: .exercise),
+                    editingSong: $editingSongForEditSheet
+                )
+            }
+            .listStyle(.insetGrouped)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Picker("Sort By", selection: $selectedSort) {
+                            ForEach(SongSortOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down.circle")
+                    }
+                }
+            }
         }
     }
 
@@ -94,27 +139,24 @@ struct StudentSongsTabViewCD: View {
 
     @ViewBuilder
     private var songsSection: some View {
-        if selectedPieceType == nil || selectedPieceType == .song {
-            let normalSongs = sortedSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
-            let grouped = Dictionary(grouping: normalSongs, by: { $0.songStatus })
-            
-            let sortedKeys = PlayType.allCases.map { Optional($0) } + [nil]
+        let normalSongs = filteredAndSortedSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
+        let grouped = Dictionary(grouping: normalSongs, by: { $0.songStatus })
+        
+        let sortedKeys = PlayType.allCases.map { Optional($0) } + [nil]
 
-            ForEach(sortedKeys, id: \.self) { status in
-                if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
-                    Section(header: Text(status?.rawValue ?? "No Status")) {
-                        ForEach(songsInGroup) { song in
-                            ZStack {
-                                // --- THIS IS THE FIX: The new card view is used here ---
-                                SongCardView(song: song)
-                                NavigationLink(value: song) {
-                                    EmptyView()
-                                }
-                                .opacity(0)
+        ForEach(sortedKeys, id: \.self) { status in
+            if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
+                Section(header: Text(status?.rawValue ?? "No Status")) {
+                    ForEach(songsInGroup) { song in
+                        ZStack {
+                            SongCardView(song: song)
+                            NavigationLink(value: song) {
+                                EmptyView()
                             }
-                            .swipeActions(edge: .leading) {
-                                Button { editingSongForEditSheet = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
-                            }
+                            .opacity(0)
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button { editingSongForEditSheet = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
                         }
                     }
                 }
@@ -123,8 +165,7 @@ struct StudentSongsTabViewCD: View {
     }
     
     private func filteredSongs(for type: PieceType) -> [SongCD] {
-        guard selectedPieceType == nil || selectedPieceType == type else { return [] }
-        return sortedSongs.filter { $0.pieceType == type }
+        return filteredAndSortedSongs.filter { $0.pieceType == type }
     }
 }
 
@@ -140,7 +181,6 @@ private struct SongSectionViewCD: View {
             Section(header: Text(title)) {
                 ForEach(songs) { song in
                     ZStack {
-                        // --- THIS IS THE FIX: The new card view is used here too ---
                         SongCardView(song: song)
                         NavigationLink(value: song) {
                             EmptyView()
@@ -207,7 +247,7 @@ private struct SongCardView: View {
                 }
             }
         }
-        .padding(.vertical, 6) // Add some vertical padding inside the list row
+        .padding(.vertical, 6)
     }
 }
 
@@ -224,7 +264,7 @@ private struct FilterButton: View {
             Text(title)
                 .textCase(.none)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 6)
+                .padding(.vertical, 2)
                 .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
                 .foregroundColor(isSelected ? .white : .primary)
                 .clipShape(Capsule())

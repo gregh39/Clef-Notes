@@ -11,15 +11,37 @@ struct StudentNotesView: View {
     @State private var noteToEdit: NoteCD?
     @Binding var triggerAddNote: Bool
     
+    @State private var searchText = ""
     @State private var path = NavigationPath()
 
+    private var filteredNotes: [NoteCD] {
+        if searchText.isEmpty {
+            return Array(notes)
+        } else {
+            return notes.filter { note in
+                let searchTextLowercased = searchText.lowercased()
+                
+                if let text = note.text, text.lowercased().contains(searchTextLowercased) {
+                    return true
+                }
+                
+                for song in note.songsArray {
+                    if let title = song.title, title.lowercased().contains(searchTextLowercased) {
+                        return true
+                    }
+                }
+                
+                return false
+            }
+        }
+    }
 
     private var generalNotes: [NoteCD] {
-        notes.filter { $0.session?.day == nil && $0.date == nil }
+        filteredNotes.filter { $0.session?.day == nil && $0.date == nil }
     }
 
     private var groupedDatedNotes: [NoteGroup] {
-        let datedNotes = notes.filter { $0.session?.day != nil || $0.date != nil }
+        let datedNotes = filteredNotes.filter { $0.session?.day != nil || $0.date != nil }
 
         let grouped = Dictionary(grouping: datedNotes) { note -> Date in
             let dateToUse = note.session?.day ?? note.date!
@@ -32,44 +54,26 @@ struct StudentNotesView: View {
         self.student = student
         self._triggerAddNote = triggerAddNote
         self._notes = FetchRequest<NoteCD>(
-            sortDescriptors: [],
+            sortDescriptors: [NSSortDescriptor(keyPath: \NoteCD.date, ascending: false)],
             predicate: NSPredicate(format: "student == %@", student)
         )
     }
 
     var body: some View {
-        // --- THIS IS THE FIX: Changed list style to .insetGrouped for consistency ---
         NavigationStack(path: $path) {
-            List {
+            Group {
                 if notes.isEmpty {
                     ContentUnavailableView {
                         Label("No Notes Yet", systemImage: "note.text.badge.plus")
                     } description: {
                         Text("Tap the '+' button in the navigation bar to add a general note for this student.")
                     }
+                } else if filteredNotes.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 } else {
-                    if !generalNotes.isEmpty {
-                        Section("General Notes") {
-                            ForEach(generalNotes) { note in
-                                NoteCell(note: note) { self.noteToEdit = note }
-                            }
-                            .onDelete(perform: deleteGeneralNote)
-                        }
-                    }
-                    
-                    ForEach(groupedDatedNotes) { group in
-                        Section(header: Text(group.date, style: .date)) {
-                            ForEach(group.notes) { note in
-                                NoteCell(note: note) { self.noteToEdit = note }
-                            }
-                            .onDelete { indexSet in
-                                deleteDatedNote(at: indexSet, from: group.notes)
-                            }
-                        }
-                    }
+                    noteList
                 }
             }
-            .listStyle(.insetGrouped)
             .sheet(item: $noteToEdit) { note in
                 AddNoteSheetCD(note: note)
             }
@@ -80,7 +84,33 @@ struct StudentNotesView: View {
                 }
             }
             .navigationTitle("Notes")
+            .searchable(text: $searchText, prompt: "Search Notes and Songs")
         }
+    }
+
+    private var noteList: some View {
+        List {
+            if !generalNotes.isEmpty {
+                Section("General Notes") {
+                    ForEach(generalNotes) { note in
+                        NoteCell(note: note) { self.noteToEdit = note }
+                    }
+                    .onDelete(perform: deleteGeneralNote)
+                }
+            }
+            
+            ForEach(groupedDatedNotes) { group in
+                Section(header: Text(group.date, style: .date)) {
+                    ForEach(group.notes) { note in
+                        NoteCell(note: note) { self.noteToEdit = note }
+                    }
+                    .onDelete { indexSet in
+                        deleteDatedNote(at: indexSet, from: group.notes)
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
     }
 
     private func addNote() {
@@ -121,13 +151,9 @@ private struct NoteCell: View {
 
                 VStack {
 
-                    // --- THIS IS THE FIX: Correctly render the drawing thumbnail ---
-
                     if let drawingData = note.drawing, !drawingData.isEmpty,
 
                        let drawing = try? PKDrawing(data: drawingData) {
-
-                        // Generate image with a non-transparent background
 
                         Image(uiImage: drawing.image(from: drawing.bounds, scale: UIScreen.main.scale))
 
@@ -137,11 +163,11 @@ private struct NoteCell: View {
 
                             .frame(width: 40, height: 40)
 
-                            .background(Color(UIColor.systemBackground)) // Use system background for adaptability
+                            .background(Color(UIColor.systemBackground))
 
-                            .clipShape(RoundedRectangle(cornerRadius: 6)) // Clip the image content
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                            .overlay( // Add border on top of the clipped shape
+                            .overlay(
 
                                 RoundedRectangle(cornerRadius: 6)
 
@@ -214,8 +240,6 @@ private struct NoteCell: View {
                 }
 
                 Spacer()
-
-                // --- THIS IS THE FIX: Removed the chevron arrow ---
 
             }
 

@@ -24,6 +24,7 @@ enum StudentDetailSection: String, CaseIterable, Identifiable {
 
 struct StudentDetailNavigationView: View {
     @ObservedObject var student: StudentCD
+    @Binding var showingSideMenu: Bool
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -33,7 +34,6 @@ struct StudentDetailNavigationView: View {
     @State private var showingAddSessionSheet = false
     @State private var showingEditStudentSheet = false
     @State private var isSharePresented = false
-    @State private var showingSideMenu = false
     @State private var showingPaywall = false
     @State private var triggerAddNote = false
 
@@ -60,8 +60,15 @@ struct StudentDetailNavigationView: View {
                 StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
             }
         }
-        .navigationTitle(selectedSection.rawValue)
+        .navigationTitle(student.name ?? "Student")
         .toolbar {
+            ToolbarItemGroup(placement: .navigationBarLeading) {
+                Button(action: {
+                    showingSideMenu = true
+                }) {
+                    Label("Menu", systemImage: "line.3.horizontal")
+                }
+            }
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 if selectedSection == .sessions || selectedSection == .songs {
                     Button {
@@ -87,26 +94,12 @@ struct StudentDetailNavigationView: View {
                         Label("Add Note", systemImage: "plus")
                     }
                 }
-
-                Button(action: {
-                    showingSideMenu = true
-                }) {
-                    Label("More", systemImage: "ellipsis.circle")
-                }
             }
         }
         .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
         .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
         .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
         .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
-        .sheet(isPresented: $showingSideMenu) {
-            SideMenuView(
-                student: student,
-                isPresented: $showingSideMenu,
-                showingEditStudentSheet: $showingEditStudentSheet,
-                isSharePresented: $isSharePresented
-            )
-        }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
         }
@@ -124,6 +117,7 @@ struct StudentDetailNavigationView: View {
     }
 }
 
+
 struct BottomNavBar: View {
     @Binding var selectedSection: StudentDetailSection
     @Environment(\.colorScheme) var colorScheme
@@ -132,9 +126,8 @@ struct BottomNavBar: View {
             HStack {
                 ForEach(StudentDetailSection.allCases) { section in
                     Button(action: {
-                        withAnimation {
                             selectedSection = section
-                        }
+                        
                     }) {
                         VStack(spacing: 4) {
                             Image(systemName: section.systemImageName)

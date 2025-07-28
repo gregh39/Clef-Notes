@@ -1,5 +1,3 @@
-// Clef Notes/Views/ContentView.swift
-
 import SwiftUI
 import CoreData
 import PhotosUI
@@ -19,30 +17,29 @@ struct ContentView: View {
     
     @State private var selectedStudent: StudentCD?
     @AppStorage("selectedStudentID") private var selectedStudentID: String?
+    @State private var showingSideMenu = false
 
     var body: some View {
-        Group {
-            if let student = selectedStudent {
-                NavigationStack(){
-                    StudentDetailNavigationView(student: student)
-                }
-            } else {
-                // If no students exist, show the view to add a new student.
-                NavigationSplitView {
-                    studentListView
-                } detail: {
-                    Text("Select a student")
-                }
-                .sheet(isPresented: $showingAddSheet) {
-                    addStudentSheet
+        NavigationStack {
+            Group {
+                if let student = selectedStudent {
+                    StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
+                } else {
+                    noStudentView
                 }
             }
+        }
+        .sheet(isPresented: $showingSideMenu) {
+            SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            addStudentSheet
         }
         .onAppear {
             if let studentID = selectedStudentID,
                let student = students.first(where: { $0.id?.uuidString == studentID }) {
                 selectedStudent = student
-            } else {
+            } else if !students.isEmpty {
                 selectedStudent = students.first
             }
         }
@@ -51,22 +48,37 @@ struct ContentView: View {
         }
     }
 
-    private var studentListView: some View {
-        List {
-            Text("No students available. Please add a student to begin.")
+    private var noStudentView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "music.note.list")
+                .font(.system(size: 80))
+                .foregroundColor(.accentColor)
+            Text("No Student Selected")
+                .font(.largeTitle.bold())
+            Text("Add a new student or select one from the menu to get started.")
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Spacer()
+            Button("Add First Student") {
+                showingAddSheet = true
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
         }
-        .navigationTitle("Students")
+        .navigationTitle("Clef Notes")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showingAddSheet = true
-                } label: {
-                    Label("Add Student", systemImage: "plus")
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    showingSideMenu = true
+                }) {
+                    Label("Menu", systemImage: "line.3.horizontal")
                 }
             }
         }
     }
-    
+
     private var addStudentSheet: some View {
         NavigationStack {
             Form {
