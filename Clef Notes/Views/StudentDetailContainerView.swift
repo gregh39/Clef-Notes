@@ -46,7 +46,6 @@ struct StudentDetailNavigationView: View {
 
     var body: some View {
         VStack {
-            // ... (The switch statement for your content remains the same)
             switch selectedSection {
             case .sessions:
                 SessionListViewCD(student: student) {
@@ -113,11 +112,7 @@ struct StudentDetailNavigationView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 TimerBarView()
-                if #available(iOS 17.0, *) {
-                    FloatingBottomNavBar(selectedSection: $selectedSection)
-                } else {
-                    BottomNavBar(selectedSection: $selectedSection)
-                }
+                BottomNavBar(selectedSection: $selectedSection)
             }
         }
         .ignoresSafeArea(edges: .bottom)

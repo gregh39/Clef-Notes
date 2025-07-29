@@ -10,6 +10,7 @@ struct SessionListViewCD: View {
 
     @State private var sessionToDelete: PracticeSessionCD? = nil
     @State private var searchText = ""
+    
 
     private var filteredSessions: [PracticeSessionCD] {
         if searchText.isEmpty {
@@ -193,3 +194,4 @@ struct SessionCardViewCD: View {
         .padding(.vertical, 6)
     }
 }
+
