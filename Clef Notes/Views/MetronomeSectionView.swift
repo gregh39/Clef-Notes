@@ -1,3 +1,5 @@
+// Clef Notes/Views/MetronomeSectionView.swift
+
 import SwiftUI
 import AVFoundation
 
@@ -30,11 +32,10 @@ private struct TimeSignature: Hashable, Identifiable {
 
 struct MetronomeSectionView: View {
     @EnvironmentObject var audioManager: AudioManager
-    @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
+    @EnvironmentObject var settingsManager: SettingsManager // <<< USE THEME FROM ENVIRONMENT
     
     @AppStorage("metronomeVisualizerType") private var visualizerType: MetronomeVisualizerType = .pulse
     @AppStorage("metronomeTimeSignatureID") private var timeSignatureID: String = "4/4"
-    // --- THIS IS THE FIX: AppStorage to save the user's downbeat preference ---
     @AppStorage("metronomeHighlightDownbeat") private var highlightDownbeat: Bool = true
 
     @State private var bpm: Double = 60.0
@@ -54,7 +55,6 @@ struct MetronomeSectionView: View {
 
     var body: some View {
         VStack {
-            // --- THIS IS THE FIX: Grouped the metronome settings ---
             VStack(spacing: 12) {
                 Picker("Visualizer", selection: $visualizerType) {
                     ForEach(MetronomeVisualizerType.allCases) { type in
@@ -72,7 +72,7 @@ struct MetronomeSectionView: View {
             ZStack {
                 switch visualizerType {
                 case .pulse:
-                    PulseVisualizer(pulseRadius: $pulseRadius, beatCount: $beatCount, accentColor: accentColor.color, highlightDownbeat: highlightDownbeat)
+                    PulseVisualizer(pulseRadius: $pulseRadius, beatCount: $beatCount, accentColor: settingsManager.activeAccentColor, highlightDownbeat: highlightDownbeat)
                 case .arm:
                     MetronomeArmView(rotation: $armRotation, beatCount: $beatCount, highlightDownbeat: highlightDownbeat)
                 }
@@ -91,7 +91,7 @@ struct MetronomeSectionView: View {
                             .foregroundColor(.secondary)
                         Text(selectedTimeSignature.description)
                             .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(accentColor.color)
+                            .foregroundColor(settingsManager.activeAccentColor) // <<< USE THEME COLOR
                     }
                 }
                 .padding(.bottom)
@@ -101,7 +101,7 @@ struct MetronomeSectionView: View {
                         Image(systemName: "minus.circle.fill")
                     }
                     .font(.system(size: 40))
-                    .foregroundColor(bpm > tempoRange.lowerBound ? accentColor.color : .gray)
+                    .foregroundColor(bpm > tempoRange.lowerBound ? settingsManager.activeAccentColor : .gray) // <<< USE THEME COLOR
                     .disabled(bpm <= tempoRange.lowerBound)
                     
                     Text("\(Int(bpm)) BPM")
@@ -113,7 +113,7 @@ struct MetronomeSectionView: View {
                         Image(systemName: "plus.circle.fill")
                     }
                     .font(.system(size: 40))
-                    .foregroundColor(bpm < tempoRange.upperBound ? accentColor.color : .gray)
+                    .foregroundColor(bpm < tempoRange.upperBound ? settingsManager.activeAccentColor : .gray) // <<< USE THEME COLOR
                     .disabled(bpm >= tempoRange.upperBound)
                 }
                 .onChange(of: bpm) {
@@ -121,7 +121,7 @@ struct MetronomeSectionView: View {
                 }
                 
                 Slider(value: $bpm, in: tempoRange, step: 1)
-                    .tint(accentColor.color)
+                    .tint(settingsManager.activeAccentColor) // <<< USE THEME COLOR
                     .padding(.horizontal)
                     .padding(.vertical)
             }
@@ -134,7 +134,7 @@ struct MetronomeSectionView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(isPlaying ? .red : accentColor.color)
+            .tint(isPlaying ? .red : settingsManager.activeAccentColor) // <<< USE THEME COLOR
             .padding(.bottom, 40)
         }
         .onDisappear(perform: stopMetronome)
@@ -190,7 +190,6 @@ struct MetronomeSectionView: View {
     private func performTick(with timeInterval: TimeInterval) {
         beatCount = (beatCount % selectedTimeSignature.beats) + 1
         
-        // --- THIS IS THE FIX: Check the highlightDownbeat flag before playing the sound ---
         if beatCount == 1 && highlightDownbeat {
             audioManager.playMetronomeDownbeat()
         } else {
@@ -219,7 +218,7 @@ struct MetronomeSectionView: View {
 private struct TimeSignatureSelectionSheet: View {
     @Binding var selectedID: String
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
+    @EnvironmentObject var settingsManager: SettingsManager // <<< USE THEME FROM ENVIRONMENT
     
     private let commonTime = TimeSignature.all.filter { $0.noteValue == 4 }
     private let compoundTime = TimeSignature.all.filter { $0.noteValue == 8 }
@@ -250,7 +249,7 @@ private struct TimeSignatureSelectionSheet: View {
         let title: String
         let signatures: [TimeSignature]
         @Binding var selectedID: String
-        @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
+        @EnvironmentObject var settingsManager: SettingsManager // <<< USE THEME FROM ENVIRONMENT
 
         var body: some View {
             VStack(alignment: .leading) {
@@ -266,7 +265,7 @@ private struct TimeSignatureSelectionSheet: View {
                             Text(signature.description)
                                 .font(.title2.bold())
                                 .frame(maxWidth: .infinity, minHeight: 60)
-                                .background(selectedID == signature.id ? accentColor.color : Color(UIColor.secondarySystemGroupedBackground))
+                                .background(selectedID == signature.id ? settingsManager.activeAccentColor : Color(UIColor.secondarySystemGroupedBackground)) // <<< USE THEME COLOR
                                 .foregroundColor(selectedID == signature.id ? .white : .primary)
                                 .cornerRadius(12)
                         }
@@ -283,7 +282,6 @@ private struct PulseVisualizer: View {
     @Binding var pulseRadius: CGFloat
     @Binding var beatCount: Int
     let accentColor: Color
-    // --- THIS IS THE FIX: Added property to control highlighting ---
     let highlightDownbeat: Bool
     
     private var isDownbeat: Bool { beatCount == 1 && highlightDownbeat }
@@ -292,7 +290,6 @@ private struct PulseVisualizer: View {
         Circle()
             .fill(
                 RadialGradient(
-                    // --- THIS IS THE FIX: Color depends on the isDownbeat check ---
                     gradient: Gradient(colors: [isDownbeat ? .red : accentColor, .clear]),
                     center: .center,
                     startRadius: 0,
@@ -306,7 +303,6 @@ private struct PulseVisualizer: View {
 private struct MetronomeArmView: View {
     @Binding var rotation: Double
     @Binding var beatCount: Int
-    // --- THIS IS THE FIX: Added property to control highlighting ---
     let highlightDownbeat: Bool
 
     var body: some View {
@@ -320,7 +316,6 @@ private struct MetronomeArmView: View {
                 .frame(width: 8, height: 150)
                 .overlay(
                     Circle()
-                        // --- THIS IS THE FIX: Color depends on the beat and the toggle ---
                         .fill((beatCount == 1 && highlightDownbeat) ? .red : .primary)
                         .frame(width: 30, height: 30)
                         .offset(y: -40)

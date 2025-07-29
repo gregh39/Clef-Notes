@@ -1,22 +1,54 @@
-//
-//  SettingsManager.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/26/25.
-//
+// Clef Notes/Resources/SettingsManager.swift
 
 import Foundation
 import SwiftUI
 import Combine
+
+enum ColorSchemeSetting: String, CaseIterable, Identifiable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+    
+    var id: String { self.rawValue }
+    
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+}
+
 
 @MainActor
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
 
     // MARK: - Appearance
-    @AppStorage("colorSchemeSetting") var colorSchemeSetting: ColorSchemeSetting = .system
-    @AppStorage("selectedAccentColor") var accentColor: AccentColor = .blue
-    @AppStorage("appIcon") var appIcon: AppIcon = .defaultIcon
+    @AppStorage("colorSchemeSetting") var colorSchemeSetting: ColorSchemeSetting = .system {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("selectedAccentColor") var accentColor: AccentColor = .blue {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("appIcon") var appIcon: AppIcon = .bassClef {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("customAccentColor") var customAccentColor: Color = .blue {
+        willSet { objectWillChange.send() }
+    }
+
+    /// A computed property that returns the currently active accent color.
+    var activeAccentColor: Color {
+        if accentColor == .custom {
+            return customAccentColor
+        }
+        return accentColor.color ?? .blue // Fallback to blue
+    }
 
     // MARK: - Practice & Session
     @AppStorage("defaultSessionTitle") var defaultSessionTitle: String = "Practice"
@@ -48,20 +80,17 @@ class SettingsManager: ObservableObject {
             practiceReminderTime = Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: Date())!
         }
         
-        // This publisher reacts to changes in either the toggle or the time picker.
         let settingsChangedPublisher = Publishers.CombineLatest($practiceRemindersEnabled, $practiceReminderTime)
-            .dropFirst() // Ignore the initial values on app launch
-            .debounce(for: .seconds(0.5), scheduler: RunLoop.main) // Wait for changes to settle
+            .dropFirst()
+            .debounce(for: .seconds(0.5), scheduler: RunLoop.main)
 
         settingsChangedPublisher
             .sink { [weak self] enabled, time in
                 guard let self = self else { return }
 
-                // Save the latest values to UserDefaults
                 UserDefaults.standard.set(enabled, forKey: self.practiceRemindersEnabledKey)
                 UserDefaults.standard.set(time.timeIntervalSinceReferenceDate, forKey: self.practiceReminderTimeKey)
 
-                // Directly schedule or cancel the repeating notification.
                 if enabled {
                     NotificationManager.shared.schedulePracticeReminder()
                 } else {
@@ -76,53 +105,6 @@ class SettingsManager: ObservableObject {
             if let error = error {
                 print("Error setting alternate app icon: \(error.localizedDescription)")
             }
-        }
-    }
-}
-
-enum ColorSchemeSetting: String, CaseIterable, Identifiable {
-    case system = "System"
-    case light = "Light"
-    case dark = "Dark"
-    
-    var id: String { self.rawValue }
-    
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system:
-            return nil
-        case .light:
-            return .light
-        case .dark:
-            return .dark
-        }
-    }
-}
-
-enum AppIcon: String, CaseIterable, Identifiable {
-    case defaultIcon = "Default"
-    case trebleClef = "TrebleClefIcon"
-    case altoClef = "AltoClefIcon"
-    
-    var id: String { self.rawValue }
-    
-    var iconName: String? {
-        switch self {
-        case .defaultIcon:
-            return nil
-        default:
-            return self.rawValue
-        }
-    }
-    
-    var preview: String {
-        switch self {
-        case .defaultIcon:
-            return "AppIcon"
-        case .trebleClef:
-            return "TrebleClefIconPreview"
-        case .altoClef:
-            return "AltoClefIconPreview"
         }
     }
 }

@@ -23,16 +23,28 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				"Resources/Color+Codable.swift",
 			);
 			target = 37F1716C2DF91DFF009C3656 /* Clef Notes */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		37C2D7F22E38729F0023C276 /* Exceptions for "Clef Notes" folder in "Copy Bundle Resources" phase from "Clef Notes" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 37F1716B2DF91DFF009C3656 /* Resources */;
+			membershipExceptions = (
+				"Resources/Color+Codable.swift",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		37F1716F2DF91DFF009C3656 /* Clef Notes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				37F1717A2DF91E00009C3656 /* Exceptions for "Clef Notes" folder in "Clef Notes" target */,
+				37C2D7F22E38729F0023C276 /* Exceptions for "Clef Notes" folder in "Copy Bundle Resources" phase from "Clef Notes" target */,
 			);
 			path = "Clef Notes";
 			sourceTree = "<group>";
@@ -174,8 +186,10 @@
 			baseConfigurationReferenceAnchor = 37F1716F2DF91DFF009C3656 /* Clef Notes */;
 			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "TrebleClefIcon AltoClefIcon";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = "Clef Notes/Clef_Notes.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -216,8 +230,10 @@
 			baseConfigurationReferenceAnchor = 37F1716F2DF91DFF009C3656 /* Clef Notes */;
 			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "TrebleClefIcon AltoClefIcon";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = "Clef Notes/Clef_Notes.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;

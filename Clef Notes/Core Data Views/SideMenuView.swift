@@ -81,18 +81,24 @@ struct SideMenuView: View {
                     NavigationLink(destination: PitchGameView()) {
                         Label("Pitch Game", systemImage: "gamecontroller")
                     }
-
+                    
                     NavigationLink(destination: MetronomeSectionView()) {
                         Label("Metronome", systemImage: "metronome")
                     }
                     .disabled(!subscriptionManager.canAccessPaidFeatures)
-
+                    
                     NavigationLink(destination: TunerTabView()) {
                         Label("Tuner", systemImage: "tuningfork")
                     }
                     .disabled(!subscriptionManager.canAccessPaidFeatures)
+                    
+                    // --- START CHANGES ---
+                    NavigationLink(destination: ThemeView()) {
+                        Label("Appearance", systemImage: "paintpalette.fill")
+                    }
+                    
                     NavigationLink(destination: SettingsView()) {
-                        Label("Settings", systemImage: "gearshape")
+                        Label("Settings", systemImage: "gearshape.fill")
                     }
                 }
             }

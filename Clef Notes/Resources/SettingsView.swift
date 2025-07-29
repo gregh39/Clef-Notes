@@ -1,24 +1,26 @@
+// Clef Notes/Theme System/SettingsView.swift
+
 import SwiftUI
-/*
+
 // An enum to represent the available tint colors
 enum AccentColor: String, CaseIterable, Identifiable {
-    case blue = "Blue"
-    case red = "Red"
-    case green = "Green"
-    case orange = "Orange"
+    case blue = "Blue", red = "Red", green = "Green", orange = "Orange"
+    case purple = "Purple", pink = "Pink", teal = "Teal", yellow = "Yellow"
+    case custom = "Custom"
     
     var id: String { self.rawValue }
     
-    var color: Color {
+    var color: Color? {
         switch self {
-        case .blue:
-            return .blue
-        case .red:
-            return .red
-        case .green:
-            return .green
-        case .orange:
-            return .orange
+        case .blue: return .blue
+        case .red: return .red
+        case .green: return .green
+        case .orange: return .orange
+        case .purple: return .purple
+        case .pink: return .pink
+        case .teal: return .teal
+        case .yellow: return .yellow
+        case .custom: return nil // Custom color is handled separately in SettingsManager
         }
     }
 }
@@ -37,35 +39,6 @@ struct SettingsView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Appearance")) {
-                Picker("Theme", selection: $settingsManager.colorSchemeSetting) {
-                    ForEach(ColorSchemeSetting.allCases) { scheme in
-                        Text(scheme.rawValue).tag(scheme)
-                    }
-                }
-                
-                Picker("Accent Color", selection: $settingsManager.accentColor) {
-                    ForEach(AccentColor.allCases) { color in
-                        Text(color.rawValue).tag(color)
-                    }
-                }
-                
-                Picker("App Icon", selection: $settingsManager.appIcon) {
-                    ForEach(AppIcon.allCases) { icon in
-                        HStack {
-                            Image(icon.preview)
-                                .resizable()
-                                .frame(width: 30, height: 30)
-                                .cornerRadius(6)
-                            Text(icon.rawValue)
-                        }.tag(icon)
-                    }
-                }
-                .onChange(of: settingsManager.appIcon) {
-                    settingsManager.setAppIcon()
-                }
-            }
-            
             Section(header: Text("Practice & Session")) {
                 TextField("Default Session Title", text: $settingsManager.defaultSessionTitle)
                 
@@ -139,4 +112,3 @@ struct ShareSheet: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
-*/

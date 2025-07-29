@@ -1,7 +1,9 @@
+// Clef Notes/Main App/Clef_NotesApp.swift
+
 import SwiftUI
 import CoreData
 import RevenueCat
-import TipKit // 1. Import TipKit
+import TipKit
 
 @main
 struct Clef_NotesApp: App {
@@ -30,13 +32,12 @@ struct Clef_NotesApp: App {
                .environmentObject(usageManager)
                .environmentObject(settingsManager)
                .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
+               .tint(settingsManager.activeAccentColor) // <<< CHANGE THIS LINE
                .onAppear {
                    settingsManager.setAppIcon()
                }
-               // 2. Add a task to configure TipKit when the app starts.
                .task {
                     try? Tips.configure([
-                        // You can add options here, like displaying tips more frequently for debugging.
                         // .displayFrequency(.immediate)
                     ])
                }

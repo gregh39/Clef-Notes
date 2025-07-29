@@ -222,3 +222,31 @@ enum SongSortOption: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 }
+
+enum AppIcon: String, CaseIterable, Identifiable {
+    case bassClef = "AppIcon"
+    case trebleClef = "TrebleClefIcon"
+    case altoClef = "AltoClefIcon"
+    
+    var id: String { self.rawValue }
+    
+    var iconName: String? {
+        switch self {
+        case .bassClef:
+            return nil
+        default:
+            return self.rawValue
+        }
+    }
+    
+    var preview: String {
+        switch self {
+        case .bassClef:
+            return "AppIconPreview"
+        case .trebleClef:
+            return "TrebleClefIconPreview"
+        case .altoClef:
+            return "AltoClefIconPreview"
+        }
+    }
+}

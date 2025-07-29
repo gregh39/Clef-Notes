@@ -58,7 +58,7 @@ struct SessionDetailViewCD: View {
         ZStack(alignment: .bottom) {
             VStack {
                 switch selectedSection {
-                case .session:
+                case .session, .record:
                     sessionTab
                 case .metronome:
                     MetronomeSectionView()
@@ -117,24 +117,28 @@ struct SessionDetailViewCD: View {
                     )
                 }
             }
-            .onChange(of: audioRecorderManager.finishedRecordingURL) {
-                if let newURL = audioRecorderManager.finishedRecordingURL {
+            .onChange(of: audioRecorderManager.finishedRecordingURL) { oldValue, newValue in
+                if let newURL = newValue {
                     DispatchQueue.main.async {
                         recordingURLForSheet = newURL
                     }
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 0) {
-                    TimerBarView()
+                ZStack {
                     SessionBottomNavBar(selectedSection: $selectedSection)
+                        .environmentObject(audioRecorderManager)
                 }
             }
             .ignoresSafeArea(edges: .bottom)
             
-            FloatingRecordButton(audioRecorderManager: audioRecorderManager)
-                .padding(.bottom, 85)
-                .padding(.horizontal)
+            if audioRecorderManager.isRecording {
+                RecordingStopBar(audioRecorderManager: audioRecorderManager)
+                    .padding(.bottom, 60)
+                    .padding(.horizontal)
+                    .animation(.spring(), value: audioRecorderManager.isRecording)
+            }
+
         }
     }
 
@@ -235,7 +239,6 @@ struct SessionDetailViewCD: View {
         try? viewContext.save()
     }
     
-    // Clef Notes/Core Data Views/SessionDetailViewCD.swift
     private func saveRecording(url: URL, title: String, songs: Set<SongCD>) {
         do {
             let audioData = try Data(contentsOf: url)
@@ -245,7 +248,7 @@ struct SessionDetailViewCD: View {
             }
             
             let recording = AudioRecordingCD(context: viewContext)
-            recording.id = UUID() // <<< --- ADD THIS LINE ---
+            recording.id = UUID()
             recording.data = audioData
             recording.dateRecorded = .now
             recording.title = title.isEmpty ? "Recording" : title
@@ -267,84 +270,89 @@ struct SessionDetailViewCD: View {
     }
 }
 
-struct WaveformView: View {
-    var audioLevel: CGFloat
-    private let barCount: Int = 30
+// --- START OF WAVEFORM CODE ---
 
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<barCount, id: \.self) { _ in
-                let heightMultiplier = audioLevel
-                let barHeight = max(3, heightMultiplier * audioLevel * 40)
+private struct WaveformShape: Shape {
+    var samples: [CGFloat]
 
-                RoundedRectangle(cornerRadius: 2)
-                    .frame(width: 3, height: barHeight)
-            }
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard !samples.isEmpty else { return path }
+
+        let stepX = rect.width / CGFloat(samples.count > 1 ? samples.count - 1 : 1)
+        let midY = rect.height / 2
+        // Set a minimum thickness for the baseline
+        let baseline: CGFloat = 1.0
+
+        path.move(to: CGPoint(x: 0, y: midY))
+
+        // Draw the top half
+        for i in samples.indices {
+            let x = CGFloat(i) * stepX
+            let peak = (samples[i] * (midY - (baseline / 2))) + (baseline / 2)
+            path.addLine(to: CGPoint(x: x, y: midY - peak))
         }
-        .foregroundColor(.white.opacity(0.8))
-        .animation(.easeOut(duration: 0.05), value: audioLevel)
+
+        // Draw the bottom half in reverse
+        path.addLine(to: CGPoint(x: rect.width, y: midY))
+        for i in (0..<samples.count).reversed() {
+            let x = CGFloat(i) * stepX
+            let peak = (samples[i] * (midY - (baseline / 2))) + (baseline / 2)
+            path.addLine(to: CGPoint(x: x, y: midY + peak))
+        }
+        
+        path.closeSubpath()
+        return path
     }
 }
 
+struct WaveformView: View {
+    var samples: [CGFloat]
 
-struct FloatingRecordButton: View {
+    var body: some View {
+        WaveformShape(samples: samples)
+            .fill(Color.white.opacity(0.9))
+            .animation(.easeOut(duration: 0.05), value: samples)
+            .clipped()
+    }
+}
+
+struct RecordingStopBar: View {
     @ObservedObject var audioRecorderManager: AudioRecorderManager
 
     var body: some View {
-        GeometryReader { geo in
-            HStack {
-                if !audioRecorderManager.isRecording {
-                    Spacer()
+        HStack {
+            Button(action: {
+                if audioRecorderManager.isRecording {
+                    audioRecorderManager.stopRecording()
                 }
+            }) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 35)
+                        .fill(Color.red)
+                        .shadow(radius: 7)
 
-                Button(action: {
-                    if audioRecorderManager.isRecording {
-                        audioRecorderManager.stopRecording()
-                    } else {
-                        audioRecorderManager.startRecording()
+                    HStack(spacing: 12) {
+                        Image(systemName: "stop.fill")
+                        WaveformView(samples: audioRecorderManager.waveformSamples)
+                            .frame(height: 35)
                     }
-                }) {
-                    ZStack {
-                        // Using RoundedRectangle and animating the corner radius
-                        // ensures it's a perfect circle when collapsed.
-                        RoundedRectangle(cornerRadius: audioRecorderManager.isRecording ? 40 : 40)
-                            .fill(audioRecorderManager.isRecording ? Color.red : Color.white)
-                            .shadow(radius: 7)
-
-                        if audioRecorderManager.isRecording {
-                            HStack(spacing: 12) {
-                                Image(systemName: "stop.fill")
-                                WaveformView(audioLevel: audioRecorderManager.audioLevel)
-                                    .frame(height: 40)
-                                Text("Stop")
-                                    .bold()
-                            }
-                            .padding(.horizontal)
-                            .foregroundColor(.white)
-                            .opacity(audioRecorderManager.isRecording ? 1 : 0)
-                            .animation(.easeIn.delay(0.15), value: audioRecorderManager.isRecording)
-                        }
-                        Image(systemName: "waveform.circle")
-                            .font(.system(size: 30))
-                            .foregroundColor(.red)
-                            .opacity(audioRecorderManager.isRecording ? 0 : 1)
-                            .animation(.easeOut(duration: 0.15), value: audioRecorderManager.isRecording)
-                    }
-                    .frame(
-                        width: audioRecorderManager.isRecording ? geo.size.width : 40,
-                        height: 40
-                    )
+                    .padding(.horizontal)
+                    .foregroundColor(.white)
                 }
-                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioRecorderManager.isRecording)
+                .frame(height: 35)
             }
+            .buttonStyle(.plain)
         }
-        .frame(height: 40)
     }
 }
+// --- END OF WAVEFORM CODE ---
+
 enum SessionDetailSection: String, CaseIterable, Identifiable {
     case session = "Session"
     case metronome = "Metronome"
     case tuner = "Tuner"
+    case record = "Record"
 
     var id: String { self.rawValue }
 
@@ -353,20 +361,29 @@ enum SessionDetailSection: String, CaseIterable, Identifiable {
         case .session: "calendar"
         case .metronome: "metronome"
         case .tuner: "tuningfork"
+        case .record: "record.circle"
         }
     }
 }
 
 struct SessionBottomNavBar: View {
     @Binding var selectedSection: SessionDetailSection
-    
+    @EnvironmentObject var audioRecorderManager: AudioRecorderManager
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
             HStack {
                 ForEach(SessionDetailSection.allCases) { section in
                         Button(action: {
-                            selectedSection = section
+                            if section == .record {
+                                if !audioRecorderManager.isRecording{
+                                    audioRecorderManager.startRecording()
+                                } else {
+                                    audioRecorderManager.stopRecording()
+                                }
+                            } else {
+                                selectedSection = section
+                            }
                         }) {
                             VStack(spacing: 4) {
                                 Image(systemName: section.systemImageName)
@@ -374,7 +391,7 @@ struct SessionBottomNavBar: View {
                                 Text(section.rawValue)
                                     .font(.system(size: 10))
                             }
-                            .foregroundColor(selectedSection == section ? .accentColor : .gray)
+                            .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
                             .frame(maxWidth: .infinity)
                         }
                 }
@@ -382,5 +399,5 @@ struct SessionBottomNavBar: View {
             .padding(.top, 5)
             .padding(.bottom, 35)
             .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
-        }
+    }
 }
