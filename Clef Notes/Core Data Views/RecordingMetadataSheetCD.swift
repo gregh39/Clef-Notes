@@ -1,10 +1,4 @@
-//
-//  RecordingMetadataSheetCD.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/16/25.
-//
-
+// Clef Notes/Core Data Views/RecordingMetadataSheetCD.swift
 
 import SwiftUI
 import CoreData

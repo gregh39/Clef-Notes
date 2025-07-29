@@ -1,3 +1,5 @@
+// Clef Notes/Views/AudioRecorderManager.swift
+
 import Foundation
 import AVFoundation
 import SwiftUI
@@ -61,13 +63,19 @@ class AudioRecorderManager: ObservableObject {
     func stopRecording() {
         audioRecorder?.stop()
         recordingTimer?.invalidate()
+
+        // This must come *before* publishing the URL to avoid animation conflicts
+        isRecording = false
         
         self.finishedRecordingURL = audioRecorder?.url
         
-        isRecording = false
-        audioLevel = 0.0
-        
         // Release the session via the central manager.
         audioManager.releaseSession(for: .recorder)
+    }
+    
+    /// Resets the recording state after a recording has been saved or discarded.
+    func reset() {
+        audioLevel = 0.0
+        finishedRecordingURL = nil
     }
 }

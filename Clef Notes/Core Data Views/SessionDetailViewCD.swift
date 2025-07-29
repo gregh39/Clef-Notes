@@ -1,8 +1,13 @@
-// Clef Notes/Core Data Views/SessionDetailView.swift
+// Clef Notes/Core Data Views/SessionDetailViewCD.swift
 
 import SwiftUI
 import CoreData
 import AVFoundation
+
+// Add this extension to make URL identifiable for the .sheet(item:) modifier
+extension URL: Identifiable {
+    public var id: String { self.absoluteString }
+}
 
 struct SessionDetailViewCD: View {
     @ObservedObject var session: PracticeSessionCD
@@ -16,7 +21,9 @@ struct SessionDetailViewCD: View {
     @State private var showingEditSessionSheet = false
     @State private var showingRandomSongPicker = false
     @State private var showingAddNoteSheet = false
-    @State private var showingRecordingMetadataSheet = false
+    
+    // State to drive the metadata sheet presentation
+    @State private var recordingURLForSheet: URL?
 
     @State private var editingNote: NoteCD?
     @State private var playToEdit: PlayCD?
@@ -29,8 +36,6 @@ struct SessionDetailViewCD: View {
     
     @State private var selectedTab: Int = 0
     @State private var selectedSection: SessionDetailSection = .session
-
-
 
     init(session: PracticeSessionCD, audioManager: AudioManager) {
         self.session = session
@@ -96,20 +101,27 @@ struct SessionDetailViewCD: View {
                     RandomSongPickerViewCD(songs: songs)
                 }
             }
-            .sheet(isPresented: $showingRecordingMetadataSheet, onDismiss: clearRecordingMetadataFields) {
-                if let url = audioRecorderManager.finishedRecordingURL, let songs = session.student?.songsArray {
+            .sheet(item: $recordingURLForSheet, onDismiss: {
+                audioRecorderManager.reset()
+                clearRecordingMetadataFields()
+            }) { url in
+                if let songs = session.student?.songsArray {
                     RecordingMetadataSheetCD(
                         fileURL: url,
                         songs: songs,
                         newRecordingTitle: $newRecordingTitle,
                         selectedSongs: $selectedSongsForRecording,
-                        onSave: saveRecording
+                        onSave: { newTitle, newSongs in
+                            saveRecording(url: url, title: newTitle, songs: newSongs)
+                        }
                     )
                 }
             }
             .onChange(of: audioRecorderManager.finishedRecordingURL) {
-                if audioRecorderManager.finishedRecordingURL != nil {
-                    showingRecordingMetadataSheet = true
+                if let newURL = audioRecorderManager.finishedRecordingURL {
+                    DispatchQueue.main.async {
+                        recordingURLForSheet = newURL
+                    }
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -123,7 +135,6 @@ struct SessionDetailViewCD: View {
             FloatingRecordButton(audioRecorderManager: audioRecorderManager)
                 .padding(.bottom, 85)
                 .padding(.horizontal)
-
         }
     }
 
@@ -224,8 +235,8 @@ struct SessionDetailViewCD: View {
         try? viewContext.save()
     }
     
-    private func saveRecording(title: String, songs: Set<SongCD>) {
-        guard let url = audioRecorderManager.finishedRecordingURL else { return }
+    // Clef Notes/Core Data Views/SessionDetailViewCD.swift
+    private func saveRecording(url: URL, title: String, songs: Set<SongCD>) {
         do {
             let audioData = try Data(contentsOf: url)
             var duration: TimeInterval?
@@ -234,6 +245,7 @@ struct SessionDetailViewCD: View {
             }
             
             let recording = AudioRecordingCD(context: viewContext)
+            recording.id = UUID() // <<< --- ADD THIS LINE ---
             recording.data = audioData
             recording.dateRecorded = .now
             recording.title = title.isEmpty ? "Recording" : title
@@ -247,11 +259,9 @@ struct SessionDetailViewCD: View {
         } catch {
             print("Error saving recorded file data: \(error)")
         }
-        clearRecordingMetadataFields()
     }
-    
+
     private func clearRecordingMetadataFields() {
-        audioRecorderManager.finishedRecordingURL = nil
         newRecordingTitle = ""
         selectedSongsForRecording = []
     }
@@ -297,37 +307,38 @@ struct FloatingRecordButton: View {
                     ZStack {
                         // Using RoundedRectangle and animating the corner radius
                         // ensures it's a perfect circle when collapsed.
-                        RoundedRectangle(cornerRadius: audioRecorderManager.isRecording ? 30 : 30)
-                            .fill(Color.red)
+                        RoundedRectangle(cornerRadius: audioRecorderManager.isRecording ? 40 : 40)
+                            .fill(audioRecorderManager.isRecording ? Color.red : Color.white)
                             .shadow(radius: 7)
 
-                        HStack(spacing: 12) {
-                            Image(systemName: "stop.fill")
-                            WaveformView(audioLevel: audioRecorderManager.audioLevel)
-                                .frame(height: 40)
-                            Text("Stop")
-                                .bold()
-                        }
-                        .padding(.horizontal)
-                        .foregroundColor(.white)
-                        .opacity(audioRecorderManager.isRecording ? 1 : 0)
-                        .animation(.easeIn.delay(0.15), value: audioRecorderManager.isRecording)
-
-                        Image(systemName: "record.circle")
-                            .font(.system(size: 30))
+                        if audioRecorderManager.isRecording {
+                            HStack(spacing: 12) {
+                                Image(systemName: "stop.fill")
+                                WaveformView(audioLevel: audioRecorderManager.audioLevel)
+                                    .frame(height: 40)
+                                Text("Stop")
+                                    .bold()
+                            }
+                            .padding(.horizontal)
                             .foregroundColor(.white)
+                            .opacity(audioRecorderManager.isRecording ? 1 : 0)
+                            .animation(.easeIn.delay(0.15), value: audioRecorderManager.isRecording)
+                        }
+                        Image(systemName: "waveform.circle")
+                            .font(.system(size: 30))
+                            .foregroundColor(.red)
                             .opacity(audioRecorderManager.isRecording ? 0 : 1)
                             .animation(.easeOut(duration: 0.15), value: audioRecorderManager.isRecording)
                     }
                     .frame(
-                        width: audioRecorderManager.isRecording ? geo.size.width : 60,
-                        height: 60
+                        width: audioRecorderManager.isRecording ? geo.size.width : 40,
+                        height: 40
                     )
                 }
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioRecorderManager.isRecording)
             }
         }
-        .frame(height: 60)
+        .frame(height: 40)
     }
 }
 enum SessionDetailSection: String, CaseIterable, Identifiable {
@@ -372,5 +383,4 @@ struct SessionBottomNavBar: View {
             .padding(.bottom, 35)
             .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
         }
-    
 }
