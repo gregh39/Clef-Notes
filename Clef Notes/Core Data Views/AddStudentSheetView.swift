@@ -2,16 +2,16 @@ import SwiftUI
 import CoreData
 import PhotosUI
 
-struct EditStudentSheetCD: View {
+struct AddStudentSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) private var dismiss
     
-    @ObservedObject var student: StudentCD
+    @Binding var isPresented: Bool
+    @Binding var selectedStudent: StudentCD?
     
-    @State private var name: String = ""
-    @State private var instrument: Instrument? = nil
+    @State private var newName = ""
+    @State private var newInstrument: Instrument? = nil
     @State private var selectedAvatarItem: PhotosPickerItem?
-    @State private var avatarData: Data?
+    @State private var selectedAvatarData: Data?
     
     var body: some View {
         NavigationStack {
@@ -21,7 +21,7 @@ struct EditStudentSheetCD: View {
                         HStack {
                             Spacer()
                             VStack {
-                                if let data = avatarData, let uiImage = UIImage(data: data) {
+                                if let avatarData = selectedAvatarData, let uiImage = UIImage(data: avatarData) {
                                     Image(uiImage: uiImage)
                                         .resizable()
                                         .scaledToFill()
@@ -32,7 +32,7 @@ struct EditStudentSheetCD: View {
                                         .font(.system(size: 100))
                                         .foregroundColor(.gray)
                                 }
-                                PhotosPicker("Change Avatar", selection: $selectedAvatarItem, matching: .images)
+                                PhotosPicker("Choose Avatar", selection: $selectedAvatarItem, matching: .images)
                                     .buttonStyle(.bordered)
                             }
                             Spacer()
@@ -41,8 +41,8 @@ struct EditStudentSheetCD: View {
                     }
                     
                     Section("Student Details") {
-                        TextField("Name", text: $name)
-                        Picker("Instrument", selection: $instrument) {
+                        TextField("Name", text: $newName)
+                        Picker("Instrument", selection: $newInstrument) {
                             Text("Select an Instrument").tag(Optional<Instrument>.none)
                             ForEach(instrumentSections) { section in
                                 Section(header: Text(section.name)) {
@@ -53,42 +53,45 @@ struct EditStudentSheetCD: View {
                             }
                         }
                     }
+                    
                 }
                 .addDoneButtonToKeyboard()
 
-                SaveButtonView(title: "Save Changes", action: saveChanges, isDisabled: name.trimmingCharacters(in: .whitespaces).isEmpty || instrument == nil)
+                SaveButtonView(title: "Add Student", action: {
+                    addStudent()
+                    isPresented = false
+                }, isDisabled: newName.trimmingCharacters(in: .whitespaces).isEmpty || newInstrument == nil)
             }
-            .navigationTitle("Edit Student")
+            .navigationTitle("New Student")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        isPresented = false
+                    }
                 }
-            }
-            .onAppear {
-                name = student.name ?? ""
-                instrument = student.instrumentType
-                avatarData = student.avatar
             }
             .onChange(of: selectedAvatarItem) {
                 Task {
                     if let data = try? await selectedAvatarItem?.loadTransferable(type: Data.self) {
-                        avatarData = data
+                        selectedAvatarData = data
                     }
                 }
             }
         }
     }
     
-    private func saveChanges() {
-        student.name = name
-        student.instrumentType = instrument
-        student.avatar = avatarData
-        
+    private func addStudent() {
+        let newStudent = StudentCD(context: viewContext)
+        newStudent.id = UUID()
+        newStudent.name = newName
+        newStudent.instrumentType = newInstrument
+        newStudent.avatar = selectedAvatarData
         do {
             try viewContext.save()
-            dismiss()
+            selectedStudent = newStudent
         } catch {
-            print("Failed to save student changes: \(error)")
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
     }
 }

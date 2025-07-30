@@ -1,5 +1,3 @@
-// Clef Notes/Core Data Views/AddMediaSheetCD.swift
-
 import SwiftUI
 import CoreData
 import PhotosUI
@@ -22,80 +20,81 @@ struct AddMediaSheetCD: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker(selection: $newMediaType) {
-                        ForEach(MediaType.allCases) { type in
-                            Label(type.rawValue.capitalized, systemImage: mediaTypeIcon(for: type)).tag(type)
+            VStack {
+                Form {
+                    Section {
+                        Picker(selection: $newMediaType) {
+                            ForEach(MediaType.allCases) { type in
+                                Label(type.rawValue.capitalized, systemImage: mediaTypeIcon(for: type)).tag(type)
+                            }
+                        } label: {
+                            Label("Media Type", systemImage: "doc.text.magnifyingglass")
                         }
-                    } label: {
-                        Label("Media Type", systemImage: "doc.text.magnifyingglass")
+                    } header: {
+                        Text("Select Media Type")
                     }
-                } header: {
-                    Text("Select Media Type")
-                }
 
-                Section {
-                    switch newMediaType {
-                    case .localVideo:
-                        PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
-                            Label("Select Video", systemImage: "video.badge.plus")
+                    Section {
+                        switch newMediaType {
+                        case .localVideo:
+                            PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
+                                Label("Select Video", systemImage: "video.badge.plus")
+                            }
+                            if selectedVideoItem != nil {
+                                Text("Video selected").font(.caption).foregroundColor(.secondary)
+                            }
+                        case .audioRecording:
+                            Button { isImportingAudio = true } label: {
+                                Label("Select Audio File", systemImage: "waveform.badge.plus")
+                            }
+                            if let url = selectedAudioURL {
+                                Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
+                            }
+                        case .sheetMusic:
+                            // --- THIS IS THE FIX: Separated the buttons into their own rows ---
+                            PhotosPicker(selection: $selectedSheetMusicItem, matching: .images) {
+                                Label("Choose from Photos", systemImage: "photo")
+                            }
+                            
+                            Button { isImportingSheetMusic = true } label: {
+                                Label("Import from Files", systemImage: "folder")
+                            }
+                            .buttonStyle(.plain) // Ensures the text color is correct
+                            
+                            if selectedSheetMusicItem != nil {
+                                Text("Image selected").font(.caption).foregroundColor(.secondary)
+                            } else if let url = selectedSheetMusicURL {
+                                Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
+                            }
+                            
+                        default:
+                            HStack {
+                                Image(systemName: "link")
+                                    .foregroundColor(.secondary)
+                                TextField("Enter URL", text: $newMediaURLString)
+                                    .keyboardType(.URL)
+                                    .autocapitalization(.none)
+                            }
                         }
-                        if selectedVideoItem != nil {
-                            Text("Video selected").font(.caption).foregroundColor(.secondary)
-                        }
-                    case .audioRecording:
-                        Button { isImportingAudio = true } label: {
-                            Label("Select Audio File", systemImage: "waveform.badge.plus")
-                        }
-                        if let url = selectedAudioURL {
-                            Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
-                        }
-                    case .sheetMusic:
-                        // --- THIS IS THE FIX: Separated the buttons into their own rows ---
-                        PhotosPicker(selection: $selectedSheetMusicItem, matching: .images) {
-                            Label("Choose from Photos", systemImage: "photo")
-                        }
-                        
-                        Button { isImportingSheetMusic = true } label: {
-                            Label("Import from Files", systemImage: "folder")
-                        }
-                        .buttonStyle(.plain) // Ensures the text color is correct
-                        
-                        if selectedSheetMusicItem != nil {
-                            Text("Image selected").font(.caption).foregroundColor(.secondary)
-                        } else if let url = selectedSheetMusicURL {
-                            Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
-                        }
-                        
-                    default:
-                        HStack {
-                            Image(systemName: "link")
-                                .foregroundColor(.secondary)
-                            TextField("Enter URL", text: $newMediaURLString)
-                                .keyboardType(.URL)
-                                .autocapitalization(.none)
-                        }
+                    } header: {
+                        Text(newMediaType.rawValue)
+                    } footer: {
+                        Text("Add a new media reference, such as a YouTube link or a local video file, to this song.")
                     }
-                } header: {
-                    Text(newMediaType.rawValue)
-                } footer: {
-                    Text("Add a new media reference, such as a YouTube link or a local video file, to this song.")
                 }
+                .addDoneButtonToKeyboard()
+
+                SaveButtonView(title: "Add", action: {
+                    Task {
+                        await addMedia()
+                        dismiss()
+                    }
+                }, isDisabled: isAddMediaButtonDisabled)
             }
             .navigationTitle("Add Media")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        Task {
-                            await addMedia()
-                            dismiss()
-                        }
-                    }
-                    .disabled(isAddMediaButtonDisabled)
                 }
             }
             .fileImporter(isPresented: $isImportingAudio, allowedContentTypes: [.audio]) { result in

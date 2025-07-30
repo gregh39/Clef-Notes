@@ -10,17 +10,11 @@ struct ContentView: View {
     private var students: FetchedResults<StudentCD>
     
     @State private var showingAddSheet = false
-    @State private var newName = ""
-    @State private var newInstrument: Instrument? = nil
-    @State private var selectedAvatarItem: PhotosPickerItem?
-    @State private var selectedAvatarData: Data?
     
     @State private var selectedStudent: StudentCD?
     @AppStorage("selectedStudentID") private var selectedStudentID: String?
     @State private var showingSideMenu = false
 
-    // This property tracks if the user has completed the onboarding flow.
-    // It's stored in UserDefaults and will persist across app launches.
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
@@ -38,11 +32,10 @@ struct ContentView: View {
                 .presentationSizing(.page)
         }
         .sheet(isPresented: $showingAddSheet) {
-            addStudentSheet
+            AddStudentSheetCD(isPresented: $showingAddSheet, selectedStudent: $selectedStudent)
         }
         
         .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
-            // This presents the OnboardingView if the flag is false.
             OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
         }
         .onAppear {
@@ -88,94 +81,4 @@ struct ContentView: View {
             }
         }
     }
-    
-    private var addStudentSheet: some View {
-        NavigationStack {
-            Form {
-                Section("Avatar") {
-                    HStack {
-                        Spacer()
-                        VStack {
-                            if let avatarData = selectedAvatarData, let uiImage = UIImage(data: avatarData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                            } else {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 100))
-                                    .foregroundColor(.gray)
-                            }
-                            PhotosPicker("Choose Avatar", selection: $selectedAvatarItem, matching: .images)
-                                .buttonStyle(.bordered)
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical)
-                }
-                
-                Section("Student Details") {
-                    TextField("Name", text: $newName)
-                    Picker("Instrument", selection: $newInstrument) {
-                        Text("Select an Instrument").tag(Optional<Instrument>.none)
-                        ForEach(instrumentSections) { section in
-                            Section(header: Text(section.name)) {
-                                ForEach(section.instruments) { instrument in
-                                    Text(instrument.rawValue).tag(Optional(instrument))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("New Student")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showingAddSheet = false
-                        clearForm()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        addStudent()
-                        showingAddSheet = false
-                        clearForm()
-                    }
-                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty || newInstrument == nil)
-                }
-            }
-        }
-        .onChange(of: selectedAvatarItem) {
-            Task {
-                if let data = try? await selectedAvatarItem?.loadTransferable(type: Data.self) {
-                    selectedAvatarData = data
-                }
-            }
-        }
-    }
-
-    private func addStudent() {
-        let newStudent = StudentCD(context: viewContext)
-        newStudent.id = UUID()
-        newStudent.name = newName
-        newStudent.instrumentType = newInstrument
-        newStudent.avatar = selectedAvatarData
-        do {
-            try viewContext.save()
-            selectedStudent = newStudent
-        } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-        }
-    }
-    
-    private func clearForm() {
-        newName = ""
-        newInstrument = nil
-        selectedAvatarItem = nil
-        selectedAvatarData = nil
-    }
 }
-

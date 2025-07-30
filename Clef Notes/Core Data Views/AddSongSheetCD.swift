@@ -20,123 +20,83 @@ struct MediaEntry: Identifiable {
     var audioFileURL: URL? = nil
 }
 
+import SwiftUI
+import CoreData
+
 struct AddSongSheetCD: View {
+    // 1. Define an enum for the focusable fields
+    private enum FocusField: Hashable, CaseIterable {
+        case title, composer, goalPlays
+    }
+
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var usageManager: UsageManager
 
-    
     let student: StudentCD
+
+    // 2. Add the @FocusState property wrapper
+    @FocusState private var focusedField: FocusField?
 
     @State private var title: String = ""
     @State private var composer: String = ""
     @State private var goalPlays: String = ""
     @State private var songStatus: PlayType? = nil
     @State private var pieceType: PieceType? = nil
-    @State private var mediaEntries: [MediaEntry] = []
-    
-    @State private var isImportingAudio = false
-    @State private var selectedMediaEntryID: UUID?
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Title", text: $title)
-                    TextField("Composer (Optional)", text: $composer)
-                } header: {
-                    Text("Song Info")
-                } footer: {
-                    Text("Enter the title and composer of the piece.")
-                }
-                
-                Section {
-                    Picker(selection: $pieceType) {
-                        Text("None").tag(PieceType?.none)
-                        ForEach(PieceType.allCases, id: \.self) { type in
-                            Text(type.rawValue).tag(Optional(type))
-                        }
-                    } label: {
-                        Label("Piece Type", systemImage: "music.note.list")
-                    }
-                    
-                    Picker(selection: $songStatus) {
-                        Text("None").tag(PlayType?.none)
-                        ForEach(PlayType.allCases, id: \.self) { status in
-                            Text(status.rawValue).tag(Optional(status))
-                        }
-                    } label: {
-                        Label("Initial Status", systemImage: "tag.fill")
-                    }
-                }
-                
-                Section {
-                    TextField("Goal Plays (Optional)", text: $goalPlays)
-                        .keyboardType(.numberPad)
-                } footer: {
-                    Text("Set a target number of plays for songs with a 'Practice' status.")
-                }
+            VStack {
+                Form {
+                    Section {
+                        TextField("Title", text: $title)
+                            .focused($focusedField, equals: .title) // 3. Apply .focused
 
+                        TextField("Composer (Optional)", text: $composer)
+                            .focused($focusedField, equals: .composer) // 3. Apply .focused
+                    } header: {
+                        Text("Song Info")
+                    } footer: {
+                        Text("Enter the title and composer of the piece.")
+                    }
 
-                Section("Media Links") {
-                    // --- THIS IS THE FIX: The UI for each media entry is now implemented ---
-                    ForEach($mediaEntries) { $entry in
-                        VStack(alignment: .leading) {
-                            Picker("Type", selection: $entry.type) {
-                                ForEach(MediaType.allCases) { type in
-                                    Text(type.rawValue).tag(type)
-                                }
+                    Section {
+                        Picker(selection: $pieceType) {
+                            Text("None").tag(PieceType?.none)
+                            ForEach(PieceType.allCases, id: \.self) { type in
+                                Text(type.rawValue).tag(Optional(type))
                             }
+                        } label: {
+                            Label("Piece Type", systemImage: "music.note.list")
+                        }
 
-                            switch entry.type {
-                            case .localVideo:
-                                PhotosPicker("Select Video", selection: $entry.photoPickerItem, matching: .videos)
-                                if entry.photoPickerItem != nil {
-                                    Text("Video selected").font(.caption).foregroundColor(.secondary)
-                                }
-                            case .audioRecording:
-                                Button("Select Audio File") {
-                                    selectedMediaEntryID = entry.id
-                                    isImportingAudio = true
-                                }
-                                if let url = entry.audioFileURL {
-                                    Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
-                                }
-                            default:
-                                TextField("Enter URL", text: $entry.urlString)
-                                    .keyboardType(.URL)
-                                    .autocapitalization(.none)
+                        Picker(selection: $songStatus) {
+                            Text("None").tag(PlayType?.none)
+                            ForEach(PlayType.allCases, id: \.self) { status in
+                                Text(status.rawValue).tag(Optional(status))
                             }
+                        } label: {
+                            Label("Initial Status", systemImage: "tag.fill")
                         }
-                        .padding(.vertical, 4)
                     }
-                    .onDelete { mediaEntries.remove(atOffsets: $0) }
 
-                    Button(action: {
-                        withAnimation {
-                            mediaEntries.append(MediaEntry())
-                        }
-                    }) {
-                        Label("Add Media Link", systemImage: "plus")
+                    Section {
+                        TextField("Goal Plays (Optional)", text: $goalPlays)
+                            .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .goalPlays) // 3. Apply .focused
+                    } footer: {
+                        Text("Set a target number of plays for songs with a 'Practice' status.")
                     }
                 }
+                // 4. Apply the new navigation modifier
+                .addKeyboardNavigation(for: FocusField.allCases, focus: $focusedField)
+
+                SaveButtonView(title: "Add Song", action: addSong, isDisabled: title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             .navigationTitle("New Song")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        addSong()
-                        dismiss()
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .fileImporter(isPresented: $isImportingAudio, allowedContentTypes: [.audio]) { result in
-                if case .success(let url) = result, let index = mediaEntries.firstIndex(where: { $0.id == selectedMediaEntryID }) {
-                    mediaEntries[index].audioFileURL = url
                 }
             }
         }
@@ -153,38 +113,12 @@ struct AddSongSheetCD: View {
         newSong.pieceType = pieceType
         usageManager.incrementSongCreations()
 
-        Task {
-            for entry in mediaEntries {
-                let mediaReference: MediaReferenceCD?
-                
-                switch entry.type {
-                case .localVideo:
-                    if let item = entry.photoPickerItem, let data = try? await item.loadTransferable(type: Data.self) {
-                        mediaReference = MediaReferenceCD(context: viewContext)
-                        mediaReference?.type = .localVideo
-                        mediaReference?.data = data
-                    } else { mediaReference = nil }
-                case .audioRecording:
-                    if let url = entry.audioFileURL, url.startAccessingSecurityScopedResource(), let data = try? Data(contentsOf: url) {
-                        url.stopAccessingSecurityScopedResource()
-                        mediaReference = MediaReferenceCD(context: viewContext)
-                        mediaReference?.type = .audioRecording
-                        mediaReference?.data = data
-                    } else { mediaReference = nil }
-                default:
-                    if let url = URL(string: entry.urlString) {
-                        mediaReference = MediaReferenceCD(context: viewContext)
-                        mediaReference?.type = entry.type
-                        mediaReference?.url = url
-                    } else { mediaReference = nil }
-                }
-
-                if let newMedia = mediaReference {
-                    newMedia.song = newSong
-                    newMedia.student = student
-                }            }
-            
-            try? viewContext.save()
+        do {
+            try viewContext.save()
+            dismiss()
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
     }
 }

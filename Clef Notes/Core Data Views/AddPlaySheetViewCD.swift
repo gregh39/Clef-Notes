@@ -52,86 +52,87 @@ struct AddPlaySheetViewCD: View {
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
-    // The 'typeFilterBar' property has been removed.
-    
     var body: some View {
         NavigationStack {
             VStack {
-                List {
-                    TipView(addPlayTip)
-                    
-                    // The section for the filter bar has been removed.
-                    
-                    if filteredSongs.isEmpty {
-                        ContentUnavailableView.search(text: searchText)
-                    } else {
-                        // Grouping logic remains the same...
-                        let normalSongs = filteredSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
-                        let groupedByStatus = Dictionary(grouping: normalSongs, by: { $0.songStatus })
+                VStack {
+                    List {
+                        TipView(addPlayTip)
                         
-                        let sortedStatusKeys = PlayType.allCases.map { Optional($0) } + [nil]
+                        if filteredSongs.isEmpty {
+                            ContentUnavailableView.search(text: searchText)
+                        } else {
+                            let normalSongs = filteredSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
+                            let groupedByStatus = Dictionary(grouping: normalSongs, by: { $0.songStatus })
+                            
+                            let sortedStatusKeys = PlayType.allCases.map { Optional($0) } + [nil]
 
-                        ForEach(sortedStatusKeys, id: \.self) { status in
-                            if let songsInGroup = groupedByStatus[status], !songsInGroup.isEmpty {
-                                Section(header: Text(status?.rawValue ?? "No Status")) {
-                                    ForEach(songsInGroup) { song in
-                                        Button(action: {
-                                            selectedSong = song
-                                            selectedPlayType = song.songStatus
-                                        }) {
-                                            SongPickerRowView(song: song, isSelected: selectedSong == song)
+                            ForEach(sortedStatusKeys, id: \.self) { status in
+                                if let songsInGroup = groupedByStatus[status], !songsInGroup.isEmpty {
+                                    Section(header: Text(status?.rawValue ?? "No Status")) {
+                                        ForEach(songsInGroup) { song in
+                                            Button(action: {
+                                                selectedSong = song
+                                                selectedPlayType = song.songStatus
+                                            }) {
+                                                SongPickerRowView(song: song, isSelected: selectedSong == song)
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        
-                        ForEach(PieceType.allCases.filter { $0 != .song }, id: \.self) { type in
-                            let specificSongs = filteredSongs.filter { $0.pieceType == type }
-                            if !specificSongs.isEmpty {
-                                Section(header: Text(type.rawValue)) {
-                                    ForEach(specificSongs) { song in
-                                        Button(action: {
-                                            selectedSong = song
-                                            selectedPlayType = song.songStatus
-                                        }) {
-                                            SongPickerRowView(song: song, isSelected: selectedSong == song)
+                            
+                            ForEach(PieceType.allCases.filter { $0 != .song }, id: \.self) { type in
+                                let specificSongs = filteredSongs.filter { $0.pieceType == type }
+                                if !specificSongs.isEmpty {
+                                    Section(header: Text(type.rawValue)) {
+                                        ForEach(specificSongs) { song in
+                                            Button(action: {
+                                                selectedSong = song
+                                                selectedPlayType = song.songStatus
+                                            }) {
+                                                SongPickerRowView(song: song, isSelected: selectedSong == song)
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                .listStyle(.insetGrouped)
+                    .listStyle(.insetGrouped)
 
-                if selectedSong != nil {
-                    // This section remains the same
-                    VStack(spacing: 8) {
-                        Divider()
-                        Picker("Play Type", selection: $selectedPlayType) {
-                            Text("None").tag(PlayType?.none)
-                            ForEach(PlayType.allCases, id: \.self) { type in
-                                Text(type.rawValue).tag(Optional(type))
+                    if selectedSong != nil {
+                        VStack(spacing: 8) {
+                            Divider()
+                            Picker("Play Type", selection: $selectedPlayType) {
+                                Text("None").tag(PlayType?.none)
+                                ForEach(PlayType.allCases, id: \.self) { type in
+                                    Text(type.rawValue).tag(Optional(type))
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal)
+                            
+                            if selectedPlayType == .learning {
+                                Text("When learning a song, new plays will not be counted toward the number of plays goal.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        
-                        if selectedPlayType == .learning {
-                            Text("When learning a song, new plays will not be counted toward the number of plays goal.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
+                        .padding(.vertical)
+                        .background(.bar)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .padding(.vertical)
-                    .background(.bar)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                .animation(.easeInOut, value: selectedSong)
+                
+                SaveButtonView(title: "Save", action: {
+                    addPlay()
+                    dismiss()
+                }, isDisabled: selectedSong == nil)
             }
-            .animation(.easeInOut, value: selectedSong)
             .navigationTitle("Choose Song")
             .searchable(text: $searchText, prompt: "Find a song...")
             .toolbar {
@@ -149,7 +150,6 @@ struct AddPlaySheetViewCD: View {
                 }
                 
                 ToolbarItemGroup(placement: .confirmationAction) {
-                    // New Filter Menu
                     Menu {
                         Button {
                             selectedPieceType = nil
@@ -170,12 +170,6 @@ struct AddPlaySheetViewCD: View {
                         Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                             .symbolVariant(selectedPieceType == nil ? .none : .fill)
                     }
-
-                    Button("Save") {
-                        addPlay()
-                        dismiss()
-                    }
-                    .disabled(selectedSong == nil)
                 }
             }
         }

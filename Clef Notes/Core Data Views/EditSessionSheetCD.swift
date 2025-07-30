@@ -8,118 +8,118 @@ struct EditSessionSheetCD: View {
     @ObservedObject var session: PracticeSessionCD
 
     @FetchRequest private var instructors: FetchedResults<InstructorCD>
-
-    @State private var title: String = ""
-    @State private var selectedInstructor: InstructorCD?
-    @State private var selectedLocation: LessonLocation?
-    @State private var date: Date = .now
     
-    // State for editing duration
-    @State private var hours: String = ""
-    @State private var minutes: String = ""
-
+    @State private var sessionTitle: String = ""
+    @State private var sessionDate: Date = .now
+    @State private var selectedLocation: LessonLocation?
+    @State private var selectedInstructor: InstructorCD?
+    
+    @State private var showingAddInstructorSheet = false
+    @State private var newInstructorName: String = ""
 
     init(session: PracticeSessionCD) {
         self.session = session
         
-        let studentPredicate: NSPredicate
-        if let student = session.student {
-            studentPredicate = NSPredicate(format: "student == %@", student)
-        } else {
-            studentPredicate = NSPredicate(value: false)
-        }
+        let predicate = NSPredicate(format: "student == %@", session.student!)
         
         self._instructors = FetchRequest<InstructorCD>(
             sortDescriptors: [NSSortDescriptor(keyPath: \InstructorCD.name, ascending: true)],
-            predicate: studentPredicate
+            predicate: predicate
         )
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Session Title", text: $title)
-                    DatePicker(selection: $date, displayedComponents: .date) {
-                        Label("Date", systemImage: "calendar")
-                    }
-                    Picker(selection: $selectedLocation) {
-                        Text("None").tag(Optional<LessonLocation>.none)
-                        ForEach(LessonLocation.allCases, id: \.self) { location in
-                            Text(location.rawValue).tag(Optional(location))
+            VStack {
+                Form {
+                    Section("Session Details") {
+                        TextField("Session Title", text: $sessionTitle)
+                        DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
+                            Label("Date", systemImage: "calendar")
                         }
-                    } label: {
-                        Label("Location", systemImage: "mappin.and.ellipse")
-                    }
-                } header: {
-                    Text("Session Details")
-                } footer: {
-                    Text("Update the title, date, or location for this practice session.")
-                }
-                
-                // --- THIS IS THE NEW SECTION ---
-                Section("Duration") {
-                    HStack {
-                        TextField("Hours", text: $hours)
-                            .keyboardType(.numberPad)
-                        Text("hr")
-                        TextField("Minutes", text: $minutes)
-                            .keyboardType(.numberPad)
-                        Text("min")
-                    }
-                }
-                
-                Section("Instructor") {
-                    Picker(selection: $selectedInstructor) {
-                        Text("None").tag(Optional<InstructorCD>.none)
-                        ForEach(instructors) { instructor in
-                            Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                        Picker(selection: $selectedLocation) {
+                            Text("None").tag(Optional<LessonLocation>.none)
+                            ForEach(LessonLocation.allCases, id: \.self) { location in
+                                Text(location.rawValue).tag(Optional(location))
+                            }
+                        } label: {
+                            Label("Location", systemImage: "mappin.and.ellipse")
                         }
-                    } label: {
-                        Label("Instructor", systemImage: "person.fill")
+                    }
+                    
+                    Section("Instructor") {
+                        Picker(selection: $selectedInstructor) {
+                            Text("None").tag(Optional<InstructorCD>.none)
+                            ForEach(instructors) { instructor in
+                                Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                            }
+                        } label: {
+                            Label("Instructor", systemImage: "person.fill")
+                        }
+                        Button("Add New Instructor") {
+                            showingAddInstructorSheet = true
+                        }
                     }
                 }
+                .addDoneButtonToKeyboard()
+
+                SaveButtonView(title: "Save Changes", action: saveChanges)
             }
             .navigationTitle("Edit Session")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveChanges()
-                        dismiss()
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
             }
             .onAppear {
-                // Populate state when the view appears
-                title = session.title ?? ""
-                selectedInstructor = session.instructor
+                sessionTitle = session.title ?? ""
+                sessionDate = session.day ?? .now
                 selectedLocation = session.location
-                date = session.day ?? .now
-                
-                // Convert total minutes into hours and minutes
-                let totalMinutes = session.durationMinutes
-                hours = "\(totalMinutes / 60)"
-                minutes = "\(totalMinutes % 60)"
+                selectedInstructor = session.instructor
+            }
+            .sheet(isPresented: $showingAddInstructorSheet) {
+                addInstructorSheet
             }
         }
     }
     
+    private var addInstructorSheet: some View {
+        NavigationStack {
+            VStack {
+                Form {
+                    TextField("Instructor Name", text: $newInstructorName)
+                }
+                SaveButtonView(title: "Add Instructor", action: {
+                    let instructor = InstructorCD(context: viewContext)
+                    instructor.name = newInstructorName
+                    instructor.student = session.student
+                    try? viewContext.save()
+                    selectedInstructor = instructor
+                    showingAddInstructorSheet = false
+                }, isDisabled: newInstructorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .navigationTitle("New Instructor")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showingAddInstructorSheet = false
+                    }
+                }
+            }
+        }
+    }
+
     private func saveChanges() {
-        session.title = title
-        session.instructor = selectedInstructor
+        session.title = sessionTitle
+        session.day = sessionDate
         session.location = selectedLocation
-        session.day = date
-        
-        // Convert hours and minutes back to total minutes
-        let hoursInMinutes = (Int64(hours) ?? 0) * 60
-        let minutesValue = Int64(minutes) ?? 0
-        session.durationMinutes = hoursInMinutes + minutesValue
-        
-        try? viewContext.save()
+        session.instructor = selectedInstructor
+
+        do {
+            try viewContext.save()
+            dismiss()
+        } catch {
+            print("Failed to save session changes: \(error)")
+        }
     }
 }

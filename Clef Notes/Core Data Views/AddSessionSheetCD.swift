@@ -18,18 +18,18 @@ struct AddSessionSheetCD: View {
     @State private var selectedLocation: LessonLocation?
     @State private var sessionDate: Date = .now
     @State private var sessionTitle: String = ""
-    
+
     @State private var timeThisSession = false
-    
+
     @State private var showingAddInstructorSheet = false
     @State private var newInstructorName: String = ""
 
     init(student: StudentCD, onAdd: @escaping (PracticeSessionCD) -> Void) {
         self.student = student
         self.onAdd = onAdd
-        
+
         let predicate = NSPredicate(format: "student == %@", student)
-        
+
         self._instructors = FetchRequest<InstructorCD>(
             sortDescriptors: [NSSortDescriptor(keyPath: \InstructorCD.name, ascending: true)],
             predicate: predicate
@@ -38,48 +38,52 @@ struct AddSessionSheetCD: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Session Title", text: $sessionTitle)
-                    DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
-                        Label("Date", systemImage: "calendar")
-                    }
-                    Picker(selection: $selectedLocation) {
-                        Text("None").tag(Optional<LessonLocation>.none)
-                        ForEach(LessonLocation.allCases, id: \.self) { location in
-                            Text(location.rawValue).tag(Optional(location))
+            VStack {
+                Form {
+                    Section {
+                        TextField("Session Title", text: $sessionTitle)
+                        DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
+                            Label("Date", systemImage: "calendar")
                         }
-                    } label: {
-                        Label("Location", systemImage: "mappin.and.ellipse")
+                        Picker(selection: $selectedLocation) {
+                            Text("None").tag(Optional<LessonLocation>.none)
+                            ForEach(LessonLocation.allCases, id: \.self) { location in
+                                Text(location.rawValue).tag(Optional(location))
+                            }
+                        } label: {
+                            Label("Location", systemImage: "mappin.and.ellipse")
+                        }
+                    } header: {
+                        Text("Session Details")
+                    } footer: {
+                        Text("The session title defaults to your preference in Settings but can be changed here.")
                     }
-                } header: {
-                    Text("Session Details")
-                } footer: {
-                    Text("The session title defaults to your preference in Settings but can be changed here.")
-                }
 
-                Section("Instructor") {
-                    Picker(selection: $selectedInstructor) {
-                        Text("None").tag(Optional<InstructorCD>.none)
-                        ForEach(instructors) { instructor in
-                            Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                    Section("Instructor") {
+                        Picker(selection: $selectedInstructor) {
+                            Text("None").tag(Optional<InstructorCD>.none)
+                            ForEach(instructors) { instructor in
+                                Text(instructor.name ?? "Unknown").tag(Optional(instructor))
+                            }
+                        } label: {
+                            Label("Instructor", systemImage: "person.fill")
                         }
-                    } label: {
-                        Label("Instructor", systemImage: "person.fill")
+                        Button("Add New Instructor") {
+                            showingAddInstructorSheet = true
+                        }
                     }
-                    Button("Add New Instructor") {
-                        showingAddInstructorSheet = true
+                    
+                    Section {
+                        Toggle("Time this session", isOn: $timeThisSession)
+                    } header: {
+                        Text("Timer")
+                    } footer: {
+                        Text("If enabled, a timer will start immediately for this session.")
                     }
                 }
-                
-                // --- THIS IS THE FIX: Corrected the Section syntax ---
-                Section {
-                    Toggle("Time this session", isOn: $timeThisSession)
-                } header: {
-                    Text("Timer")
-                } footer: {
-                    Text("If enabled, a timer will start immediately for this session.")
-                }
+                .addDoneButtonToKeyboard()
+
+                SaveButtonView(title: "Add Session", action: addSession)
             }
             .onAppear {
                 sessionTitle = settingsManager.defaultSessionTitle
@@ -91,23 +95,27 @@ struct AddSessionSheetCD: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        addSession()
-                        dismiss()
-                    }
-                }
             }
         }
         .sheet(isPresented: $showingAddInstructorSheet) {
             addInstructorSheet
         }
     }
-    
+
     private var addInstructorSheet: some View {
         NavigationStack {
-            Form {
-                TextField("Instructor Name", text: $newInstructorName)
+            VStack {
+                Form {
+                    TextField("Instructor Name", text: $newInstructorName)
+                }
+                SaveButtonView(title: "Add Instructor", action: {
+                    let instructor = InstructorCD(context: viewContext)
+                    instructor.name = newInstructorName
+                    instructor.student = student
+                    try? viewContext.save()
+                    selectedInstructor = instructor
+                    showingAddInstructorSheet = false
+                }, isDisabled: newInstructorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .navigationTitle("New Instructor")
             .toolbar {
@@ -116,21 +124,10 @@ struct AddSessionSheetCD: View {
                         showingAddInstructorSheet = false
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let instructor = InstructorCD(context: viewContext)
-                        instructor.name = newInstructorName
-                        instructor.student = student
-                        try? viewContext.save()
-                        selectedInstructor = instructor
-                        showingAddInstructorSheet = false
-                    }
-                    .disabled(newInstructorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
             }
         }
     }
-    
+
     private func addSession() {
         let newSession = PracticeSessionCD(context: viewContext)
         newSession.day = sessionDate
@@ -148,6 +145,7 @@ struct AddSessionSheetCD: View {
                 sessionTimerManager.start(session: newSession)
             }
             onAdd(newSession)
+            dismiss()
         } catch {
             print("Failed to save new session: \(error)")
         }

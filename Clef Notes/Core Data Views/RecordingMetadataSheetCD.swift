@@ -1,5 +1,3 @@
-// Clef Notes/Core Data Views/RecordingMetadataSheetCD.swift
-
 import SwiftUI
 import CoreData
 
@@ -16,43 +14,43 @@ struct RecordingMetadataSheetCD: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Recording Info") {
-                    TextField("Recording Title", text: $newRecordingTitle)
-                    Text(fileURL.lastPathComponent)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Section("Tag Songs") {
-                    if songs.isEmpty {
-                        Text("No songs available.").foregroundColor(.secondary)
-                    } else {
-                        ForEach(songs) { song in
-                            MultipleSelectionRowCD(
-                                title: song.title ?? "Unknown",
-                                isSelected: selectedSongs.contains(song)
-                            ) {
-                                if selectedSongs.contains(song) {
-                                    selectedSongs.remove(song)
-                                } else {
-                                    selectedSongs.insert(song)
+            VStack {
+                Form {
+                    Section("Recording Info") {
+                        TextField("Recording Title", text: $newRecordingTitle)
+                        Text(fileURL.lastPathComponent)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Section("Tag Songs") {
+                        if songs.isEmpty {
+                            Text("No songs available.").foregroundColor(.secondary)
+                        } else {
+                            ForEach(songs) { song in
+                                MultipleSelectionRowCD(
+                                    title: song.title ?? "Unknown",
+                                    isSelected: selectedSongs.contains(song)
+                                ) {
+                                    if selectedSongs.contains(song) {
+                                        selectedSongs.remove(song)
+                                    } else {
+                                        selectedSongs.insert(song)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                
+                SaveButtonView(title: "Save", action: {
+                    onSave(newRecordingTitle, selectedSongs)
+                    dismiss()
+                }, isDisabled: newRecordingTitle.isEmpty)
             }
             .navigationTitle("Save Recording")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(newRecordingTitle, selectedSongs)
-                        dismiss()
-                    }
-                    .disabled(newRecordingTitle.isEmpty)
                 }
             }
         }
