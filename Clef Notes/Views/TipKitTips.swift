@@ -37,3 +37,19 @@ struct NewSongButtonTip: Tip {
         Image("add.song")
     }
 }
+
+import TipKit
+
+struct AddPlaySheetTip: Tip {
+    var title: Text {
+        Text("Add New Session Play")
+    }
+
+    var message: Text? {
+        Text("Select the song played below or add a new song with the Add Song button above. Then, verify the play type and save!")
+    }
+
+    var image: Image? {
+        Image(systemName: "music.quarternote.3")
+    }
+}

@@ -20,6 +20,15 @@ struct Clef_NotesApp: App {
         _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager(context: context))
         _usageManager = StateObject(wrappedValue: UsageManager(context: context))
         NotificationManager.shared.requestAuthorization()
+        
+        try? Tips.configure([
+            .displayFrequency(.immediate), // Show tips immediately for testing
+            .datastoreLocation(.applicationDefault)
+
+        ])
+        try? Tips.resetDatastore()
+        //Tips.showAllTipsForTesting()
+
     }
         
     var body: some Scene {
@@ -35,11 +44,6 @@ struct Clef_NotesApp: App {
                .tint(settingsManager.activeAccentColor) // <<< CHANGE THIS LINE
                .onAppear {
                    settingsManager.setAppIcon()
-               }
-               .task {
-                    try? Tips.configure([
-                        .displayFrequency(.immediate)
-                    ])
                }
         }
     }

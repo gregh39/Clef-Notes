@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import TipKit
 
 struct AddPlaySheetViewCD: View {
     @ObservedObject var session: PracticeSessionCD
@@ -15,6 +16,8 @@ struct AddPlaySheetViewCD: View {
     @State private var selectedPlayType: PlayType? = nil
     @State private var searchText = ""
     @State private var selectedPieceType: PieceType? = nil
+
+    @State private var addPlayTip = AddPlaySheetTip()
 
     init(session: PracticeSessionCD, showingAddPlaySheet: Binding<Bool>, showingAddSongSheet: Binding<Bool>) {
         self.session = session
@@ -49,46 +52,20 @@ struct AddPlaySheetViewCD: View {
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
-    private var typeFilterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                FilterButton(title: "All", type: nil, selectedType: $selectedPieceType)
-                
-                ForEach(availablePieceTypes, id: \.self) { type in
-                    FilterButton(title: type.rawValue, type: type, selectedType: $selectedPieceType)
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
+    // The 'typeFilterBar' property has been removed.
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // --- THIS IS THE FIX ---
-                // The view now uses a List with the .insetGrouped style to match the Songs tab.
+            VStack {
                 List {
-                    Section {
-                        Button {
-                            showingAddPlaySheet = false
-                            showingAddSongSheet = true
-                        } label: {
-                            Label("Add New Song", systemImage: "plus.circle.fill")
-                        }
-                    }
-
-                    if !availablePieceTypes.isEmpty {
-                        Section {
-                           EmptyView()
-                        } header: {
-                            typeFilterBar.padding(.vertical, 8)
-                        }
-                    }
+                    TipView(addPlayTip)
+                    
+                    // The section for the filter bar has been removed.
                     
                     if filteredSongs.isEmpty {
                         ContentUnavailableView.search(text: searchText)
                     } else {
-                        // Grouping logic is now identical to the StudentSongsTabViewCD
+                        // Grouping logic remains the same...
                         let normalSongs = filteredSongs.filter { $0.pieceType == nil || $0.pieceType == .song }
                         let groupedByStatus = Dictionary(grouping: normalSongs, by: { $0.songStatus })
                         
@@ -102,7 +79,6 @@ struct AddPlaySheetViewCD: View {
                                             selectedSong = song
                                             selectedPlayType = song.songStatus
                                         }) {
-                                            // The new SongPickerRowView mimics the exact look of the original song list cells.
                                             SongPickerRowView(song: song, isSelected: selectedSong == song)
                                         }
                                     }
@@ -110,7 +86,6 @@ struct AddPlaySheetViewCD: View {
                             }
                         }
                         
-                        // Sections for other piece types
                         ForEach(PieceType.allCases.filter { $0 != .song }, id: \.self) { type in
                             let specificSongs = filteredSongs.filter { $0.pieceType == type }
                             if !specificSongs.isEmpty {
@@ -131,6 +106,7 @@ struct AddPlaySheetViewCD: View {
                 .listStyle(.insetGrouped)
 
                 if selectedSong != nil {
+                    // This section remains the same
                     VStack(spacing: 8) {
                         Divider()
                         Picker("Play Type", selection: $selectedPlayType) {
@@ -141,7 +117,7 @@ struct AddPlaySheetViewCD: View {
                         }
                         .pickerStyle(.segmented)
                         .padding(.horizontal)
-
+                        
                         if selectedPlayType == .learning {
                             Text("When learning a song, new plays will not be counted toward the number of plays goal.")
                                 .font(.caption)
@@ -162,7 +138,39 @@ struct AddPlaySheetViewCD: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingAddPlaySheet = false
+                        showingAddSongSheet = true
+                    } label: {
+                        Label("Add New Song", image: "add.song")
+                    }
+                }
+                
+                ToolbarItemGroup(placement: .confirmationAction) {
+                    // New Filter Menu
+                    Menu {
+                        Button {
+                            selectedPieceType = nil
+                        } label: {
+                            Label("All", systemImage: selectedPieceType == nil ? "checkmark" : "")
+                        }
+                        
+                        Divider()
+                        
+                        ForEach(availablePieceTypes, id: \.self) { type in
+                            Button {
+                                selectedPieceType = type
+                            } label: {
+                                Label(type.rawValue, systemImage: selectedPieceType == type ? "checkmark" : "")
+                            }
+                        }
+                    } label: {
+                        Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                            .symbolVariant(selectedPieceType == nil ? .none : .fill)
+                    }
+
                     Button("Save") {
                         addPlay()
                         dismiss()
@@ -182,6 +190,8 @@ struct AddPlaySheetViewCD: View {
         play.student = session.student
         play.playType = selectedPlayType
         
+        addPlayTip.invalidate(reason: .actionPerformed)
+        
         do {
             try viewContext.save()
         } catch {
@@ -189,7 +199,6 @@ struct AddPlaySheetViewCD: View {
         }
     }
 }
-
 
 private struct FilterButton: View {
     let title: String
@@ -213,9 +222,6 @@ private struct FilterButton: View {
     }
 }
 
-// --- THIS IS THE FIX ---
-// This new view is a simple row that doesn't have its own background,
-// so it looks correct inside a List. A checkmark is used to show selection.
 private struct SongPickerRowView: View {
     @ObservedObject var song: SongCD
     let isSelected: Bool
