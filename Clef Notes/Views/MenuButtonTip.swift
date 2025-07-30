@@ -23,3 +23,17 @@ struct MenuButtonTip: Tip {
         Image(systemName: "ellipsis.circle")
     }
 }
+
+struct NewSongButtonTip: Tip {
+    var title: Text {
+        Text("Add a new song")
+    }
+
+    var message: Text? {
+        Text("Tap here to add a new song the student is working on.")
+    }
+
+    var image: Image? {
+        Image("add.song")
+    }
+}

@@ -12,6 +12,7 @@
 		370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 370336352E3479FA005157A3 /* RevenueCatUI */; };
 		3712E1962E348DBD005E3518 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3712E1952E348DBD005E3518 /* AudioKit */; };
 		371DFAE92E348FD000DEF10A /* SoundpipeAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */; };
+		37C2D8AF2E398E630023C276 /* Popovers in Frameworks */ = {isa = PBXBuildFile; productRef = 37C2D8AE2E398E630023C276 /* Popovers */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				37C2D8AF2E398E630023C276 /* Popovers in Frameworks */,
 				370336342E3479FA005157A3 /* RevenueCat in Frameworks */,
 				371DFAE92E348FD000DEF10A /* SoundpipeAudioKit in Frameworks */,
 				370336322E3479FA005157A3 /* ReceiptParser in Frameworks */,
@@ -116,6 +118,7 @@
 				370336352E3479FA005157A3 /* RevenueCatUI */,
 				3712E1952E348DBD005E3518 /* AudioKit */,
 				371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */,
+				37C2D8AE2E398E630023C276 /* Popovers */,
 			);
 			productName = "Clef Notes";
 			productReference = 37F1716D2DF91DFF009C3656 /* Clef Notes.app */;
@@ -149,6 +152,7 @@
 				370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 				3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */,
 				371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */,
+				37C2D8AD2E398E630023C276 /* XCRemoteSwiftPackageReference "Popovers" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 37F1716E2DF91DFF009C3656 /* Products */;
@@ -438,6 +442,14 @@
 				minimumVersion = 5.7.3;
 			};
 		};
+		37C2D8AD2E398E630023C276 /* XCRemoteSwiftPackageReference "Popovers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aheze/Popovers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -465,6 +477,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */;
 			productName = SoundpipeAudioKit;
+		};
+		37C2D8AE2E398E630023C276 /* Popovers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 37C2D8AD2E398E630023C276 /* XCRemoteSwiftPackageReference "Popovers" */;
+			productName = Popovers;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

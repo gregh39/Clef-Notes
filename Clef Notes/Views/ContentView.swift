@@ -35,10 +35,12 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingSideMenu) {
             SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                .presentationSizing(.page)
         }
         .sheet(isPresented: $showingAddSheet) {
             addStudentSheet
         }
+        
         .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
             // This presents the OnboardingView if the flag is false.
             OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
@@ -176,3 +178,4 @@ struct ContentView: View {
         selectedAvatarData = nil
     }
 }
+

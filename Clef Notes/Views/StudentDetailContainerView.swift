@@ -1,6 +1,5 @@
 import SwiftUI
 import CoreData
-import TipKit // 1. Import TipKit
 
 // (Your StudentDetailSection enum remains the same)
 enum StudentDetailSection: String, CaseIterable, Identifiable {
@@ -41,9 +40,6 @@ struct StudentDetailNavigationView: View {
 
     @State private var path = NavigationPath()
     
-    // 2. Create an instance of your tip
-    private let menuButtonTip = MenuButtonTip()
-
     var body: some View {
         VStack {
             switch selectedSection {
@@ -71,8 +67,6 @@ struct StudentDetailNavigationView: View {
                 }) {
                     Label("Menu", systemImage: "line.3.horizontal")
                 }
-                // 3. Attach the popoverTip modifier to the button
-                .popoverTip(menuButtonTip)
             }
             // ... (The rest of your toolbar remains the same)
             ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -86,6 +80,7 @@ struct StudentDetailNavigationView: View {
                     } label: {
                         Label("Add Song", image: "add.song")
                     }
+
                     Button {
                         if subscriptionManager.isAllowedToCreateSession() {
                             showingAddSessionSheet = true

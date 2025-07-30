@@ -38,7 +38,7 @@ struct Clef_NotesApp: App {
                }
                .task {
                     try? Tips.configure([
-                        // .displayFrequency(.immediate)
+                        .displayFrequency(.immediate)
                     ])
                }
         }
