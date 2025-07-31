@@ -250,3 +250,18 @@ enum AppIcon: String, CaseIterable, Identifiable {
         }
     }
 }
+
+public enum SuzukiBook: String, CaseIterable, Identifiable {
+    case book1 = "Book 1"
+    case book2 = "Book 2"
+    case book3 = "Book 3"
+    case book4 = "Book 4"
+    case book5 = "Book 5"
+    case book6 = "Book 6"
+    case book7 = "Book 7"
+    case book8 = "Book 8"
+    case book9 = "Book 9"
+    case book10 = "Book 10"
+
+    public var id: String { self.rawValue }
+}

@@ -21,6 +21,7 @@ struct EditSongSheetCD: View {
     @State private var songStatus: PlayType?
     @State private var pieceType: PieceType?
     @State private var goalPlays: String = ""
+    @State private var selectedSuzukiBook: SuzukiBook? = nil
 
     var body: some View {
         NavigationStack {
@@ -61,6 +62,17 @@ struct EditSongSheetCD: View {
                             .keyboardType(.numberPad)
                             .focused($focusedField, equals: .goalPlays) // 3. Apply .focused
                     }
+
+                    if song.student?.suzukiStudent?.boolValue ?? false {
+                        Section("Suzuki") {
+                            Picker("Suzuki Book", selection: $selectedSuzukiBook) {
+                                Text("Select a Book").tag(Optional<SuzukiBook>.none)
+                                ForEach(SuzukiBook.allCases) { book in
+                                    Text(book.rawValue).tag(Optional(book))
+                                }
+                            }
+                        }
+                    }
                 }
                 // 4. Apply the new navigation modifier
                 .addKeyboardNavigation(for: FocusField.allCases, focus: $focusedField)
@@ -79,6 +91,7 @@ struct EditSongSheetCD: View {
                 songStatus = song.songStatus
                 pieceType = song.pieceType
                 goalPlays = "\(song.goalPlays)"
+                selectedSuzukiBook = song.suzukiBook
             }
         }
     }
@@ -88,6 +101,7 @@ struct EditSongSheetCD: View {
         song.composer = composer
         song.songStatus = songStatus
         song.pieceType = pieceType
+        song.suzukiBook = selectedSuzukiBook
         song.goalPlays = Int64(goalPlays) ?? 0
         
         do {

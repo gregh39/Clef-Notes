@@ -35,6 +35,9 @@ extension StudentCD {
     @NSManaged public var songCreations: Int64
     @NSManaged public var earnedAwards: NSSet?
 
+    @NSManaged public var suzukiStudent: NSNumber? // Optional Bool
+    @NSManaged public var suzukiBookRaw: String? // Optional raw SuzukiBook enum value
+
     
     public var instrumentType: Instrument? {
         get {
@@ -46,7 +49,16 @@ extension StudentCD {
         }
     }
     
-    // --- THIS IS THE FIX: A new property to check if the object is shared ---
+    public var suzukiBook: SuzukiBook? {
+        get {
+            guard let suzukiBook = self.suzukiBookRaw else { return nil }
+            return SuzukiBook(rawValue: suzukiBook)
+        }
+        set {
+            self.suzukiBookRaw = newValue?.rawValue
+        }
+    }
+
     public var isShared: Bool {
         guard let store = self.objectID.persistentStore else {
             return false
@@ -138,3 +150,4 @@ extension StudentCD {
     @NSManaged public func removeFromEarnedAwards(_ values: NSSet)
 
 }
+

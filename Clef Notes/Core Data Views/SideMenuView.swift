@@ -18,6 +18,7 @@ struct SideMenuView: View {
     @State private var showingEditStudentSheet = false
     @State private var isSharePresented = false
     @State private var studentToDelete: StudentCD?
+    @State private var sharingStudent: StudentCD? = nil
 
     // Computed property to sort students with the selected one first
     private var sortedStudents: [StudentCD] {
@@ -86,6 +87,7 @@ struct SideMenuView: View {
                             }
 
                             Button {
+                                sharingStudent = student
                                 isSharePresented = true
                             } label: {
                                 Label("Share Student", systemImage: "square.and.arrow.up")

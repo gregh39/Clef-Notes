@@ -89,18 +89,23 @@ private struct PitchListeningView: View {
             TunerMeter(distance: $tuner.distance)
 
             Spacer()
-            
-            Button(tuner.isListening ? "Stop" : "Start Listening") {
+                           
+            SaveButtonView(title: tuner.isListening ? "Stop" : "Start Listening", action: {
+                
                 if tuner.isListening {
                     tuner.stop()
                 } else {
                     tuner.start()
                 }
-            }
+
+            })
+             /*
+            Button(tuner.isListening ? "Stop" : "Start Listening") {
+                            }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(tuner.isListening ? .red : .accentColor)
-            .padding(.bottom, 40)
+            .padding(.bottom, 40)*/
         }
     }
 }
@@ -193,7 +198,14 @@ private struct DroneView: View {
             }
             
             Spacer()
+            
+            SaveButtonView(title: viewModel.isPlayingDrone ? "Stop" : "Start", action: {
+                
+                viewModel.toggleDrone()
 
+            })
+
+/*
             Button {
                 viewModel.toggleDrone()
             } label: {
@@ -204,6 +216,7 @@ private struct DroneView: View {
             .controlSize(.large)
             .tint(viewModel.isPlayingDrone ? .red : .accentColor)
             .padding(.bottom, 40)
+ */
         }
         .onChange(of: selectedOctave) { _, newOctave in
             let currentNoteName = viewModel.selectedNote.name

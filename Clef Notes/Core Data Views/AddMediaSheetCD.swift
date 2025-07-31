@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreData
 import PhotosUI
+import UniformTypeIdentifiers
 
 struct AddMediaSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -10,6 +11,7 @@ struct AddMediaSheetCD: View {
 
     @State private var newMediaType: MediaType = .youtubeVideo
     @State private var newMediaURLString: String = ""
+    @State private var audioDisplayName: String = ""
     
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var selectedSheetMusicItem: PhotosPickerItem?
@@ -38,33 +40,69 @@ struct AddMediaSheetCD: View {
                         switch newMediaType {
                         case .localVideo:
                             PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
-                                Label("Select Video", systemImage: "video.badge.plus")
+                                HStack {
+                                    Label("Select Video", systemImage: "video.badge.plus")
+                                    Spacer()
+                                    if selectedVideoItem != nil {
+                                        Text("Video selected").font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
                             }
-                            if selectedVideoItem != nil {
-                                Text("Video selected").font(.caption).foregroundColor(.secondary)
-                            }
+                            .buttonStyle(.plain)
+                            
                         case .audioRecording:
-                            Button { isImportingAudio = true } label: {
-                                Label("Select Audio File", systemImage: "waveform.badge.plus")
+                            Button(action: { isImportingAudio = true }) {
+                                HStack {
+                                    Label("Select Audio File", systemImage: "waveform.badge.plus")
+                                    Spacer()
+                                    if let url = selectedAudioURL {
+                                        Text(url.lastPathComponent)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                }
                             }
-                            if let url = selectedAudioURL {
-                                Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
+                            .buttonStyle(.plain)
+                            .fileImporter(isPresented: $isImportingAudio, allowedContentTypes: [UTType.audio]) { result in
+                                if case .success(let url) = result {
+                                    selectedAudioURL = url
+                                    audioDisplayName = url.deletingPathExtension().lastPathComponent
+                                }
                             }
+                          
                         case .sheetMusic:
-                            // --- THIS IS THE FIX: Separated the buttons into their own rows ---
                             PhotosPicker(selection: $selectedSheetMusicItem, matching: .images) {
-                                Label("Choose from Photos", systemImage: "photo")
+                                HStack {
+                                    Label("Choose from Photos", systemImage: "photo")
+                                    Spacer()
+                                    if selectedSheetMusicItem != nil {
+                                        Text("Image selected")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                             }
+                            .buttonStyle(.plain)
                             
-                            Button { isImportingSheetMusic = true } label: {
-                                Label("Import from Files", systemImage: "folder")
+                            Button(action: { isImportingSheetMusic = true }) {
+                                HStack {
+                                    Label("Import from Files", systemImage: "folder")
+                                    Spacer()
+                                    if let url = selectedSheetMusicURL {
+                                        Text(url.lastPathComponent)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                }
                             }
-                            .buttonStyle(.plain) // Ensures the text color is correct
-                            
-                            if selectedSheetMusicItem != nil {
-                                Text("Image selected").font(.caption).foregroundColor(.secondary)
-                            } else if let url = selectedSheetMusicURL {
-                                Text(url.lastPathComponent).font(.caption).foregroundColor(.secondary)
+                            .buttonStyle(.plain)
+                            .fileImporter(isPresented: $isImportingSheetMusic, allowedContentTypes: [.pdf, .image]) { result in
+                                if case .success(let url) = result {
+                                    selectedSheetMusicURL = url
+                                    selectedSheetMusicItem = nil // Clear photo picker selection if a file is chosen
+                                }
                             }
                             
                         default:
@@ -81,6 +119,16 @@ struct AddMediaSheetCD: View {
                     } footer: {
                         Text("Add a new media reference, such as a YouTube link or a local video file, to this song.")
                     }
+                    if selectedAudioURL != nil {
+                        Section {
+                            TextField("Display Name", text: $audioDisplayName)
+                        } header: {
+                            Text("Audio Display Name")
+                        } footer: {
+                            Text("Set the name that will be displayed with the audio file.")
+                        }
+                    }
+
                 }
                 .addDoneButtonToKeyboard()
 
@@ -97,16 +145,14 @@ struct AddMediaSheetCD: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .fileImporter(isPresented: $isImportingAudio, allowedContentTypes: [.audio]) { result in
-                if case .success(let url) = result {
-                    selectedAudioURL = url
-                }
-            }
-            .fileImporter(isPresented: $isImportingSheetMusic, allowedContentTypes: [.pdf, .image]) { result in
-                if case .success(let url) = result {
-                    selectedSheetMusicURL = url
-                    selectedSheetMusicItem = nil // Clear photo picker selection if a file is chosen
-                }
+            .onChange(of: newMediaType) {
+                // Clear selections when the type changes to avoid confusion
+                selectedVideoItem = nil
+                selectedSheetMusicItem = nil
+                selectedAudioURL = nil
+                selectedSheetMusicURL = nil
+                newMediaURLString = ""
+                audioDisplayName = ""
             }
             .onChange(of: selectedSheetMusicItem) {
                 if selectedSheetMusicItem != nil {
@@ -132,7 +178,7 @@ struct AddMediaSheetCD: View {
         case .localVideo:
             return selectedVideoItem == nil
         case .audioRecording:
-            return selectedAudioURL == nil
+            return selectedAudioURL == nil || audioDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .sheetMusic:
             return selectedSheetMusicURL == nil && selectedSheetMusicItem == nil
         default:
@@ -157,7 +203,7 @@ struct AddMediaSheetCD: View {
                 url.stopAccessingSecurityScopedResource()
                 mediaReference.type = .audioRecording
                 mediaReference.data = data
-                mediaReference.title = url.deletingPathExtension().lastPathComponent
+                mediaReference.title = audioDisplayName
             }
         case .sheetMusic:
             if let item = selectedSheetMusicItem, let data = try? await item.loadTransferable(type: Data.self) {

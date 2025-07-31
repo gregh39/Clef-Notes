@@ -13,6 +13,9 @@ struct EditStudentSheetCD: View {
     @State private var selectedAvatarItem: PhotosPickerItem?
     @State private var avatarData: Data?
     
+    @State private var isSuzukiStudent: Bool = false
+    @State private var selectedSuzukiBook: SuzukiBook? = nil
+    
     var body: some View {
         NavigationStack {
             VStack {
@@ -52,6 +55,15 @@ struct EditStudentSheetCD: View {
                                 }
                             }
                         }
+                        Toggle("Suzuki Student", isOn: $isSuzukiStudent)
+                        if isSuzukiStudent {
+                            Picker("Suzuki Book", selection: $selectedSuzukiBook) {
+                                Text("Select a Book").tag(Optional<SuzukiBook>.none)
+                                ForEach(SuzukiBook.allCases) { book in
+                                    Text(book.rawValue).tag(Optional(book))
+                                }
+                            }
+                        }
                     }
                 }
                 .addDoneButtonToKeyboard()
@@ -68,6 +80,9 @@ struct EditStudentSheetCD: View {
                 name = student.name ?? ""
                 instrument = student.instrumentType
                 avatarData = student.avatar
+                
+                isSuzukiStudent = student.suzukiStudent?.boolValue ?? false
+                selectedSuzukiBook = student.suzukiBook
             }
             .onChange(of: selectedAvatarItem) {
                 Task {
@@ -83,6 +98,9 @@ struct EditStudentSheetCD: View {
         student.name = name
         student.instrumentType = instrument
         student.avatar = avatarData
+        
+        student.suzukiStudent = NSNumber(value: isSuzukiStudent)
+        student.suzukiBookRaw = isSuzukiStudent ? selectedSuzukiBook?.rawValue : nil
         
         do {
             try viewContext.save()

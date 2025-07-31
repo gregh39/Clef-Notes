@@ -12,6 +12,8 @@ struct StudentSongsTabViewCD: View {
     @State private var selectedSort: SongSortOption = .title
     @State private var selectedPieceType: PieceType? = nil
     @State private var searchText = ""
+    @State private var selectedSuzukiBook: SuzukiBook? = nil
+    @State private var showingFilterSheet = false
     
     // State for sheets and navigation
     @State private var editingSongForEditSheet: SongCD? = nil
@@ -27,6 +29,13 @@ struct StudentSongsTabViewCD: View {
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
+    private var activeFilterCount: Int {
+        var count = 0
+        if selectedPieceType != nil { count += 1 }
+        if selectedSuzukiBook != nil { count += 1 }
+        return count
+    }
+    
     // Computed property that handles sorting AND filtering
     private var filteredAndSortedSongs: [SongCD] {
         // Start with the base array
@@ -35,6 +44,11 @@ struct StudentSongsTabViewCD: View {
         // Apply piece type filter
         if let type = selectedPieceType {
             filteredSongs = filteredSongs.filter { $0.pieceType == type }
+        }
+        
+        // Apply SuzukiBook filter
+        if let suzukiBook = selectedSuzukiBook {
+            filteredSongs = filteredSongs.filter { $0.suzukiBook == suzukiBook }
         }
 
         // Apply search text filter
@@ -89,74 +103,73 @@ struct StudentSongsTabViewCD: View {
                     secondaryButton: .cancel()
                 )
             }
-        }
-    }
-
-    @ViewBuilder
-    private var songList: some View {
-        if filteredAndSortedSongs.isEmpty {
-            ContentUnavailableView.search(text: searchText)
-        } else {
-            List {
-                Section {
-                    EmptyView()
-                } header: {
-                    typeFilterBar
-                        .padding(.vertical, 2)
-                }
-                
-                songsSection
-                
-                SongSectionViewCD(
-                    title: "Scales",
-                    songs: filteredSongs(for: .scale),
-                    editingSong: $editingSongForEditSheet,
-                    songToDelete: $songToDelete,
-                    showingDeleteAlert: $showingDeleteAlert
+            .sheet(isPresented: $showingFilterSheet) {
+                SongFilterSheet(
+                    availablePieceTypes: availablePieceTypes,
+                    selectedPieceType: $selectedPieceType,
+                    isSuzuki: student.suzukiStudent?.boolValue == true,
+                    selectedSuzukiBook: $selectedSuzukiBook
                 )
-                
-                SongSectionViewCD(
-                    title: "Warm-ups",
-                    songs: filteredSongs(for: .warmUp),
-                    editingSong: $editingSongForEditSheet,
-                    songToDelete: $songToDelete,
-                    showingDeleteAlert: $showingDeleteAlert
-                )
-                
-                SongSectionViewCD(
-                    title: "Exercises",
-                    songs: filteredSongs(for: .exercise),
-                    editingSong: $editingSongForEditSheet,
-                    songToDelete: $songToDelete,
-                    showingDeleteAlert: $showingDeleteAlert
-                )
+                .presentationDetents([.medium])
             }
-            .listStyle(.insetGrouped)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Picker("Sort By", selection: $selectedSort) {
-                            ForEach(SongSortOption.allCases) { option in
-                                Text(option.rawValue).tag(option)
+                    Button {
+                        showingFilterSheet = true
+                    } label: {
+                        ZStack {
+                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                            if activeFilterCount > 0 {
+                                Text("\(activeFilterCount)")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.white)
+                                    .padding(5)
+                                    .background(Color.red)
+                                    .clipShape(Circle())
+                                    .offset(x: 12, y: -12)
                             }
                         }
-                    } label: {
-                        Label("Sort", systemImage: "arrow.up.arrow.down.circle")
                     }
                 }
             }
         }
     }
 
-    private var typeFilterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                FilterButton(title: "All", type: nil, selectedType: $selectedPieceType)
-                
-                ForEach(availablePieceTypes, id: \.self) { type in
-                    FilterButton(title: type.rawValue, type: type, selectedType: $selectedPieceType)
+    @ViewBuilder
+    private var songList: some View {
+        VStack(spacing: 0) {
+            if filteredAndSortedSongs.isEmpty {
+                ContentUnavailableView.search(text: searchText)
+            } else {
+                List {
+                    songsSection
+                    
+                    SongSectionViewCD(
+                        title: "Scales",
+                        songs: filteredSongs(for: .scale),
+                        editingSong: $editingSongForEditSheet,
+                        songToDelete: $songToDelete,
+                        showingDeleteAlert: $showingDeleteAlert
+                    )
+                    
+                    SongSectionViewCD(
+                        title: "Warm-ups",
+                        songs: filteredSongs(for: .warmUp),
+                        editingSong: $editingSongForEditSheet,
+                        songToDelete: $songToDelete,
+                        showingDeleteAlert: $showingDeleteAlert
+                    )
+                    
+                    SongSectionViewCD(
+                        title: "Exercises",
+                        songs: filteredSongs(for: .exercise),
+                        editingSong: $editingSongForEditSheet,
+                        songToDelete: $songToDelete,
+                        showingDeleteAlert: $showingDeleteAlert
+                    )
                 }
-            }.padding(.horizontal)
+                .listStyle(.insetGrouped)
+            }
         }
     }
 
@@ -205,8 +218,6 @@ struct StudentSongsTabViewCD: View {
         do {
             try viewContext.save()
         } catch {
-            // Replace this implementation with code to handle the error appropriately.
-            // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
             let nsError = error as NSError
             fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
@@ -306,23 +317,49 @@ private struct SongCardView: View {
     }
 }
 
-
-private struct FilterButton: View {
-    let title: String
-    let type: PieceType?
-    @Binding var selectedType: PieceType?
-    
-    private var isSelected: Bool { selectedType == type }
+private struct SongFilterSheet: View {
+    let availablePieceTypes: [PieceType]
+    @Binding var selectedPieceType: PieceType?
+    let isSuzuki: Bool
+    @Binding var selectedSuzukiBook: SuzukiBook?
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        Button(action: { selectedType = type }) {
-            Text(title)
-                .textCase(.none)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 2)
-                .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
-                .foregroundColor(isSelected ? .white : .primary)
-                .clipShape(Capsule())
+        NavigationStack {
+            Form {
+                Section("Piece Type") {
+                    Picker("Filter by Type", selection: $selectedPieceType) {
+                        Text("All Types").tag(nil as PieceType?)
+                        ForEach(availablePieceTypes, id: \.self) { type in
+                            Text(type.rawValue).tag(Optional(type))
+                        }
+                    }
+                }
+                
+                if isSuzuki {
+                    Section("Suzuki Book") {
+                        Picker("Filter by Book", selection: $selectedSuzukiBook) {
+                            Text("All Books").tag(nil as SuzukiBook?)
+                            ForEach(SuzukiBook.allCases) { book in
+                                Text(book.rawValue).tag(Optional(book))
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filter Songs")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Reset") {
+                        selectedPieceType = nil
+                        selectedSuzukiBook = nil
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }

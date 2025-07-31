@@ -128,6 +128,10 @@ struct MetronomeSectionView: View {
             
             Spacer()
             
+            SaveButtonView(title: isPlaying ? "Stop" : "Start", action: {
+                toggleMetronome()
+            })
+/*
             Button(action: toggleMetronome) {
                 Label(isPlaying ? "Stop" : "Start", systemImage: isPlaying ? "stop.circle.fill" : "play.circle.fill")
                     .frame(maxWidth: 250)
@@ -136,6 +140,7 @@ struct MetronomeSectionView: View {
             .controlSize(.large)
             .tint(isPlaying ? .red : settingsManager.activeAccentColor) // <<< USE THEME COLOR
             .padding(.bottom, 40)
+ */
         }
         .onDisappear(perform: stopMetronome)
         .sheet(isPresented: $showingTimeSignatureSheet) {

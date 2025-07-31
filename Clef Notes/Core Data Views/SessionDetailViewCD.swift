@@ -60,13 +60,17 @@ struct SessionDetailViewCD: View {
                 switch selectedSection {
                 case .session, .record:
                     sessionTab
+                        .navigationTitle(session.title ?? "Practice Session")
                 case .metronome:
                     MetronomeSectionView()
+                        .navigationTitle("Metronome")
+
                 case .tuner:
                     TunerTabView()
+                        .navigationTitle("Tuner")
+
                 }
             }
-            .navigationTitle(session.title ?? "Practice Session")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button(action: { showingRandomSongPicker = true }) {

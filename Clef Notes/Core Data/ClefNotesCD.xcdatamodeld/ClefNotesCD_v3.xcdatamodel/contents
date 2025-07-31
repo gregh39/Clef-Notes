@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24270" systemVersion="25A5295e" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24270" systemVersion="25A5316i" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
     <entity name="AudioRecordingCD" representedClassName="AudioRecordingCD" syncable="YES">
         <attribute name="data" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
         <attribute name="dateRecorded" attributeType="Date" defaultDateTimeInterval="774326640" usesScalarValueType="NO"/>
@@ -62,9 +62,11 @@
     <entity name="SongCD" representedClassName="SongCD" syncable="YES">
         <attribute name="composer" optional="YES" attributeType="String"/>
         <attribute name="goalPlays" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="image" optional="YES" attributeType="Binary"/>
         <attribute name="pieceTypeRaw" optional="YES" attributeType="String"/>
         <attribute name="songStatusRaw" optional="YES" attributeType="String"/>
         <attribute name="studentID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="suzukiBookRaw" optional="YES" attributeType="String"/>
         <attribute name="title" attributeType="String" defaultValueString=""/>
         <relationship name="media" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MediaReferenceCD" inverseName="song" inverseEntity="MediaReferenceCD"/>
         <relationship name="notes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NoteCD" inverseName="songs" inverseEntity="NoteCD"/>
@@ -79,6 +81,8 @@
         <attribute name="name" attributeType="String" defaultValueString=""/>
         <attribute name="sessionCreations" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="songCreations" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="suzukiBookRaw" optional="YES" attributeType="String"/>
+        <attribute name="suzukiStudent" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <relationship name="audioRecordings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AudioRecordingCD" inverseName="student" inverseEntity="AudioRecordingCD"/>
         <relationship name="earnedAwards" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="EarnedAwardCD" inverseName="student" inverseEntity="EarnedAwardCD"/>
         <relationship name="instructors" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="InstructorCD" inverseName="student" inverseEntity="InstructorCD"/>

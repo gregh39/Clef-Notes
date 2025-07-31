@@ -43,6 +43,7 @@ struct AddSongSheetCD: View {
     @State private var goalPlays: String = ""
     @State private var songStatus: PlayType? = nil
     @State private var pieceType: PieceType? = nil
+    @State private var selectedSuzukiBook: SuzukiBook? = nil
 
     var body: some View {
         NavigationStack {
@@ -87,6 +88,17 @@ struct AddSongSheetCD: View {
                     } footer: {
                         Text("Set a target number of plays for songs with a 'Practice' status.")
                     }
+                    
+                    if student.suzukiStudent?.boolValue ?? false {
+                        Section("Suzuki") {
+                            Picker("Suzuki Book", selection: $selectedSuzukiBook) {
+                                Text("Select a Book").tag(Optional<SuzukiBook>.none)
+                                ForEach(SuzukiBook.allCases) { book in
+                                    Text(book.rawValue).tag(Optional(book))
+                                }
+                            }
+                        }
+                    }
                 }
                 // 4. Apply the new navigation modifier
                 .addKeyboardNavigation(for: FocusField.allCases, focus: $focusedField)
@@ -111,6 +123,7 @@ struct AddSongSheetCD: View {
         newSong.goalPlays = Int64(goalPlays) ?? 0
         newSong.songStatus = songStatus
         newSong.pieceType = pieceType
+        newSong.suzukiBook = selectedSuzukiBook
         usageManager.incrementSongCreations()
 
         do {
@@ -122,3 +135,4 @@ struct AddSongSheetCD: View {
         }
     }
 }
+

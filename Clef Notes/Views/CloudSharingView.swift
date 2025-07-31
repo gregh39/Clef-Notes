@@ -14,7 +14,6 @@ struct CloudSharingView: View {
     
     var body: some View {
         VStack {
-            // --- THIS IS THE FIX: Check if the student is already shared ---
             if student.isShared {
                 AlreadySharedView()
             } else {

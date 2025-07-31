@@ -67,6 +67,7 @@ extension SongCD {
     @NSManaged public var goalPlays: Int64
     @NSManaged public var pieceTypeRaw: String?
     @NSManaged public var songStatusRaw: String?
+    @NSManaged public var suzukiBookRaw: String?
     @NSManaged public var studentID: UUID?
     @NSManaged public var title: String?
     @NSManaged public var media: NSSet?
@@ -84,6 +85,17 @@ extension SongCD {
             pieceTypeRaw = newValue?.rawValue
         }
     }
+    
+    public var suzukiBook: SuzukiBook? {
+        get {
+            guard let suzukiBook = self.suzukiBookRaw else { return nil }
+            return SuzukiBook(rawValue: suzukiBook)
+        }
+        set {
+            self.suzukiBookRaw = newValue?.rawValue
+        }
+    }
+
     
     public var songStatus: PlayType? {
         get {
