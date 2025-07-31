@@ -21,7 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         Purchases.configure(withAPIKey: revenueCatAPIKey)
         
         // Set the log level for debugging (consider removing for release)
-        Purchases.logLevel = .debug
+        Purchases.logLevel = .error
         
         // Set the delegate for the shared instance of SubscriptionManager
         Purchases.shared.delegate = SubscriptionManager.shared

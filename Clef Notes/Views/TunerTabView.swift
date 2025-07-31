@@ -29,7 +29,7 @@ private struct TunerTabContentView: View {
     
     init(audioManager: AudioManager) {
         _droneViewModel = StateObject(wrappedValue: TunerViewModel(audioManager: audioManager))
-        _pitchTunerViewModel = StateObject(wrappedValue: PitchTunerViewModel())
+        _pitchTunerViewModel = StateObject(wrappedValue: PitchTunerViewModel(audioManager: audioManager))
     }
 
     var body: some View {

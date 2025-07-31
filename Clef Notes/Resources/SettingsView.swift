@@ -41,16 +41,10 @@ struct SettingsView: View {
         Form {
             Section {
                 TextField("Default Session Title", text: $settingsManager.defaultSessionTitle)
-            } header: {
-                Text("Default Session Name")
-            } footer: {
-                Text("Set the default name for a practice session")
             }
             
             Section(header: Text("Practice Reminders")) {
-                                
-                Toggle("Practice Reminders", isOn: $settingsManager.practiceRemindersEnabled)
-                
+                                                
                 if settingsManager.practiceRemindersEnabled {
                     DatePicker("Reminder Time", selection: $settingsManager.practiceReminderTime, displayedComponents: .hourAndMinute)
                 }

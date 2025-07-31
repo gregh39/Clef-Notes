@@ -24,9 +24,8 @@ struct Clef_NotesApp: App {
         try? Tips.configure([
             .displayFrequency(.immediate), // Show tips immediately for testing
             .datastoreLocation(.applicationDefault)
-
         ])
-        try? Tips.resetDatastore()
+        //try? Tips.resetDatastore()
         //Tips.showAllTipsForTesting()
 
     }
@@ -40,7 +39,7 @@ struct Clef_NotesApp: App {
                .environmentObject(subscriptionManager)
                .environmentObject(usageManager)
                .environmentObject(settingsManager)
-               .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
+               //.preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
                .tint(settingsManager.activeAccentColor) // <<< CHANGE THIS LINE
                .onAppear {
                    settingsManager.setAppIcon()

@@ -21,6 +21,8 @@ class PitchTunerViewModel: ObservableObject {
     private var tracker: PitchTap!
     private var mixer: Mixer
     
+    private let audioManager: AudioManager
+
     // Note names for manual calculation
     private static let noteNamesWithSharps = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
     private var a4Frequency: Double = SettingsManager.shared.a4Frequency
@@ -31,7 +33,8 @@ class PitchTunerViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init() {
+    init(audioManager: AudioManager) {
+        self.audioManager = audioManager
         mic = engine.input!
         mixer = Mixer(mic)
         engine.output = mixer
@@ -53,6 +56,11 @@ class PitchTunerViewModel: ObservableObject {
     // MARK: - Public Methods
 
     func start() {
+        guard audioManager.requestSession(for: .tuner, category: .playAndRecord, options: .defaultToSpeaker) else {
+            print("Failed to request audio session for tuner")
+            return
+        }
+        
         // Request microphone permission directly.
         AVAudioApplication.requestRecordPermission { [weak self] granted in
             guard let self = self, granted else {
@@ -79,6 +87,7 @@ class PitchTunerViewModel: ObservableObject {
         
         engine.stop()
         isListening = false
+        audioManager.releaseSession(for: .tuner)
     }
 
     // MARK: - Private Methods
