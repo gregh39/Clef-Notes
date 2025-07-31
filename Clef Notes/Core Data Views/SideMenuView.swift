@@ -2,6 +2,7 @@ import SwiftUI
 import CoreData
 
 struct SideMenuView: View {
+    @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
         animation: .default)
@@ -16,93 +17,118 @@ struct SideMenuView: View {
 
     @State private var showingEditStudentSheet = false
     @State private var isSharePresented = false
-    @State private var showAllStudents = false
+    @State private var studentToDelete: StudentCD?
+
+    // Computed property to sort students with the selected one first
+    private var sortedStudents: [StudentCD] {
+        students.sorted { (a, b) -> Bool in
+            if a == selectedStudent {
+                return true
+            } else if b == selectedStudent {
+                return false
+            }
+            return a.name ?? "" < b.name ?? ""
+        }
+    }
 
     var body: some View {
         NavigationView {
-            List {
-                if let student = selectedStudent {
-                    Section("Active Student") {
-                        StudentCellView(student: student, isSelected: true)
-                    }
-                }
+            VStack {
+                // Horizontally scrolling student picker
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        // Add new student button
+                        Button(action: {
+                            isPresented = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                showingAddStudentSheet = true
+                            }
+                        }) {
+                            VStack {
+                                Image(systemName: "plus")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.accentColor)
+                                Text("Add New")
+                                    .font(.caption)
+                            }
+                            .frame(width: 100, height: 100)
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .cornerRadius(12)
+                        }
 
-                Section {
-                    DisclosureGroup("Switch Student", isExpanded: $showAllStudents) {
-                        ForEach(students) { student in
+                        // Student list
+                        ForEach(sortedStudents) { student in
                             Button(action: {
                                 selectedStudent = student
                             }) {
-                                HStack {
-                                    StudentListRow(student: student)
-                                    Spacer()
-                                    if student == selectedStudent {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.accentColor)
-                                    }
+                                StudentIconView(student: student, isSelected: self.selectedStudent == student)
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    studentToDelete = student
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
                             }
                         }
                     }
+                    .padding()
+                }
 
-                    Button(action: {
-                        isPresented = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            showingAddStudentSheet = true
+                // The rest of the menu
+                List {
+                    if let student = student {
+                        Section {
+                            Button {
+                                showingEditStudentSheet = true
+                            } label: {
+                                Label("Edit Student", systemImage: "pencil")
+                            }
+
+                            Button {
+                                isSharePresented = true
+                            } label: {
+                                Label("Share Student", systemImage: "square.and.arrow.up")
+                            }
+                        } header: {
+                            Text("Actions for \(student.name ?? "Student")")
+                        } footer: {
+                            Text("Long-press on a student's icon above to delete them.")
                         }
-                    }) {
-                        Label("Add New Student", systemImage: "plus")
                     }
-                }
-
-                if let student = student {
-                    Section("Actions for \(student.name ?? "Student")") {
-                        Button {
-                            showingEditStudentSheet = true
-                        } label: {
-                            Label("Edit Student", systemImage: "pencil")
-                        }
-
-                        Button {
-                            isSharePresented = true
-                        } label: {
-                            Label("Share Student", systemImage: "square.and.arrow.up")
+                    
+                    Section("Account") {
+                        NavigationLink(destination: SubscriptionView()) {
+                            Label("Manage Subscription", systemImage: "creditcard.fill")
                         }
                     }
-                }
-                
-                Section("Account") {
-                    NavigationLink(destination: SubscriptionView()) {
-                        Label("Manage Subscription", systemImage: "creditcard.fill")
-                    }
-                }
 
-                Section("Tools") {
-                    NavigationLink(destination: PitchGameView()) {
-                        Label("Pitch Game", systemImage: "gamecontroller")
-                    }
-                    
-                    NavigationLink(destination: MetronomeSectionView()) {
-                        Label("Metronome", systemImage: "metronome")
-                    }
-                    .disabled(!subscriptionManager.canAccessPaidFeatures)
-                    
-                    NavigationLink(destination: TunerTabView()) {
-                        Label("Tuner", systemImage: "tuningfork")
-                    }
-                    .disabled(!subscriptionManager.canAccessPaidFeatures)
-                    
-                    // --- START CHANGES ---
-                    NavigationLink(destination: ThemeView()) {
-                        Label("Appearance", systemImage: "paintpalette.fill")
-                    }
-                    
-                    NavigationLink(destination: SettingsView()) {
-                        Label("Settings", systemImage: "gearshape.fill")
+                    Section("Tools") {
+                        NavigationLink(destination: PitchGameView()) {
+                            Label("Pitch Game", systemImage: "gamecontroller")
+                        }
+                        
+                        NavigationLink(destination: MetronomeSectionView()) {
+                            Label("Metronome", systemImage: "metronome")
+                        }
+                        .disabled(!subscriptionManager.canAccessPaidFeatures)
+                        
+                        NavigationLink(destination: TunerTabView()) {
+                            Label("Tuner", systemImage: "tuningfork")
+                        }
+                        .disabled(!subscriptionManager.canAccessPaidFeatures)
+                        
+                        NavigationLink(destination: ThemeView()) {
+                            Label("Appearance", systemImage: "paintpalette.fill")
+                        }
+                        
+                        NavigationLink(destination: SettingsView()) {
+                            Label("Settings", systemImage: "gearshape.fill")
+                        }
                     }
                 }
+                .listStyle(.insetGrouped)
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -122,43 +148,77 @@ struct SideMenuView: View {
                     CloudSharingView(student: student)
                 }
             }
+            .alert("Delete \(studentToDelete?.name ?? "Student")?",
+                   isPresented: Binding(get: { studentToDelete != nil }, set: { if !$0 { studentToDelete = nil } }),
+                   presenting: studentToDelete)
+            { student in
+                Button("Delete", role: .destructive) {
+                    deleteStudent(student)
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: { _ in
+                Text("Are you sure you want to delete this student? All of their data will be removed. This action cannot be undone.")
+            }
+        }
+    }
+    
+    private func deleteStudent(_ student: StudentCD) {
+        let studentWasSelected = (student == selectedStudent)
+        
+        viewContext.delete(student)
+        
+        do {
+            try viewContext.save()
+            
+            if studentWasSelected {
+                selectedStudent = students.first
+            }
+            
+            if students.isEmpty {
+                isPresented = false
+            }
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
     }
 }
 
-private struct StudentListRow: View {
+// New rectangular student icon view
+private struct StudentIconView: View {
     @ObservedObject var student: StudentCD
+    var isSelected: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack {
             if let avatarData = student.avatar, let uiImage = UIImage(data: avatarData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.secondary)
+                Image(systemName: "person.fill")
+                    .font(.largeTitle)
+                    .frame(width: 80, height: 80)
+                    .background(Color.gray.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-
-            VStack(alignment: .leading) {
-                HStack {
-                    Text(student.name ?? "Unknown")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    if student.isShared {
-                        Image(systemName: "person.2.fill")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                Text(student.instrument ?? "No Instrument")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
+            Text(student.name ?? "Unknown")
+                .font(.caption)
+                .lineLimit(1)
+            Text(student.instrument ?? "")
+                .font(.caption2)
+                .lineLimit(1)
+                .foregroundColor(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(8)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+        )
     }
 }
 

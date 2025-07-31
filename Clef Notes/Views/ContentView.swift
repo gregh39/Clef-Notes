@@ -39,6 +39,15 @@ struct ContentView: View {
             OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
         }
         .onAppear {
+            let fetchRequest = UsageTrackerCD.fetchRequest()
+            if let trackers = try? viewContext.fetch(fetchRequest) {
+                for tracker in trackers {
+                    print("UsageTrackerCD: totalStudentsCreated=\(tracker.totalStudentsCreated), totalSessionsCreated=\(tracker.totalSessionsCreated), totalSongsCreated=\(tracker.totalSongsCreated)")
+                }
+            } else {
+                print("Failed to fetch UsageTrackerCD entities")
+            }
+            
             if let studentID = selectedStudentID,
                let student = students.first(where: { $0.id?.uuidString == studentID }) {
                 selectedStudent = student
