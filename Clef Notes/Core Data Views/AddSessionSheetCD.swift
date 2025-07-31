@@ -40,8 +40,10 @@ struct AddSessionSheetCD: View {
         NavigationStack {
             VStack {
                 Form {
-                    Section {
+                    Section(header: Text("Session Name")) {
                         TextField("Session Title", text: $sessionTitle)
+                    }
+                    Section {
                         DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
                             Label("Date", systemImage: "calendar")
                         }
@@ -55,9 +57,7 @@ struct AddSessionSheetCD: View {
                         }
                     } header: {
                         Text("Session Details")
-                    } footer: {
-                        Text("The session title defaults to your preference in Settings but can be changed here.")
-                    }
+                    } 
 
                     Section("Instructor") {
                         Picker(selection: $selectedInstructor) {

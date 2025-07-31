@@ -39,13 +39,16 @@ struct SettingsView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Practice & Session")) {
+            Section {
                 TextField("Default Session Title", text: $settingsManager.defaultSessionTitle)
-                
-                Stepper(value: $settingsManager.defaultSessionDuration, in: 5...180, step: 5) {
-                    Text("Default Duration: \(settingsManager.defaultSessionDuration) min")
-                }
-                
+            } header: {
+                Text("Default Session Name")
+            } footer: {
+                Text("Set the default name for a practice session")
+            }
+            
+            Section(header: Text("Practice Reminders")) {
+                                
                 Toggle("Practice Reminders", isOn: $settingsManager.practiceRemindersEnabled)
                 
                 if settingsManager.practiceRemindersEnabled {
@@ -60,16 +63,6 @@ struct SettingsView: View {
                 
                 Stepper(value: $settingsManager.tunerTransposition, in: -12...12, step: 1) {
                     Text("Tuner Transposition: \(settingsManager.tunerTransposition) semitones")
-                }
-            }
-            
-            Section(header: Text("Awards & Notifications")) {
-                Toggle("Award Notifications", isOn: $settingsManager.awardNotificationsEnabled)
-                Toggle("Enable Weekly Goal", isOn: $settingsManager.weeklyGoalEnabled)
-                if settingsManager.weeklyGoalEnabled {
-                    Stepper(value: $settingsManager.weeklyGoalMinutes, in: 30...600, step: 15) {
-                        Text("Weekly Goal: \(settingsManager.weeklyGoalMinutes) min")
-                    }
                 }
             }
             
@@ -112,3 +105,4 @@ struct ShareSheet: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+

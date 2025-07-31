@@ -5,6 +5,7 @@ struct SessionListViewCD: View {
     @ObservedObject var student: StudentCD
     @EnvironmentObject var audioManager: AudioManager
     @State private var path = NavigationPath()
+    @State private var sessionToEdit: PracticeSessionCD? = nil
 
     var onAddSession: () -> Void
 
@@ -73,6 +74,15 @@ struct SessionListViewCD: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
+                                    .tint(.red)
+                                }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    Button {
+                                        sessionToEdit = session
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(.orange)
                                 }
                             }
                         }
@@ -83,6 +93,9 @@ struct SessionListViewCD: View {
                         Button("Cancel", role: .cancel) {}
                     } message: { _ in
                         Text("Are you sure you want to delete this session? All associated plays, notes, and recordings will also be permanently deleted.")
+                    }
+                    .sheet(item: $sessionToEdit) { session in
+                        EditSessionSheetCD(session: session)
                     }
                 }
             }

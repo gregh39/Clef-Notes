@@ -13,6 +13,7 @@ struct EditSessionSheetCD: View {
     @State private var sessionDate: Date = .now
     @State private var selectedLocation: LessonLocation?
     @State private var selectedInstructor: InstructorCD?
+    @State private var durationMinutes: Int = 0
     
     @State private var showingAddInstructorSheet = false
     @State private var newInstructorName: String = ""
@@ -32,8 +33,11 @@ struct EditSessionSheetCD: View {
         NavigationStack {
             VStack {
                 Form {
-                    Section("Session Details") {
+                    Section("Session Name") {
                         TextField("Session Title", text: $sessionTitle)
+                    }
+
+                    Section("Session Details") {
                         DatePicker(selection: $sessionDate, displayedComponents: [.date]) {
                             Label("Date", systemImage: "calendar")
                         }
@@ -45,6 +49,14 @@ struct EditSessionSheetCD: View {
                         } label: {
                             Label("Location", systemImage: "mappin.and.ellipse")
                         }
+                        Stepper(value: $durationMinutes, in: 0...1440) {
+                            HStack {
+                                Label("Duration", systemImage: "clock")
+                                Spacer()
+                                Text("\(durationMinutes) min")
+                            }
+                        }
+
                     }
                     
                     Section("Instructor") {
@@ -76,6 +88,7 @@ struct EditSessionSheetCD: View {
                 sessionDate = session.day ?? .now
                 selectedLocation = session.location
                 selectedInstructor = session.instructor
+                durationMinutes = Int(session.durationMinutes)
             }
             .sheet(isPresented: $showingAddInstructorSheet) {
                 addInstructorSheet
@@ -114,6 +127,7 @@ struct EditSessionSheetCD: View {
         session.day = sessionDate
         session.location = selectedLocation
         session.instructor = selectedInstructor
+        session.durationMinutes = Int64(durationMinutes)
 
         do {
             try viewContext.save()

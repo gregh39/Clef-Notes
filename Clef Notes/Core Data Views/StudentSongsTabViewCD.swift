@@ -5,6 +5,7 @@ struct StudentSongsTabViewCD: View {
     @ObservedObject var student: StudentCD
     var onAddSong: () -> Void
     
+    @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     
     // State for sorting and filtering
@@ -15,6 +16,10 @@ struct StudentSongsTabViewCD: View {
     // State for sheets and navigation
     @State private var editingSongForEditSheet: SongCD? = nil
     @State private var path = NavigationPath()
+
+    // Add state for the delete confirmation alert
+    @State private var songToDelete: SongCD?
+    @State private var showingDeleteAlert = false
 
     // Computed property for available piece types to build the filter bar
     private var availablePieceTypes: [PieceType] {
@@ -72,6 +77,18 @@ struct StudentSongsTabViewCD: View {
             }
             .navigationTitle("Songs")
             .searchable(text: $searchText, prompt: "Search Songs or Composers")
+            .alert(isPresented: $showingDeleteAlert) {
+                Alert(
+                    title: Text("Delete Song?"),
+                    message: Text("Are you sure you want to delete this song? All of its plays will be deleted as well."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if let song = songToDelete {
+                            delete(song: song)
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
@@ -93,19 +110,25 @@ struct StudentSongsTabViewCD: View {
                 SongSectionViewCD(
                     title: "Scales",
                     songs: filteredSongs(for: .scale),
-                    editingSong: $editingSongForEditSheet
+                    editingSong: $editingSongForEditSheet,
+                    songToDelete: $songToDelete,
+                    showingDeleteAlert: $showingDeleteAlert
                 )
                 
                 SongSectionViewCD(
                     title: "Warm-ups",
                     songs: filteredSongs(for: .warmUp),
-                    editingSong: $editingSongForEditSheet
+                    editingSong: $editingSongForEditSheet,
+                    songToDelete: $songToDelete,
+                    showingDeleteAlert: $showingDeleteAlert
                 )
                 
                 SongSectionViewCD(
                     title: "Exercises",
                     songs: filteredSongs(for: .exercise),
-                    editingSong: $editingSongForEditSheet
+                    editingSong: $editingSongForEditSheet,
+                    songToDelete: $songToDelete,
+                    showingDeleteAlert: $showingDeleteAlert
                 )
             }
             .listStyle(.insetGrouped)
@@ -158,6 +181,15 @@ struct StudentSongsTabViewCD: View {
                         .swipeActions(edge: .leading) {
                             Button { editingSongForEditSheet = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                songToDelete = song
+                                showingDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
                     }
                 }
             }
@@ -167,12 +199,26 @@ struct StudentSongsTabViewCD: View {
     private func filteredSongs(for type: PieceType) -> [SongCD] {
         return filteredAndSortedSongs.filter { $0.pieceType == type }
     }
+
+    private func delete(song: SongCD) {
+        viewContext.delete(song)
+        do {
+            try viewContext.save()
+        } catch {
+            // Replace this implementation with code to handle the error appropriately.
+            // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+        }
+    }
 }
 
 private struct SongSectionViewCD: View {
     let title: String
     let songs: [SongCD]
     @Binding var editingSong: SongCD?
+    @Binding var songToDelete: SongCD?
+    @Binding var showingDeleteAlert: Bool
     
     @EnvironmentObject var audioManager: AudioManager
 
@@ -189,6 +235,15 @@ private struct SongSectionViewCD: View {
                     }
                     .swipeActions(edge: .leading) {
                         Button { editingSong = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            songToDelete = song
+                            showingDeleteAlert = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .tint(.red)
                     }
                 }
             }

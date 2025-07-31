@@ -15,11 +15,11 @@ struct PieceTypeStat: Identifiable {
 struct MonthKey: Hashable, Comparable {
     let year: Int
     let month: Int
-    
+
     static func < (lhs: MonthKey, rhs: MonthKey) -> Bool {
         lhs.year != rhs.year ? lhs.year < rhs.year : lhs.month < rhs.month
     }
-    
+
     var displayString: String {
         let date = Calendar.current.date(from: DateComponents(year: year, month: month)) ?? Date()
         let formatter = DateFormatter()
@@ -40,10 +40,10 @@ struct StatsTabViewCD: View {
     var body: some View {
         NavigationStack(path: $path) {
             Form {
-                Section {
+                Section(header: Text("Streaks")) {
                     StreakViewCD(viewModel: viewModel)
                 }
-                
+
                 Section(header: Text("Practice Heat Map")) {
                     ScrollViewReader { proxy in
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -62,28 +62,23 @@ struct StatsTabViewCD: View {
                         }
                     }
                 }
-                
+
                 Section(header: Text("Last 7 Days: Practiced on \(viewModel.practicedDaysLast7) day\(viewModel.practicedDaysLast7 == 1 ? "" : "s")")) {
                     WeeklyPracticeViewCD(viewModel: viewModel)
                 }
-                
+
                 Section(header: Text("Monthly Snapshot")) {
                     MonthlySummaryViewCD(viewModel: viewModel)
                 }
-                
-                Section(header: Text("📈 Sessions by Weekday")) {
+
+                Section(header: Text("Sessions by Weekday")) {
                     WeekdayChartViewCD(viewModel: viewModel)
                 }
-                
-                // --- THIS IS THE FIX: New section for piece type breakdown ---
+
                 Section(header: Text("Practice Breakdown")) {
                     PieceTypeChartViewCD(viewModel: viewModel)
                 }
-                
-                Section(header: Text("Song Insights")) {
-                    SongStatsViewCD(viewModel: viewModel)
-                }
-                
+
                 Section(header: Text("All-Time Stats")) {
                     AllTimeStatsViewCD(viewModel: viewModel)
                 }
@@ -103,7 +98,7 @@ class StatsViewModelCD: ObservableObject {
 
     @Published var totalSessionsThisMonth: Int = 0
     @Published var totalPlaysThisMonth: Int = 0
-    @Published var avgPlaysPerSession: Int = 0
+    @Published var totalDurationThisMonth: String = "0m"
     @Published var last7Days: [Date] = []
     @Published var practicedDaysLast7: Int = 0
     @Published var weekdayCounts: [Int: Int] = [:]
@@ -115,19 +110,19 @@ class StatsViewModelCD: ObservableObject {
     // --- THIS IS THE FIX: New properties for new stats ---
     @Published var totalPracticeTime: String = "0m"
     @Published var pieceTypeDistribution: [PieceTypeStat] = []
-    
+
     @Published var allMonths: [MonthKeyCD] = []
     @Published var monthPlayCounts: [MonthKeyCD: [Int: Int]] = [:]
     @Published var currentStreak = 0
     @Published var longestStreak = 0
-    
+
     private var sessionDates: Set<Date> = []
 
     init(student: StudentCD) {
         self.student = student
         self.shortWeekdaySymbols = Calendar.current.shortWeekdaySymbols
     }
-    
+
     func setup(context: NSManagedObjectContext) {
         recalculate()
 
@@ -138,18 +133,18 @@ class StatsViewModelCD: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     private func recalculate() {
         let sessions = student.sessionsArray
         let calendar = Calendar.current
         let today = Date()
-        
+
         let allPlays = sessions.flatMap { $0.playsArray }
 
         // --- THIS IS THE FIX: Calculation for new stats ---
         calculateTotalPracticeTime(from: sessions)
         calculatePieceTypeDistribution(from: allPlays)
-        
+
         let monthSet = Set(sessions.map {
             let comps = calendar.dateComponents([.year, .month], from: $0.day ?? .now)
             return MonthKeyCD(year: comps.year ?? 2000, month: comps.month ?? 1)
@@ -167,33 +162,36 @@ class StatsViewModelCD: ObservableObject {
             }
             return (key, counts)
         })
-        
+
         let monthlySessions = sessions.filter { calendar.isDate($0.day ?? .distantPast, equalTo: today, toGranularity: .month) }
         self.totalSessionsThisMonth = monthlySessions.count
         self.totalPlaysThisMonth = monthlySessions.reduce(0) { $0 + $1.playsArray.reduce(0) { $0 + Int($1.count) } }
         
-        if totalSessionsThisMonth > 0 {
-            self.avgPlaysPerSession = totalPlaysThisMonth / totalSessionsThisMonth
+        let totalMinutes = monthlySessions.reduce(0) { $0 + $1.durationMinutes }
+        let hours = Int(totalMinutes) / 60
+        let minutes = Int(totalMinutes) % 60
+        if hours > 0 {
+            self.totalDurationThisMonth = "\(hours)h \(minutes)m"
         } else {
-            self.avgPlaysPerSession = 0
+            self.totalDurationThisMonth = "\(minutes)m"
         }
-        
+
         self.last7Days = Array((0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.reversed())
         let sessionDaySet = Set(sessions.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
         self.practicedDaysLast7 = last7Days.filter { date in
             sessionDaySet.contains { calendar.isDate($0, inSameDayAs: date) }
         }.count
         self.sessionDates = sessionDaySet
-        
+
         self.weekdayCounts = monthlySessions.reduce(into: [Int: Int]()) { counts, session in
             let weekday = calendar.component(.weekday, from: session.day ?? .now)
             counts[weekday, default: 0] += 1
         }
-        
+
         let songPlayData = allPlays.reduce(into: [SongCD: (count: Int, goal: Int)]()) { result, play in
             guard let song = play.song else { return }
             let goal = max(Int(song.goalPlays), 1)
-            
+
             var entry = result[song, default: (count: 0, goal: goal)]
             entry.count += Int(play.count)
             result[song] = entry
@@ -204,7 +202,7 @@ class StatsViewModelCD: ObservableObject {
             let progressB = Double($1.value.count) / Double($1.value.goal)
             return progressA < progressB
         })?.key
-        
+
         let uniqueDays = Set(sessions.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
         self.totalPracticeDays = uniqueDays.count
         if let firstDay = uniqueDays.min() {
@@ -212,7 +210,7 @@ class StatsViewModelCD: ObservableObject {
         } else {
             self.firstPracticeDate = "N/A"
         }
-        
+
         let sortedDates = sessionDaySet.sorted(by: >)
         (currentStreak, longestStreak) = calculateStreaks(from: sortedDates)
     }
@@ -234,9 +232,9 @@ class StatsViewModelCD: ObservableObject {
             let type = play.song?.pieceType ?? .song
             counts[type, default: 0] += Int(play.count)
         }
-        
+
         let colors: [PieceType: Color] = [.song: .blue, .scale: .green, .warmUp: .orange, .exercise: .purple]
-        
+
         self.pieceTypeDistribution = counts.map { type, count in
             PieceTypeStat(type: type, count: count, color: colors[type] ?? .gray)
         }.sorted { $0.count > $1.count }
@@ -244,19 +242,19 @@ class StatsViewModelCD: ObservableObject {
 
     private func calculateStreaks(from sortedDates: [Date]) -> (current: Int, longest: Int) {
         guard !sortedDates.isEmpty else { return (0, 0) }
-        
+
         let calendar = Calendar.current
         var current = 0
         var longest = 0
-        
+
         let today = calendar.startOfDay(for: .now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
 
         let practicedToday = sortedDates.contains(today)
         let practicedYesterday = sortedDates.contains(yesterday)
-        
+
         var dateToCheck: Date
-        
+
         if practicedToday {
             dateToCheck = today
         } else if practicedYesterday {
@@ -275,7 +273,7 @@ class StatsViewModelCD: ObservableObject {
                 }
             }
         }
-        
+
         var streak = 0
         var lastDate: Date? = nil
         for date in sortedDates.reversed() {
@@ -293,10 +291,10 @@ class StatsViewModelCD: ObservableObject {
             lastDate = date
         }
         longest = max(longest, streak)
-        
+
         return (current, longest)
     }
-    
+
     func didPracticeOn(date: Date) -> Bool {
         sessionDates.contains { Calendar.current.isDate($0, inSameDayAs: date) }
     }
@@ -307,8 +305,8 @@ private struct StreakViewCD: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            StatItemCD(label: "Current Streak", value: "\(viewModel.currentStreak) Days", icon: "🔥")
-            StatItemCD(label: "Longest Streak", value: "\(viewModel.longestStreak) Days", icon: "🏆")
+            StreakItemCD(label: "Current Streak", value: "\(viewModel.currentStreak) Days", icon: "🔥")
+            StreakItemCD(label: "Longest Streak", value: "\(viewModel.longestStreak) Days", icon: "🏆")
         }
     }
 }
@@ -317,7 +315,7 @@ private struct StreakViewCD: View {
 struct MonthKeyCD: Hashable, Comparable {
     let year: Int
     let month: Int
-    
+
     static func < (lhs: MonthKeyCD, rhs: MonthKeyCD) -> Bool {
         lhs.year != rhs.year ? lhs.year < rhs.year : lhs.month < rhs.month
     }
@@ -327,19 +325,19 @@ private struct HeatMapViewCD: View {
     let year: Int
     let month: Int
     let dayPlayCounts: [Int: Int]
-    
+
     private var calendar: Calendar { Calendar(identifier: .gregorian) }
-    
+
     private var daysInMonth: [Int] {
         let comps = DateComponents(year: year, month: month)
         let refDate = calendar.date(from: comps) ?? Date()
         return Array(calendar.range(of: .day, in: .month, for: refDate) ?? Range(1...31))
     }
-    
+
     private var firstDayDate: Date { calendar.date(from: DateComponents(year: year, month: month)) ?? Date() }
-    
+
     private var firstWeekday: Int { calendar.component(.weekday, from: firstDayDate) }
-    
+
     private var paddedDays: [Int?] {
         var padded = Array(repeating: nil, count: firstWeekday - 1) + daysInMonth.map { Optional($0) }
         if padded.count % 7 != 0 {
@@ -347,21 +345,21 @@ private struct HeatMapViewCD: View {
         }
         return padded
     }
-    
+
     private var weekRows: [[Int?]] {
         stride(from: 0, to: paddedDays.count, by: 7).map {
             Array(paddedDays[$0..<min($0 + 7, paddedDays.count)])
         }
     }
-    
+
     private var weekdaySymbols: [String] { calendar.veryShortStandaloneWeekdaySymbols }
-    
+
     private var currentMonthName: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "LLLL yyyy"
         return formatter.string(from: firstDayDate)
     }
-    
+
     var body: some View {
         VStack(spacing: 4) {
             Text(currentMonthName)
@@ -432,10 +430,12 @@ private struct MonthlySummaryViewCD: View {
     @ObservedObject var viewModel: StatsViewModelCD
 
     var body: some View {
-        HStack(spacing: 12) {
-            StatItemCD(label: "Sessions", value: "\(viewModel.totalSessionsThisMonth)", icon: "📅")
-            StatItemCD(label: "Plays", value: "\(viewModel.totalPlaysThisMonth)", icon: "🎯")
-            StatItemCD(label: "Avg Plays/Session", value: "\(viewModel.avgPlaysPerSession)", icon: "⚖️")
+        HStack {
+            StatItemCD(label: "Sessions", value: "\(viewModel.totalSessionsThisMonth)")
+            Spacer()
+            StatItemCD(label: "Plays", value: "\(viewModel.totalPlaysThisMonth)")
+            Spacer()
+            StatItemCD(label: "Total Duration", value: viewModel.totalDurationThisMonth)
         }
     }
 }
@@ -455,7 +455,7 @@ private struct WeekdayChartViewCD: View {
                         .fontWeight(.medium)
                     let count = CGFloat(viewModel.weekdayCounts[weekday, default: 0])
                     let barHeight = (count / maxCount) * 60
-                    
+
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.purple.gradient)
                         .frame(height: max(barHeight, 2))
@@ -505,20 +505,20 @@ private struct SongStatsViewCD: View {
         VStack(spacing: 12) {
             if let song = viewModel.mostPracticedSong {
                 NavigationLink(value: song) {
-                    StatItemCD(label: "Most Practiced", value: song.title ?? "N/A", icon: "🎵")
+                    StatItemCD(label: "Most Practiced", value: song.title ?? "N/A")
                 }
                 .buttonStyle(.plain)
             } else {
-                StatItemCD(label: "Most Practiced", value: "N/A", icon: "🎵")
+                StatItemCD(label: "Most Practiced", value: "N/A")
             }
 
             if let song = viewModel.songNeedingPractice {
                 NavigationLink(value: song) {
-                    StatItemCD(label: "Needs Practice", value: song.title ?? "N/A", icon: "⏳")
+                    StatItemCD(label: "Needs Practice", value: song.title ?? "N/A")
                 }
                 .buttonStyle(.plain)
             } else {
-                StatItemCD(label: "Needs Practice", value: "N/A", icon: "⏳")
+                StatItemCD(label: "Needs Practice", value: "N/A")
             }
         }
     }
@@ -530,9 +530,9 @@ private struct AllTimeStatsViewCD: View {
     var body: some View {
         // --- THIS IS THE FIX: Added total practice time ---
         VStack(spacing: 12) {
-            StatItemCD(label: "First Practice Date", value: viewModel.firstPracticeDate, icon: "📆")
-            StatItemCD(label: "Total Days Practiced", value: "\(viewModel.totalPracticeDays)", icon: "🗓️")
-            StatItemCD(label: "Total Practice Time", value: viewModel.totalPracticeTime, icon: "⏱️")
+            StreakItemCD(label: "First Practice Date", value: viewModel.firstPracticeDate, icon: "📆")
+            StreakItemCD(label: "Total Days Practiced", value: "\(viewModel.totalPracticeDays)", icon: "🗓️")
+            StreakItemCD(label: "Total Practice Time", value: viewModel.totalPracticeTime, icon: "⏱️")
         }
     }
 }
@@ -540,10 +540,31 @@ private struct AllTimeStatsViewCD: View {
 private struct StatItemCD: View {
     let label: String
     let value: String
+
+    var body: some View {
+        VStack(alignment: .center) {
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(12)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(10)
+    }
+}
+
+private struct StreakItemCD: View {
+    let label: String
+    let value: String
     let icon: String
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(spacing: 10) {
             Text(icon)
                 .font(.title2)
             VStack(alignment: .leading) {
@@ -558,9 +579,8 @@ private struct StatItemCD: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(5)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(10)
     }
 }
-

@@ -52,7 +52,7 @@ class SettingsManager: ObservableObject {
 
     // MARK: - Practice & Session
     @AppStorage("defaultSessionTitle") var defaultSessionTitle: String = "Practice"
-    @AppStorage("defaultSessionDuration") var defaultSessionDuration: Int = 30
+    @AppStorage("defaultSessionDuration") var defaultSessionDuration: Int = 0
     
     @Published var practiceRemindersEnabled: Bool
     @Published var practiceReminderTime: Date
