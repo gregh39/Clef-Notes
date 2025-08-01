@@ -14,6 +14,8 @@ struct SideMenuView: View {
     let student: StudentCD? // The currently selected student
 
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var settingsManager: SettingsManager // <<< ADD THIS LINE
+
 
     @State private var showingEditStudentSheet = false
     @State private var isSharePresented = false
@@ -168,6 +170,8 @@ struct SideMenuView: View {
                 Text("Are you sure you want to delete this student? All of their data will be removed. This action cannot be undone.")
             }
         }
+        .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme) // <<< ADD THIS
+
     }
     
     private func deleteStudent(_ student: StudentCD) {

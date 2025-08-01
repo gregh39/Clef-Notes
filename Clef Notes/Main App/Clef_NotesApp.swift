@@ -39,7 +39,7 @@ struct Clef_NotesApp: App {
                .environmentObject(subscriptionManager)
                .environmentObject(usageManager)
                .environmentObject(settingsManager)
-               //.preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
+               .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
                .tint(settingsManager.activeAccentColor) // <<< CHANGE THIS LINE
                .onAppear {
                    settingsManager.setAppIcon()

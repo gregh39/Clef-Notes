@@ -5,6 +5,7 @@ import SwiftUI
 struct ThemeView: View {
     @EnvironmentObject var settingsManager: SettingsManager
 
+
     // Define adaptive columns for the grids
     private let colorColumns = [GridItem(.adaptive(minimum: 60))]
     private let iconColumns = [GridItem(.adaptive(minimum: 80))]

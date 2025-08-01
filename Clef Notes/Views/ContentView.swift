@@ -11,6 +11,8 @@ struct ContentView: View {
     
     @State private var showingAddSheet = false
     
+    @EnvironmentObject var settingsManager: SettingsManager
+    
     @State private var selectedStudent: StudentCD?
     @AppStorage("selectedStudentID") private var selectedStudentID: String?
     @State private var showingSideMenu = false
@@ -30,6 +32,8 @@ struct ContentView: View {
         .sheet(isPresented: $showingSideMenu) {
             SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
                 .presentationSizing(.page)
+                .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme) // <<< ADD THIS
+
         }
         .sheet(isPresented: $showingAddSheet) {
             AddStudentSheetCD(isPresented: $showingAddSheet, selectedStudent: $selectedStudent)
