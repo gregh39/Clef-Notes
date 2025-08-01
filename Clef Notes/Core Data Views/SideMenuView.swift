@@ -85,13 +85,14 @@ struct SideMenuView: View {
                             } label: {
                                 Label("Edit Student", systemImage: "pencil")
                             }
-
+                            .buttonStyle(.plain)
                             Button {
                                 sharingStudent = student
                                 isSharePresented = true
                             } label: {
                                 Label("Share Student", systemImage: "square.and.arrow.up")
                             }
+                            .buttonStyle(.plain)
                         } header: {
                             Text("Actions for \(student.name ?? "Student")")
                         } footer: {
@@ -99,12 +100,17 @@ struct SideMenuView: View {
                         }
                     }
                     
-                    Section("Account") {
-                        NavigationLink(destination: SubscriptionView()) {
-                            Label("Manage Subscription", systemImage: "creditcard.fill")
+                    Section("App Settings") {
+                        NavigationLink(destination: ThemeView()) {
+                            Label("Appearance", systemImage: "paintpalette.fill")
                         }
-                    }
+                        
+                        NavigationLink(destination: SettingsView()) {
+                            Label("Settings", systemImage: "gearshape.fill")
+                        }
 
+                    }
+                    
                     Section("Tools") {
                         NavigationLink(destination: PitchGameView()) {
                             Label("Pitch Game", systemImage: "gamecontroller")
@@ -119,15 +125,15 @@ struct SideMenuView: View {
                             Label("Tuner", systemImage: "tuningfork")
                         }
                         .disabled(!subscriptionManager.canAccessPaidFeatures)
-                        
-                        NavigationLink(destination: ThemeView()) {
-                            Label("Appearance", systemImage: "paintpalette.fill")
-                        }
-                        
-                        NavigationLink(destination: SettingsView()) {
-                            Label("Settings", systemImage: "gearshape.fill")
+                    }
+                    
+                    Section("Account") {
+                        NavigationLink(destination: SubscriptionView()) {
+                            Label("Manage Subscription", systemImage: "creditcard.fill")
                         }
                     }
+
+
                 }
                 .listStyle(.insetGrouped)
             }

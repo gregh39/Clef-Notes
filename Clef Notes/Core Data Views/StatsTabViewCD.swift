@@ -553,7 +553,6 @@ private struct StatItemCD: View {
                 .minimumScaleFactor(0.8)
         }
         .padding(12)
-        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(10)
     }
 }
@@ -580,7 +579,6 @@ private struct StreakItemCD: View {
             Spacer(minLength: 0)
         }
         .padding(5)
-        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(10)
     }
 }

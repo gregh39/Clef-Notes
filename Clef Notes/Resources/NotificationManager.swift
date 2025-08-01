@@ -25,7 +25,7 @@ class NotificationManager {
     }
     
     // Schedules a repeating daily reminder at the user-specified time.
-    func schedulePracticeReminder() {
+    @MainActor func schedulePracticeReminder() {
         let content = UNMutableNotificationContent()
         content.title = "Practice Reminder"
         content.body = "Time for your daily practice session!"

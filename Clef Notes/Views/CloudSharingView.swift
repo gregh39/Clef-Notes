@@ -86,7 +86,6 @@ struct CloudSharingView: View {
                 let (_, newShare, _) = try await container.share([studentInContext], to: nil)
                 
                 newShare[CKShare.SystemFieldKey.title] = student.name
-                newShare.publicPermission = .readWrite
                 
                 try await backgroundContext.perform {
                     try backgroundContext.save()
@@ -223,3 +222,4 @@ struct CloudSharingControllerView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UICloudSharingController, context: Context) {}
 }
+

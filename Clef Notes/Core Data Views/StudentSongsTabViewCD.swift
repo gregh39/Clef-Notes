@@ -113,7 +113,7 @@ struct StudentSongsTabViewCD: View {
                 .presentationDetents([.medium])
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem() {
                     Button {
                         showingFilterSheet = true
                     } label: {

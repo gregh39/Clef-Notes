@@ -99,13 +99,6 @@ private struct PitchListeningView: View {
                 }
 
             })
-             /*
-            Button(tuner.isListening ? "Stop" : "Start Listening") {
-                            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(tuner.isListening ? .red : .accentColor)
-            .padding(.bottom, 40)*/
         }
     }
 }
@@ -204,19 +197,6 @@ private struct DroneView: View {
                 viewModel.toggleDrone()
 
             })
-
-/*
-            Button {
-                viewModel.toggleDrone()
-            } label: {
-                Label(viewModel.isPlayingDrone ? "Stop" : "Start", systemImage: viewModel.isPlayingDrone ? "stop.circle.fill" : "play.circle.fill")
-                    .frame(maxWidth: 250)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(viewModel.isPlayingDrone ? .red : .accentColor)
-            .padding(.bottom, 40)
- */
         }
         .onChange(of: selectedOctave) { _, newOctave in
             let currentNoteName = viewModel.selectedNote.name
@@ -279,12 +259,19 @@ class TunerViewModel: ObservableObject {
         }
     }
 
-    func toggleDrone() {
+    // In class TunerViewModel
+
+    @MainActor func toggleDrone() {
         if isPlayingDrone {
-            droneMixerNode.outputVolume = 0.0
-            stopEngineIfNeeded()
+            // --- FIX START ---
+            // The engine must be stopped *before* the session is released.
+            if audioEngine.isRunning {
+                droneMixerNode.outputVolume = 0.0
+                audioEngine.stop()
+            }
             isPlayingDrone = false
             audioManager.releaseSession(for: .tuner)
+            // --- FIX END ---
         } else {
             let hasSession = audioManager.requestSession(for: .tuner, category: .playback)
             guard hasSession else { return }
@@ -294,8 +281,7 @@ class TunerViewModel: ObservableObject {
             isPlayingDrone = true
         }
     }
-
-    func stopAll() {
+    @MainActor func stopAll() {
         if isPlayingDrone {
             if audioEngine.isRunning {
                 droneMixerNode.outputVolume = 0.0

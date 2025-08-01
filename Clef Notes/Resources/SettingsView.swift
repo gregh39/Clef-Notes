@@ -42,6 +42,8 @@ struct SettingsView: View {
             Section {
                 TextField("Default Session Title", text: $settingsManager.defaultSessionTitle)
             }
+            header: { Text("Default Session Title") }
+            footer: { Text("Enter the default name for new practice sessions") }
             
             Section(header: Text("Practice Reminders")) {
                                                 
@@ -75,8 +77,8 @@ struct SettingsView: View {
             }
             
             Section(header: Text("About")) {
-                Link("Privacy Policy", destination: URL(string: "https://www.example.com/privacy")!)
-                Link("Feedback", destination: URL(string: "mailto:feedback@example.com")!)
+                Link("Privacy Policy", destination: URL(string: "https://www.clefnotes.app/privacy")!)
+                Link("Feedback", destination: URL(string: "mailto:feedback@clefnotes.app")!)
             }
         }
         .navigationTitle("Settings")

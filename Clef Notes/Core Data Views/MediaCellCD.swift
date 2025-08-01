@@ -15,9 +15,10 @@ private struct SheetMusicDetailView: View {
 
     var body: some View {
         NavigationView {
-            VStack {
+            Group { // Use a Group to easily switch between views
                 if let uiImage = UIImage(data: data) {
-                    ScrollView([.horizontal, .vertical]) {
+                    // Use the new ZoomableScrollView
+                    ZoomableScrollView {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFit()
@@ -36,7 +37,6 @@ private struct SheetMusicDetailView: View {
         }
     }
 }
-
 struct MediaCellCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject var media: MediaReferenceCD
@@ -288,4 +288,56 @@ private func extractAppleMusicID(from url: URL) -> MusicItemID? {
         return nil
     }
     return MusicItemID(idString)
+}
+
+import SwiftUI
+
+/// A view that wraps a `UIScrollView` to allow for zooming and panning of its content.
+struct ZoomableScrollView<Content: View>: UIViewRepresentable {
+    private var content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        // Set up the UIScrollView
+        let scrollView = UIScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.maximumZoomScale = 20
+        scrollView.minimumZoomScale = 1
+        scrollView.bouncesZoom = true
+
+        // Create a UIHostingController to hold the SwiftUI content
+        let hostedView = context.coordinator.hostingController.view!
+        hostedView.translatesAutoresizingMaskIntoConstraints = true
+        hostedView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        hostedView.frame = scrollView.bounds
+        scrollView.addSubview(hostedView)
+
+        return scrollView
+    }
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(hostingController: UIHostingController(rootView: self.content))
+    }
+
+    func updateUIView(_ uiView: UIScrollView, context: Context) {
+        // Update the SwiftUI content when it changes
+        context.coordinator.hostingController.rootView = self.content
+    }
+
+    // MARK: - Coordinator
+    class Coordinator: NSObject, UIScrollViewDelegate {
+        var hostingController: UIHostingController<Content>
+
+        init(hostingController: UIHostingController<Content>) {
+            self.hostingController = hostingController
+        }
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            // Return the view that we want to zoom
+            return hostingController.view
+        }
+    }
 }

@@ -143,9 +143,9 @@ struct ThemeView: View {
                             .stroke(settingsManager.appIcon == icon ? settingsManager.activeAccentColor : Color.secondary.opacity(0.5), lineWidth: settingsManager.appIcon == icon ? 3 : 1)
                     )
                 
-                Text(icon.rawValue)
+              /*  Text(icon.rawValue)
                     .font(.caption)
-                    .foregroundColor(settingsManager.appIcon == icon ? .primary : .secondary)
+                    .foregroundColor(settingsManager.appIcon == icon ? .primary : .secondary)*/
             }
         }
         .buttonStyle(.plain)

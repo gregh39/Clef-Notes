@@ -37,8 +37,11 @@ class PitchTunerViewModel: ObservableObject {
         self.audioManager = audioManager
         mic = engine.input!
         mixer = Mixer(mic)
+
         engine.output = mixer
         
+        mixer.volume = 0
+
         // --- FIX: Initialize tracker after other properties are set ---
         // The closure can now safely capture `self` because all other properties are initialized.
         tracker = PitchTap(mic) { [weak self] pitch, amp in

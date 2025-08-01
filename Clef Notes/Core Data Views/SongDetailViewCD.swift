@@ -36,10 +36,67 @@ private struct NoteGroup: Identifiable {
     let notes: [NoteCD]
 }
 
+// MARK: - New Components for Custom Tab Bar
+/// Defines the sections for the custom bottom navigation bar.
+private enum SongDetailSection: String, CaseIterable, Identifiable {
+    case plays = "Plays"
+    case media = "Media"
+    case notes = "Notes"
+
+    var id: String { self.rawValue }
+
+    /// Provides the SF Symbol name for each section.
+    var systemImageName: String {
+        switch self {
+        case .plays:
+            return "music.note.list"
+        case .media:
+            return "folder"
+        case .notes:
+            return "note.text"
+        }
+    }
+}
+
+/// The custom bottom navigation bar view.
+private struct SongDetailBottomNavBar: View {
+    @Binding var selectedSection: SongDetailSection
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        HStack {
+            ForEach(SongDetailSection.allCases) { section in
+                Button(action: {
+                    // Switch to the selected section
+                    selectedSection = section
+                }) {
+                    VStack(spacing: 4) {
+                        Image(systemName: section.systemImageName)
+                            .font(.system(size: 22))
+                        Text(section.rawValue)
+                            .font(.system(size: 10)) // Matched to original
+                    }
+                    // Highlight the selected section
+                    .foregroundColor(selectedSection == section ? .accentColor : .gray)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.top, 5) // Matched to original
+        .padding(.bottom, 35) // Matched to original
+        .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
+    }
+}
+
+
+// MARK: - Main Detail View
 struct SongDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     @ObservedObject var song: SongCD
+
+    // State for the custom navigation bar
+    @State private var selectedSection: SongDetailSection = .plays
 
     @State private var showingEditSheet = false
     @State private var showingAddMediaSheet = false
@@ -58,27 +115,29 @@ struct SongDetailViewCD: View {
         return references + recordings
     }
 
-    // A new computed property to group and sort notes by date
     private var groupedNotes: [NoteGroup] {
         let grouped = Dictionary(grouping: song.notesArray) { note -> Date in
             let dateToUse = note.date ?? note.session?.day ?? .distantPast
             return Calendar.current.startOfDay(for: dateToUse)
         }
         
-        // Map the dictionary to an array of NoteGroup and sort descending by date.
         return grouped.map { NoteGroup(date: $0, notes: $1) }.sorted { $0.date > $1.date }
     }
 
     var body: some View {
-        TabView {
-            playsTab
-                .tabItem { Label("Plays", systemImage: "music.note.list") }
-            
-            mediaTab
-                .tabItem { Label("Media", systemImage: "link") }
+        VStack(spacing: 0) {
+            // Main content area that switches based on the selected section
+            switch selectedSection {
+            case .plays:
+                playsTab
+            case .media:
+                mediaTab
+            case .notes:
+                notesTab
+            }
 
-            notesTab
-                .tabItem { Label("Notes", systemImage: "note.text") }
+            // The custom navigation bar is placed at the bottom
+            SongDetailBottomNavBar(selectedSection: $selectedSection)
         }
         .navigationTitle(song.title ?? "Song")
         .toolbar {
@@ -86,10 +145,15 @@ struct SongDetailViewCD: View {
                 Button {
                     showingAddMediaSheet = true
                 } label: {
-                    Label("Add Media", systemImage: "plus")
+                    Label("Add Media", systemImage: "folder.badge.plus")
                 }
                 
-                Button("Edit") { showingEditSheet = true }
+                Button {
+                    showingEditSheet = true
+                }
+                label: {
+                    Label("Edit Song", systemImage: "square.and.pencil")
+                }
             }
         }
         .sheet(isPresented: $showingEditSheet) {
@@ -101,13 +165,13 @@ struct SongDetailViewCD: View {
         .sheet(item: $noteToEdit) { note in
             AddNoteSheetCD(note: note)
         }
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private var playsTab: some View {
         PlaysListViewCD(song: song, context: viewContext)
     }
 
-    // --- THIS IS THE FIX: The media tab is now sectioned by type ---
     private var mediaTab: some View {
         let groupedMedia = Dictionary(grouping: allMediaItems, by: { $0.mediaType })
         let sortedKeys = groupedMedia.keys.sorted()

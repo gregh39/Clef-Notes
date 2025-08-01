@@ -14,7 +14,7 @@ enum StudentDetailSection: String, CaseIterable, Identifiable {
     var systemImageName: String {
         switch self {
         case .sessions: "calendar"
-        case .songs: "music.note.list"
+        case .songs: "music.note"
         case .stats: "chart.bar"
         case .awards: "rosette"
         case .notes: "note.text"
@@ -92,7 +92,7 @@ struct StudentDetailNavigationView: View {
                     }
                 } else if selectedSection == .notes {
                     Button(action: { triggerAddNote = true }) {
-                        Label("Add Note", systemImage: "plus")
+                        Label("Add Note", systemImage: "note.text.badge.plus")
                     }
                 }
             }
