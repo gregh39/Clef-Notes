@@ -9,6 +9,8 @@
 import SwiftUI
 
 struct SaveButtonView: View {
+    @EnvironmentObject var settingsManager: SettingsManager
+
     let title: String
     let action: () -> Void
     var isDisabled: Bool = false
@@ -20,7 +22,7 @@ struct SaveButtonView: View {
                 .fontWeight(.bold)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isDisabled ? Color.gray : Color.accentColor)
+                .background(isDisabled ? Color.gray : settingsManager.activeAccentColor)
                 .foregroundColor(.white)
                 .cornerRadius(12)
         }

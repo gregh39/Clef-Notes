@@ -22,14 +22,45 @@ class AudioManager: ObservableObject {
     func requestSession(for client: AudioClient, category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions = []) -> Bool {
         let session = AVAudioSession.sharedInstance()
         
+        print("AudioManager: Requesting session for \(client)")
+        
         if activeClient != nil && activeClient != client {
             print("AudioManager: Deactivating previous client (\(String(describing: activeClient))) for new client (\(client)).")
         }
         
         do {
-            try session.setActive(false)
-            try session.setCategory(category, mode: .default, options: options)
-            try session.setActive(true)
+            // Special handling for tuner - it needs a clean audio session
+            if client == .tuner {
+                print("AudioManager: Setting up clean session for tuner...")
+                
+                // Deactivate any existing session
+                try session.setActive(false, options: .notifyOthersOnDeactivation)
+                
+                // Small delay to ensure clean deactivation
+                Thread.sleep(forTimeInterval: 0.2)
+                
+                // Set category and options specifically for recording
+                try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
+                
+                // Activate the session
+                try session.setActive(true)
+                
+                // Verify input is available
+                guard session.isInputAvailable else {
+                    print("AudioManager: Input not available after session setup")
+                    return false
+                }
+                
+                print("AudioManager: Tuner session configured successfully")
+                print("AudioManager: Input available: \(session.isInputAvailable)")
+                print("AudioManager: Current route: \(session.currentRoute)")
+                
+            } else {
+                // Standard handling for other clients
+                try session.setActive(false)
+                try session.setCategory(category, mode: .default, options: options)
+                try session.setActive(true)
+            }
             
             self.activeClient = client
             print("AudioManager: Session activated for \(client).")

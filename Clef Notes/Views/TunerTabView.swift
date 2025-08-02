@@ -50,55 +50,75 @@ private struct TunerTabContentView: View {
         }
         .onDisappear {
             // Stop both engines when the view disappears
-            droneViewModel.stopAll()
-            pitchTunerViewModel.stop()
+            stopAllAudio()
         }
-        .onChange(of: tunerMode) {
-            // Stop the inactive tuner to release audio resources
-            if tunerMode == .listening {
-                droneViewModel.stopAll()
-            } else {
-                pitchTunerViewModel.stop()
+        .onChange(of: tunerMode) { _, newMode in
+            // --- FIX: Proper mode switching ---
+            stopAllAudio()
+            
+            // Small delay to ensure proper cleanup
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Mode switching is now handled by the individual start methods
             }
         }
     }
+    
+    private func stopAllAudio() {
+        droneViewModel.stopAll()
+        pitchTunerViewModel.stop()
+    }
 }
-
 
 // MARK: - Pitch Listening UI
 private struct PitchListeningView: View {
     @ObservedObject var tuner: PitchTunerViewModel
+    @State private var showingError = false
+    @State private var errorMessage = ""
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            Text("Play a note on your instrument...")
-                .font(.headline)
-                .foregroundColor(.secondary)
+            
+            if tuner.isListening {
+                Text("Listening...")
+                    .font(.headline)
+                    .foregroundColor(.green)
+            } else {
+                Text("Tap Start to begin listening")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+            }
 
             // The main tuner display
             VStack {
                 Text(tuner.detectedNoteName)
                     .font(.system(size: 120, weight: .bold, design: .rounded))
+                    .foregroundColor(tuner.isListening ? .primary : .secondary)
+                    
                 Text("\(tuner.detectedFrequency, specifier: "%.1f") Hz")
                     .font(.title2)
+                    .foregroundColor(.secondary)
             }
             .padding(.vertical, 40)
 
             // Visual feedback meter
             TunerMeter(distance: $tuner.distance)
+                .opacity(tuner.isListening ? 1.0 : 0.3)
 
             Spacer()
                            
-            SaveButtonView(title: tuner.isListening ? "Stop" : "Start Listening", action: {
-                
+            SaveButtonView(title: tuner.isListening ? "Stop Listening" : "Start Listening", action: {
                 if tuner.isListening {
                     tuner.stop()
                 } else {
                     tuner.start()
                 }
-
             })
+        }
+        .alert("Tuner Error", isPresented: $showingError) {
+            Button("OK") { showingError = false }
+        } message: {
+            Text(errorMessage)
         }
     }
 }
@@ -110,27 +130,40 @@ private struct TunerMeter: View {
 
     var body: some View {
         ZStack(alignment: .center) {
+            // Background track
             Capsule()
                 .fill(Color.gray.opacity(0.2))
                 .frame(height: 30)
                 .overlay(Capsule().stroke(Color.gray.opacity(0.4), lineWidth: 1))
             
+            // Center indicator (needle)
             Rectangle()
                 .fill(isPerfectTune ? .green : Color.accentColor)
                 .frame(width: 4, height: 40)
                 .offset(x: CGFloat(distance) * 150)
-                .animation(.spring(), value: distance)
+                .animation(.spring(response: 0.3), value: distance)
                 .shadow(radius: 3)
             
+            // Perfect tune indicator (center line)
             Rectangle()
                 .fill(.green.opacity(0.5))
                 .frame(width: 2, height: 30)
+            
+            // Tick marks for reference
+            HStack(spacing: 0) {
+                ForEach(-3...3, id: \.self) { tick in
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.6))
+                        .frame(width: 1, height: tick == 0 ? 20 : 10)
+                        .frame(maxWidth: .infinity)
+                }
+            }
         }
         .padding()
     }
 }
 
-// MARK: - Drone Tone UI
+// MARK: - Updated Drone View
 private struct DroneView: View {
     @ObservedObject var viewModel: TunerViewModel
     @State private var selectedOctave: Int = 4
@@ -174,29 +207,41 @@ private struct DroneView: View {
 
             Spacer()
             
+            // Visual feedback for drone
             ZStack {
                 Circle()
-                    .stroke(lineWidth: 10)
+                    .stroke(lineWidth: 8)
                     .frame(width: 100, height: 100)
-                    .foregroundColor(.accentColor.opacity(viewModel.isPlayingDrone ? 0.5 : 0))
-                    .scaleEffect(viewModel.isPlayingDrone ? 1.2 : 1.0)
-                    .animation(viewModel.isPlayingDrone ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true) : .default, value: viewModel.isPlayingDrone)
+                    .foregroundColor(.accentColor.opacity(viewModel.isPlayingDrone ? 0.3 : 0.1))
+                    .scaleEffect(viewModel.isPlayingDrone ? 1.1 : 1.0)
+                    .animation(
+                        viewModel.isPlayingDrone ?
+                        .easeInOut(duration: 1.0).repeatForever(autoreverses: true) :
+                        .default,
+                        value: viewModel.isPlayingDrone
+                    )
 
-                VStack {
-                    Text("Drone Tone").font(.largeTitle).bold()
-                    Text("\(viewModel.selectedNote.name): \(viewModel.targetFrequency, specifier: "%.1f") Hz")
-                        .font(.title2)
+                VStack(spacing: 4) {
+                    Image(systemName: viewModel.isPlayingDrone ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                        .font(.title)
+                        .foregroundColor(viewModel.isPlayingDrone ? .accentColor : .secondary)
+                    
+                    Text(viewModel.selectedNote.name)
+                        .font(.title2.bold())
+                        .foregroundColor(.primary)
+                        
+                    Text("\(viewModel.targetFrequency, specifier: "%.1f") Hz")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             
             Spacer()
             
-            SaveButtonView(title: viewModel.isPlayingDrone ? "Stop" : "Start", action: {
-                
-                viewModel.toggleDrone()
-
-            })
+            SaveButtonView(
+                title: viewModel.isPlayingDrone ? "Stop Drone" : "Start Drone",
+                action: { viewModel.toggleDrone() }
+            )
         }
         .onChange(of: selectedOctave) { _, newOctave in
             let currentNoteName = viewModel.selectedNote.name
@@ -210,6 +255,8 @@ private struct DroneView: View {
         }
     }
 }
+
+// ... rest of your TuningNote and TunerViewModel classes remain the same
 
 // MARK: - Drone ViewModel and Helpers
 

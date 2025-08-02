@@ -63,14 +63,14 @@ struct SettingsView: View {
             }
             
             Section(header: Text("Data Management")) {
-                Button("Export All Student Data") {
+                /*Button("Export All Student Data") {
                     if let student = students.first {
                         exportURL = dataExporter.exportStudentToCSV(student: student)
                         if exportURL != nil {
                             showingExportSheet = true
                         }
                     }
-                }
+                }*/
                 NavigationLink("Cloud Sync Status") {
                     CloudSyncStatusView()
                 }

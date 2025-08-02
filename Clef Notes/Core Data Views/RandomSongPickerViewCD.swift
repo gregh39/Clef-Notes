@@ -8,6 +8,8 @@ struct RandomSongPickerViewCD: View {
     @State private var isSpinning: Bool = false
     @State private var selectedStatuses: Set<PlayType> = []
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var settingsManager: SettingsManager // <<< ADD THIS LINE
+
     
     var body: some View {
         NavigationStack {
