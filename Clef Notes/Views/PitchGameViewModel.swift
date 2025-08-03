@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import SwiftUI
+import TelemetryDeck
 
 @MainActor
 @Observable
@@ -30,12 +31,14 @@ class PitchGameViewModel {
         questionsAsked = 0
         isGameOver = false
         isGameActive = true // Activate the game
+        TelemetryDeck.signal("pitch_game_started")
         nextRound()
     }
 
     func nextRound() {
         guard questionsAsked < 10 else {
             isGameOver = true
+            TelemetryDeck.signal("pitch_game_ended", parameters: ["score": "\(score)", "questions": "\(questionsAsked)"])
             feedbackMessage = "Game Over! Your final score is \(score)/10."
             return
         }
@@ -78,3 +81,4 @@ class PitchGameViewModel {
         }
     }
 }
+

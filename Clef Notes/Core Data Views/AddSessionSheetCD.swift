@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import TelemetryDeck
 
 struct AddSessionSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -141,6 +142,9 @@ struct AddSessionSheetCD: View {
 
         do {
             try viewContext.save()
+            let instrument = student.instrument ?? "unknown"
+            let sessionCount = (student.sessionsArray.count)
+            TelemetryDeck.signal("session_created", parameters: ["instrument": instrument, "session_count": "\(sessionCount)"])
             if timeThisSession {
                 sessionTimerManager.start(session: newSession)
             }

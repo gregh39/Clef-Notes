@@ -1,5 +1,5 @@
 {
-  "originHash" : "b7a70b41bcaa063da0b459ec94ec6ab0dbd771e26dd625f32cea3c11bc16ccee",
+  "originHash" : "8d7973fbca51f5beb110a343a4c5c34367001fd0b2000ba10c679b2d28a29cdf",
   "pins" : [
     {
       "identity" : "audiokit",
@@ -29,21 +29,12 @@
       }
     },
     {
-      "identity" : "popovers",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/aheze/Popovers",
-      "state" : {
-        "revision" : "de44c4dd7271ec6413fe350f7efadb14e5e18dce",
-        "version" : "1.3.2"
-      }
-    },
-    {
       "identity" : "purchases-ios-spm",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RevenueCat/purchases-ios-spm.git",
       "state" : {
-        "revision" : "709554156bb93c909b362e0b30ec0f2afee3df6e",
-        "version" : "5.33.1"
+        "revision" : "d9155fd20755ce900878275d56e4878c7fdfe2c1",
+        "version" : "5.34.0"
       }
     },
     {
@@ -53,6 +44,15 @@
       "state" : {
         "revision" : "efc0d67d3e19578b84d47cac4df72c497fb2173e",
         "version" : "5.7.3"
+      }
+    },
+    {
+      "identity" : "swiftsdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/TelemetryDeck/SwiftSDK",
+      "state" : {
+        "revision" : "a7fd1eb469589a3c8fd8cc3abe19b092b5d674dc",
+        "version" : "2.9.4"
       }
     },
     {

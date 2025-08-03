@@ -2,6 +2,7 @@ import Foundation
 import CoreData
 import SwiftUI
 import Combine
+import TelemetryDeck
 
 @MainActor
 class SessionTimerManager: ObservableObject {
@@ -25,6 +26,7 @@ class SessionTimerManager: ObservableObject {
         stop() // Ensure any previous session is stopped
         
         activeSession = session
+        TelemetryDeck.signal("session_timer_started")
         accumulatedTime = TimeInterval(session.durationMinutes * 60)
         isPaused = false
         resume()
@@ -39,6 +41,7 @@ class SessionTimerManager: ObservableObject {
             let finalDuration = isPaused ? accumulatedTime : accumulatedTime + Date().timeIntervalSince(startTime ?? Date())
             session.durationMinutes = Int64(finalDuration / 60)
             saveContext()
+            TelemetryDeck.signal("session_timer_stopped", parameters: ["duration_minutes": "\(session.durationMinutes)"])
         }
 
         activeSession = nil
@@ -58,6 +61,7 @@ class SessionTimerManager: ObservableObject {
         let elapsed = Date().timeIntervalSince(startTime)
         accumulatedTime += elapsed
         isPaused = true
+        TelemetryDeck.signal("session_timer_paused")
         
         // Update the display to the exact paused time
         self.elapsedTimeString = self.formatTime(seconds: accumulatedTime)
@@ -71,6 +75,7 @@ class SessionTimerManager: ObservableObject {
 
         startTime = Date()
         isPaused = false
+        TelemetryDeck.signal("session_timer_resumed")
         
         // Re-register background task when resuming
         registerBackgroundTask()

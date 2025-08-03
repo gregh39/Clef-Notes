@@ -4,6 +4,7 @@ import SwiftUI
 import CoreData
 import RevenueCat
 import TipKit
+import TelemetryDeck
 
 @main
 struct Clef_NotesApp: App {
@@ -27,6 +28,9 @@ struct Clef_NotesApp: App {
         ])
         //try? Tips.resetDatastore()
         //Tips.showAllTipsForTesting()
+        let config = TelemetryDeck.Config(appID: getAPIKey(named: "TelemetryDeckAPIKey"))
+        TelemetryDeck.initialize(config: config)
+
 
     }
         
@@ -46,4 +50,12 @@ struct Clef_NotesApp: App {
                }
         }
     }
+    
+    private func getAPIKey(named keyName: String) -> String {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: keyName) as? String else {
+            fatalError("API Key '\(keyName)' not found in Info.plist. Make sure it's set in your Keys.xcconfig file.")
+        }
+        return value
+    }
+
 }

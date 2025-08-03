@@ -17,6 +17,7 @@
 import Foundation
 import CoreData
 import Combine
+import TelemetryDeck
 
 @objc(SongCD)
 public class SongCD: NSManagedObject {
@@ -25,6 +26,7 @@ public class SongCD: NSManagedObject {
 
     public override func awakeFromInsert() {
         super.awakeFromInsert()
+        TelemetryDeck.signal("song_created")
         observeContext()
     }
 
@@ -39,17 +41,25 @@ public class SongCD: NSManagedObject {
             .sink { [weak self] notification in
                 guard let self = self else { return }
                 // Check if any changed PlayCDs relate to this song
-                if let updated = notification.userInfo?[NSUpdatedObjectsKey] as? Set<NSManagedObject>,
-                   updated.contains(where: { ($0 as? PlayCD)?.song == self }) {
-                    self.objectWillChange.send()
+                if let updated = notification.userInfo?[NSUpdatedObjectsKey] as? Set<NSManagedObject> {
+                    if updated.contains(self) {
+                        TelemetryDeck.signal("song_edited")
+                    }
+                    if updated.contains(where: { ($0 as? PlayCD)?.song == self }) {
+                        self.objectWillChange.send()
+                    }
                 }
                 if let inserted = notification.userInfo?[NSInsertedObjectsKey] as? Set<NSManagedObject>,
                    inserted.contains(where: { ($0 as? PlayCD)?.song == self }) {
                     self.objectWillChange.send()
                 }
-                if let deleted = notification.userInfo?[NSDeletedObjectsKey] as? Set<NSManagedObject>,
-                   deleted.contains(where: { ($0 as? PlayCD)?.song == self }) {
-                    self.objectWillChange.send()
+                if let deleted = notification.userInfo?[NSDeletedObjectsKey] as? Set<NSManagedObject> {
+                    if deleted.contains(self) {
+                        TelemetryDeck.signal("song_deleted")
+                    }
+                    if deleted.contains(where: { ($0 as? PlayCD)?.song == self }) {
+                        self.objectWillChange.send()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -240,3 +250,4 @@ extension SongCD {
 extension SongCD : Identifiable {
 
 }
+

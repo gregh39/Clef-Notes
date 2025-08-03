@@ -7,12 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		370336322E3479FA005157A3 /* ReceiptParser in Frameworks */ = {isa = PBXBuildFile; productRef = 370336312E3479FA005157A3 /* ReceiptParser */; };
-		370336342E3479FA005157A3 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 370336332E3479FA005157A3 /* RevenueCat */; };
-		370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 370336352E3479FA005157A3 /* RevenueCatUI */; };
 		3712E1962E348DBD005E3518 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3712E1952E348DBD005E3518 /* AudioKit */; };
 		371DFAE92E348FD000DEF10A /* SoundpipeAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */; };
-		37C2D8AF2E398E630023C276 /* Popovers in Frameworks */ = {isa = PBXBuildFile; productRef = 37C2D8AE2E398E630023C276 /* Popovers */; };
+		37DB4EB12E3F9BDB0022AAC8 /* TelemetryClient in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EB02E3F9BDB0022AAC8 /* TelemetryClient */; };
+		37DB4EB32E3F9BDB0022AAC8 /* TelemetryDeck in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EB22E3F9BDB0022AAC8 /* TelemetryDeck */; };
+		37DB4EBF2E3FA0E20022AAC8 /* ReceiptParser in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EBE2E3FA0E20022AAC8 /* ReceiptParser */; };
+		37DB4EC12E3FA0E20022AAC8 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EC02E3FA0E20022AAC8 /* RevenueCat */; };
+		37DB4EC32E3FA0E20022AAC8 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EC22E3FA0E20022AAC8 /* RevenueCatUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,28 +25,16 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				"Resources/Color+Codable.swift",
 			);
 			target = 37F1716C2DF91DFF009C3656 /* Clef Notes */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		37C2D7F22E38729F0023C276 /* Exceptions for "Clef Notes" folder in "Copy Bundle Resources" phase from "Clef Notes" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 37F1716B2DF91DFF009C3656 /* Resources */;
-			membershipExceptions = (
-				"Resources/Color+Codable.swift",
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		37F1716F2DF91DFF009C3656 /* Clef Notes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				37F1717A2DF91E00009C3656 /* Exceptions for "Clef Notes" folder in "Clef Notes" target */,
-				37C2D7F22E38729F0023C276 /* Exceptions for "Clef Notes" folder in "Copy Bundle Resources" phase from "Clef Notes" target */,
 			);
 			path = "Clef Notes";
 			sourceTree = "<group>";
@@ -57,12 +46,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				37C2D8AF2E398E630023C276 /* Popovers in Frameworks */,
-				370336342E3479FA005157A3 /* RevenueCat in Frameworks */,
 				371DFAE92E348FD000DEF10A /* SoundpipeAudioKit in Frameworks */,
-				370336322E3479FA005157A3 /* ReceiptParser in Frameworks */,
 				3712E1962E348DBD005E3518 /* AudioKit in Frameworks */,
-				370336362E3479FA005157A3 /* RevenueCatUI in Frameworks */,
+				37DB4EC32E3FA0E20022AAC8 /* RevenueCatUI in Frameworks */,
+				37DB4EC12E3FA0E20022AAC8 /* RevenueCat in Frameworks */,
+				37DB4EB12E3F9BDB0022AAC8 /* TelemetryClient in Frameworks */,
+				37DB4EB32E3F9BDB0022AAC8 /* TelemetryDeck in Frameworks */,
+				37DB4EBF2E3FA0E20022AAC8 /* ReceiptParser in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,12 +103,13 @@
 			);
 			name = "Clef Notes";
 			packageProductDependencies = (
-				370336312E3479FA005157A3 /* ReceiptParser */,
-				370336332E3479FA005157A3 /* RevenueCat */,
-				370336352E3479FA005157A3 /* RevenueCatUI */,
 				3712E1952E348DBD005E3518 /* AudioKit */,
 				371DFAE82E348FD000DEF10A /* SoundpipeAudioKit */,
-				37C2D8AE2E398E630023C276 /* Popovers */,
+				37DB4EB02E3F9BDB0022AAC8 /* TelemetryClient */,
+				37DB4EB22E3F9BDB0022AAC8 /* TelemetryDeck */,
+				37DB4EBE2E3FA0E20022AAC8 /* ReceiptParser */,
+				37DB4EC02E3FA0E20022AAC8 /* RevenueCat */,
+				37DB4EC22E3FA0E20022AAC8 /* RevenueCatUI */,
 			);
 			productName = "Clef Notes";
 			productReference = 37F1716D2DF91DFF009C3656 /* Clef Notes.app */;
@@ -149,10 +140,10 @@
 			mainGroup = 37F171642DF91DFF009C3656;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 				3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */,
 				371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */,
-				37C2D8AD2E398E630023C276 /* XCRemoteSwiftPackageReference "Popovers" */,
+				37DB4EAF2E3F9BDB0022AAC8 /* XCRemoteSwiftPackageReference "SwiftSDK" */,
+				37DB4EBD2E3FA0E20022AAC8 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 37F1716E2DF91DFF009C3656 /* Products */;
@@ -426,14 +417,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.33.1;
-			};
-		};
 		3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/AudioKit/AudioKit";
@@ -450,32 +433,25 @@
 				minimumVersion = 5.7.3;
 			};
 		};
-		37C2D8AD2E398E630023C276 /* XCRemoteSwiftPackageReference "Popovers" */ = {
+		37DB4EAF2E3F9BDB0022AAC8 /* XCRemoteSwiftPackageReference "SwiftSDK" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/aheze/Popovers";
+			repositoryURL = "https://github.com/TelemetryDeck/SwiftSDK";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.2;
+				minimumVersion = 2.9.4;
+			};
+		};
+		37DB4EBD2E3FA0E20022AAC8 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.34.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		370336312E3479FA005157A3 /* ReceiptParser */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
-			productName = ReceiptParser;
-		};
-		370336332E3479FA005157A3 /* RevenueCat */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
-			productName = RevenueCat;
-		};
-		370336352E3479FA005157A3 /* RevenueCatUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 370336302E3479FA005157A3 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
-			productName = RevenueCatUI;
-		};
 		3712E1952E348DBD005E3518 /* AudioKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3712E1912E348C80005E3518 /* XCRemoteSwiftPackageReference "AudioKit" */;
@@ -486,10 +462,30 @@
 			package = 371DFAE72E348FD000DEF10A /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */;
 			productName = SoundpipeAudioKit;
 		};
-		37C2D8AE2E398E630023C276 /* Popovers */ = {
+		37DB4EB02E3F9BDB0022AAC8 /* TelemetryClient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 37C2D8AD2E398E630023C276 /* XCRemoteSwiftPackageReference "Popovers" */;
-			productName = Popovers;
+			package = 37DB4EAF2E3F9BDB0022AAC8 /* XCRemoteSwiftPackageReference "SwiftSDK" */;
+			productName = TelemetryClient;
+		};
+		37DB4EB22E3F9BDB0022AAC8 /* TelemetryDeck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 37DB4EAF2E3F9BDB0022AAC8 /* XCRemoteSwiftPackageReference "SwiftSDK" */;
+			productName = TelemetryDeck;
+		};
+		37DB4EBE2E3FA0E20022AAC8 /* ReceiptParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 37DB4EBD2E3FA0E20022AAC8 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = ReceiptParser;
+		};
+		37DB4EC02E3FA0E20022AAC8 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 37DB4EBD2E3FA0E20022AAC8 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		37DB4EC22E3FA0E20022AAC8 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 37DB4EBD2E3FA0E20022AAC8 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

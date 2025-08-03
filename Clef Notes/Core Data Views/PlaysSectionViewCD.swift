@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreData
 import Combine
+import TelemetryDeck
 
 @MainActor
 class PlaysSectionViewModel: ObservableObject {
@@ -46,7 +47,10 @@ struct PlaysSectionViewCD: View {
     var body: some View {
         Section("Session Plays") {
             if viewModel.plays.isEmpty {
-                Button(action: { showingAddPlaySheet = true }) {
+                Button(action: {
+                    TelemetryDeck.signal("play_created")
+                    showingAddPlaySheet = true
+                }) {
                     Label("Add Play", systemImage: "music.note.list")
                         .padding()
                         .frame(maxWidth: .infinity)
@@ -66,7 +70,10 @@ struct PlaysSectionViewCD: View {
                 }
                 .onDelete(perform: deletePlay)
                 
-                Button(action: { showingAddPlaySheet = true }) {
+                Button(action: {
+                    TelemetryDeck.signal("play_created")
+                    showingAddPlaySheet = true
+                }) {
                     Label("Add Another Play", systemImage: "plus")
                 }
             }
@@ -79,6 +86,7 @@ struct PlaysSectionViewCD: View {
             viewContext.delete(playToDelete)
         }
         try? viewContext.save()
+        TelemetryDeck.signal("play_deleted")
     }
 }
 

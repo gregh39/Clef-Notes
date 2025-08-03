@@ -2,6 +2,7 @@
 
 import SwiftUI
 import AVFoundation
+import TelemetryDeck
 
 private enum MetronomeVisualizerType: String, CaseIterable, Identifiable {
     case pulse = "Pulse"
@@ -157,8 +158,10 @@ struct MetronomeSectionView: View {
                 isPlaying = false
                 return
             }
+            TelemetryDeck.signal("metronome_started", parameters: ["bpm": "\(Int(bpm))"])
             startMetronome()
         } else {
+            TelemetryDeck.signal("metronome_stopped", parameters: ["bpm": "\(Int(bpm))"])
             stopMetronome()
         }
     }

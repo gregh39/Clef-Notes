@@ -108,7 +108,7 @@ public enum Instrument: String, CaseIterable, Identifiable {
     case violin = "Violin"
     case viola = "Viola"
     case cello = "Cello"
-    case doubleBass = "Double Bass"
+    case doubleBass = "Bass"
     case harp = "Harp"
 
     // Woodwinds

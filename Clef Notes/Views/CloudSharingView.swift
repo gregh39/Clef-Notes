@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreData
 import CloudKit
+import TelemetryDeck
 
 struct CloudSharingView: View {
     let student: StudentCD
@@ -92,6 +93,8 @@ struct CloudSharingView: View {
                 }
                 
                 self.share = newShare
+                
+                TelemetryDeck.signal("profile_shared")
             }
         } catch {
             self.error = error

@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import TelemetryDeck
 
 struct EditSessionSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -131,9 +132,12 @@ struct EditSessionSheetCD: View {
 
         do {
             try viewContext.save()
+            TelemetryDeck.signal("session_edited")
             dismiss()
         } catch {
+            TelemetryDeck.signal("session_edit_failed")
             print("Failed to save session changes: \(error)")
         }
     }
 }
+

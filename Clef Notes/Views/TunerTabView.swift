@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import Combine
+import TelemetryDeck
 
 // An enum to manage the tuner state
 private enum TunerMode: String, CaseIterable, Identifiable {
@@ -111,6 +112,8 @@ private struct PitchListeningView: View {
                 if tuner.isListening {
                     tuner.stop()
                 } else {
+                    tuner.start()
+                    tuner.stop()
                     tuner.start()
                 }
             })
@@ -326,6 +329,7 @@ class TunerViewModel: ObservableObject {
             startEngine()
             droneMixerNode.outputVolume = droneVolume
             isPlayingDrone = true
+            TelemetryDeck.signal("drone_started")
         }
     }
     @MainActor func stopAll() {
@@ -393,3 +397,4 @@ class TunerViewModel: ObservableObject {
         droneMixerNode.outputVolume = 0.0
     }
 }
+

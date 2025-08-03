@@ -3,6 +3,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import TelemetryDeck
 
 enum ColorSchemeSetting: String, CaseIterable, Identifiable {
     case system = "System"
@@ -58,8 +59,16 @@ class SettingsManager: ObservableObject {
     @Published var practiceReminderTime: Date
 
     // MARK: - Tools
-    @AppStorage("a4Frequency") var a4Frequency: Double = 440.0
-    @AppStorage("tunerTransposition") var tunerTransposition: Int = 0 // In semitones
+    @AppStorage("a4Frequency") var a4Frequency: Double = 440.0 {
+        willSet {
+            TelemetryDeck.signal("settings_changed", parameters: ["setting": "A4_frequency", "new_value": "\(newValue)"])
+        }
+    }
+    @AppStorage("tunerTransposition") var tunerTransposition: Int = 0 { // In semitones
+        willSet {
+            TelemetryDeck.signal("settings_changed", parameters: ["setting": "transposition", "new_value": "\(newValue)"])
+        }
+    }
 
     // MARK: - Awards & Notifications
     @AppStorage("awardNotificationsEnabled") var awardNotificationsEnabled: Bool = true

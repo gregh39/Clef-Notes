@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import TelemetryDeck
 
 @objc(StudentCD)
 public class StudentCD: NSManagedObject {
@@ -46,6 +47,9 @@ extension StudentCD {
         }
         set {
             self.instrument = newValue?.rawValue
+            if let instrument = newValue?.rawValue {
+                TelemetryDeck.signal("student_instrument_set", parameters: ["instrument": instrument])
+            }
         }
     }
     

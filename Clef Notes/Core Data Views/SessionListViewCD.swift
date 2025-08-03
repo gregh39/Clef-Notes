@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import TelemetryDeck
 
 struct SessionListViewCD: View {
     @ObservedObject var student: StudentCD
@@ -112,8 +113,10 @@ struct SessionListViewCD: View {
         context.delete(session)
         do {
             try context.save()
+            TelemetryDeck.signal("session_deleted")
         } catch {
             print("Error deleting session: \(error)")
+            TelemetryDeck.signal("session_delete_failed")
         }
         sessionToDelete = nil
     }
