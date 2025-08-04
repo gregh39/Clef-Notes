@@ -93,8 +93,10 @@
         <relationship name="songs" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SongCD" inverseName="student" inverseEntity="SongCD"/>
     </entity>
     <entity name="UsageTrackerCD" representedClassName="UsageTrackerCD" syncable="YES">
+        <attribute name="totalMetronomeOpens" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="totalSessionsCreated" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="totalSongsCreated" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="totalStudentsCreated" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="totalTunerOpens" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
     </entity>
 </model>

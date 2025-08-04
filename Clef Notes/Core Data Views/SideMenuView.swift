@@ -1,5 +1,39 @@
 import SwiftUI
 import CoreData
+import SafariServices
+import MessageUI
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
+}
+
+struct MailView: UIViewControllerRepresentable {
+    @Environment(\.presentationMode) var presentation
+    let recipient: String
+    let subject: String
+    let body: String
+    class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+        let parent: MailView
+        init(_ parent: MailView) { self.parent = parent }
+        func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+            parent.presentation.wrappedValue.dismiss()
+        }
+    }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIViewController(context: Context) -> MFMailComposeViewController {
+        let vc = MFMailComposeViewController()
+        vc.setToRecipients([recipient])
+        vc.setSubject(subject)
+        vc.setMessageBody(body, isHTML: false)
+        vc.mailComposeDelegate = context.coordinator
+        return vc
+    }
+    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+}
 
 struct SideMenuView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -15,12 +49,15 @@ struct SideMenuView: View {
 
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var settingsManager: SettingsManager // <<< ADD THIS LINE
+    @EnvironmentObject var usageManager: UsageManager
 
 
     @State private var showingEditStudentSheet = false
     @State private var isSharePresented = false
     @State private var studentToDelete: StudentCD?
     @State private var sharingStudent: StudentCD? = nil
+    @State private var showingPrivacyPolicy = false
+    @State private var showingMailComposer = false
 
     // Computed property to sort students with the selected one first
     private var sortedStudents: [StudentCD] {
@@ -84,6 +121,7 @@ struct SideMenuView: View {
                         Section {
                             Button {
                                 showingEditStudentSheet = true
+                                
                             } label: {
                                 Label("Edit Student", systemImage: "pencil")
                             }
@@ -98,35 +136,38 @@ struct SideMenuView: View {
                         } header: {
                             Text("Actions for \(student.name ?? "Student")")
                         } footer: {
-                            Text("Long-press on a student's icon above to delete them.")
+                            Text("Long-press a student's icon to delete.")
                         }
                     }
                     
-                    Section("App Settings") {
-                        NavigationLink(destination: ThemeView()) {
-                            Label("Appearance", systemImage: "paintpalette.fill")
+                    ToolsSectionView()
+                        .environmentObject(subscriptionManager)
+                        .environmentObject(usageManager)
+                    
+                    Section("Support") {
+                        Button(action: { showingPrivacyPolicy = true }) {
+                            Label("Privacy Policy", systemImage: "doc.text")
                         }
-                        
-                        NavigationLink(destination: SettingsView()) {
-                            Label("Settings", systemImage: "gearshape.fill")
+                        .sheet(isPresented: $showingPrivacyPolicy) {
+                            SafariView(url: URL(string: "https://clefnotes.app/privacy.html")!)
                         }
+                        .buttonStyle(.plain)
+                        Button(action: {
+                            let email = "feedback@clefnotes.app"
+                            let subject = "ClefNotes Feedback"
+                            let body = ""
+                            let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            let urlString = "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)"
+                            if let url = URL(string: urlString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            Label("Send Feedback", systemImage: "envelope.fill")
+                        }
+                        .buttonStyle(.plain)
 
-                    }
-                    
-                    Section("Tools") {
-                        NavigationLink(destination: PitchGameView()) {
-                            Label("Pitch Game", systemImage: "gamecontroller")
-                        }
                         
-                        NavigationLink(destination: MetronomeSectionView()) {
-                            Label("Metronome", systemImage: "metronome")
-                        }
-                        .disabled(!subscriptionManager.canAccessPaidFeatures)
-                        
-                        NavigationLink(destination: TunerTabView()) {
-                            Label("Tuner", systemImage: "tuningfork")
-                        }
-                        .disabled(!subscriptionManager.canAccessPaidFeatures)
                     }
                     
                     Section("Account") {
@@ -134,6 +175,8 @@ struct SideMenuView: View {
                             Label("Manage Subscription", systemImage: "creditcard.fill")
                         }
                     }
+                    
+
 
 
                 }
@@ -231,6 +274,70 @@ private struct StudentIconView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
         )
+    }
+}
+
+private struct ToolsSectionView: View {
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var usageManager: UsageManager
+
+    @State private var showPaywallView = false
+    
+    var body: some View {
+        if !subscriptionManager.isSubscribed {
+            Section {
+                NavigationLink(destination:
+                    PaywallView()
+                ) {
+                    Label("Subscribe to ClefNotes Pro", systemImage: "crown.fill")
+                }
+
+            }
+        }
+                
+        Section{
+            NavigationLink(destination: PitchGameView()) {
+                Label("Pitch Game", systemImage: "gamecontroller")
+            }
+
+            NavigationLink(destination:
+                MetronomeSectionView()
+                    .onAppear { usageManager.incrementMetronomeOpens() }
+            ) {
+                Label("Metronome", systemImage: "metronome")
+            }
+            .disabled(!subscriptionManager.isAllowedToOpenMetronome())
+
+            NavigationLink(destination:
+                TunerTabView()
+                    .onAppear { usageManager.incrementTunerOpens() }
+            ) {
+                Label("Tuner", systemImage: "tuningfork")
+            }
+            .disabled(!subscriptionManager.isAllowedToOpenTuner())
+
+        } header: {
+            Text("Tools")
+        }
+        footer: {
+            if !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || usageManager.tunerOpens >= 10) {
+                Text("You've reached the free limit for these tools. Please subscribe for unlimited access.")
+                    .font(.caption)
+            }
+        }
+        
+        Section("App Settings") {
+            NavigationLink(destination: ThemeView()) {
+                Label("Appearance", systemImage: "paintpalette.fill")
+            }
+            
+            NavigationLink(destination: SettingsView()) {
+                Label("Settings", systemImage: "gearshape.fill")
+            }
+
+        }
+
+
     }
 }
 

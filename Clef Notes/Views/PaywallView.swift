@@ -1,5 +1,7 @@
 import SwiftUI
 import RevenueCat
+import Combine
+import SafariServices
 
 struct PaywallView: View {
     @Environment(\.dismiss) var dismiss
@@ -8,6 +10,8 @@ struct PaywallView: View {
     @State private var offerings: Offerings? = nil
     @State private var isPurchasing = false
     @State private var alertMessage: String?
+    @State private var showingSafariView = false
+    @State private var safariURL: URL? = nil
 
     var body: some View {
         VStack {
@@ -16,13 +20,13 @@ struct PaywallView: View {
                     header
                     features
                     Spacer()
-                    packages
                 }
-                .padding()
             }
-            
+            packages
             footer
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .onAppear {
             Purchases.shared.getOfferings { (offerings, error) in
@@ -47,6 +51,11 @@ struct PaywallView: View {
         }, message: {
             Text(alertMessage ?? "Something went wrong.")
         })
+        .sheet(isPresented: $showingSafariView) {
+            if let url = safariURL {
+                SafariWebView(url: url)
+            }
+        }
     }
 
     private var header: some View {
@@ -70,6 +79,7 @@ struct PaywallView: View {
             FeatureRow(icon: "calendar.badge.plus", title: "Unlimited Sessions", description: "Log every practice session without limits.")
             FeatureRow(icon: "music.note.list", title: "Unlimited Songs", description: "Keep track of your entire repertoire.")
             FeatureRow(icon: "metronome.fill", title: "Full Tool Access", description: "Use the metronome and tuner anytime.")
+            FeatureRow(icon: "wand.and.stars", title: "Support Indie Dev", description: "Support an independent app developer and get continued updates.")
         }
         .padding()
         .background(.background.secondary)
@@ -92,19 +102,46 @@ struct PaywallView: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 10) {
-            Button("Restore Purchases") {
-                restorePurchases()
+        VStack{
+            VStack {
+                Button("Restore Purchases") {
+                    restorePurchases()
+                }
+                .font(.footnote.bold())
+                
             }
-            .font(.caption.bold())
+            .padding(.bottom, 10)
+            HStack{
+                VStack{
+                    Button(action: {
+                        safariURL = URL(string: "https://clefnotes.app/terms.html")
+                        showingSafariView = true
+                    }) {
+                        Text("Terms of Use")
+                            .font(.caption.bold())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+                Button("Dismiss") {
+                    dismiss()
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                Spacer()
+                VStack{
+                    Button(action: {
+                        safariURL = URL(string: "https://clefnotes.app/privacy.html")
+                        showingSafariView = true
+                    }) {
+                        Text("Privacy Policy")
+                            .font(.caption.bold())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
-            Button("Dismiss") {
-                dismiss()
-            }
-            .font(.caption)
-            .foregroundColor(.secondary)
         }
-        .padding()
     }
 
     private func purchase(package: Package) {
@@ -187,3 +224,25 @@ private struct PackageButton: View {
         )
     }
 }
+
+private struct SafariWebView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ vc: SFSafariViewController, context: Context) {}
+}
+
+#if DEBUG
+import SwiftUI
+
+private final class MockSubscriptionManager: ObservableObject {
+    @Published var isSubscribed: Bool = false
+    func updateSubscriptionStatus() {}
+}
+
+#Preview {
+    PaywallView()
+        .environmentObject(MockSubscriptionManager())
+}
+#endif

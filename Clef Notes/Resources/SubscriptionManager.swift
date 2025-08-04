@@ -77,6 +77,16 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
         if isSubscribed { return true }
         return usageManager.songCreations < 3
     }
+    
+    func isAllowedToOpenMetronome() -> Bool {
+        if isSubscribed { return true }
+        return usageManager.metronomeOpens < 11
+    }
+
+    func isAllowedToOpenTuner() -> Bool {
+        if isSubscribed { return true }
+        return usageManager.tunerOpens < 11
+    }
 
     var canAccessPaidFeatures: Bool {
         if isSubscribed { return true }
@@ -85,3 +95,4 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
                usageManager.songCreations <= 3
     }
 }
+

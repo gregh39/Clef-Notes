@@ -23,9 +23,12 @@ extension UsageTrackerCD {
     @NSManaged public var totalStudentsCreated: Int64
     @NSManaged public var totalSessionsCreated: Int64 // Add this
     @NSManaged public var totalSongsCreated: Int64   // Add this
+    @NSManaged public var totalMetronomeOpens: Int64
+    @NSManaged public var totalTunerOpens: Int64
 
 }
 
 extension UsageTrackerCD : Identifiable {
 
 }
+

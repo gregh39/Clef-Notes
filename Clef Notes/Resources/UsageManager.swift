@@ -18,6 +18,8 @@ class UsageManager: ObservableObject {
             newTracker.totalStudentsCreated = 0
             newTracker.totalSessionsCreated = 0
             newTracker.totalSongsCreated = 0
+            newTracker.totalMetronomeOpens = 0
+            newTracker.totalTunerOpens = 0
             self.tracker = newTracker
             try? context.save()
         }
@@ -27,6 +29,8 @@ class UsageManager: ObservableObject {
     var studentCreations: Int { Int(tracker.totalStudentsCreated) }
     var sessionCreations: Int { Int(tracker.totalSessionsCreated) }
     var songCreations: Int { Int(tracker.totalSongsCreated) }
+    var metronomeOpens: Int { Int(tracker.totalMetronomeOpens) }
+    var tunerOpens: Int { Int(tracker.totalTunerOpens) }
 
     // MARK: - Increment Methods
     func incrementStudentCreations() {
@@ -41,6 +45,16 @@ class UsageManager: ObservableObject {
 
     func incrementSongCreations() {
         tracker.totalSongsCreated += 1
+        try? viewContext.save()
+    }
+
+    func incrementMetronomeOpens() {
+        tracker.totalMetronomeOpens += 1
+        try? viewContext.save()
+    }
+
+    func incrementTunerOpens() {
+        tracker.totalTunerOpens += 1
         try? viewContext.save()
     }
 

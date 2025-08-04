@@ -104,6 +104,7 @@ struct StudentDetailNavigationView: View {
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
         }
+        .presentationSizing(.page)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 TimerBarView()

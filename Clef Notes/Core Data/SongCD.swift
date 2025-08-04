@@ -79,6 +79,7 @@ extension SongCD {
     @NSManaged public var songStatusRaw: String?
     @NSManaged public var suzukiBookRaw: String?
     @NSManaged public var studentID: UUID?
+    @NSManaged public var image: Data?
     @NSManaged public var title: String?
     @NSManaged public var media: NSSet?
     @NSManaged public var notes: NSSet?

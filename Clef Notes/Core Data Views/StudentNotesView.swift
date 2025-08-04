@@ -67,6 +67,9 @@ struct StudentNotesView: View {
                         Label("No Notes Yet", systemImage: "note.text.badge.plus")
                     } description: {
                         Text("Tap the '+' button in the navigation bar to add a general note for this student.")
+                    } actions: {
+                        Button("Add First Note", action: addNote)
+                            .buttonStyle(.borderedProminent)
                     }
                 } else if filteredNotes.isEmpty {
                     ContentUnavailableView.search(text: searchText)
@@ -76,6 +79,7 @@ struct StudentNotesView: View {
             }
             .sheet(item: $noteToEdit) { note in
                 AddNoteSheetCD(note: note)
+                    .presentationSizing(.page)
             }
             .onChange(of: triggerAddNote) {
                 if triggerAddNote {

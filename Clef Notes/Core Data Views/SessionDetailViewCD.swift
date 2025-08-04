@@ -14,6 +14,7 @@ struct SessionDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var sessionTimerManager: SessionTimerManager
+    @EnvironmentObject var usageManager: UsageManager
     @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
 
     @State private var showingAddPlaySheet = false
@@ -377,6 +378,8 @@ enum SessionDetailSection: String, CaseIterable, Identifiable {
 struct SessionBottomNavBar: View {
     @Binding var selectedSection: SessionDetailSection
     @EnvironmentObject var audioRecorderManager: AudioRecorderManager
+    @EnvironmentObject var usageManager: UsageManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -402,10 +405,18 @@ struct SessionBottomNavBar: View {
                             .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
                             .frame(maxWidth: .infinity)
                         }
+                        .disabled((section == .metronome && !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || section == .tuner && usageManager.tunerOpens >= 10)))
                 }
             }
             .padding(.top, 5)
             .padding(.bottom, 35)
             .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
+            .onAppear{
+                print("Subscription Status: \(subscriptionManager.isSubscribed)")
+                print("Metronome Count: \(usageManager.metronomeOpens)")
+                print("Tuner Count: \(usageManager.tunerOpens)")
+
+            }
     }
 }
+

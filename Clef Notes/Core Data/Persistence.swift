@@ -139,6 +139,13 @@ class PersistenceController: NSObject {
         }
 
         super.init()
+        
+        /*NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(storeRemoteChange(_:)),
+            name: .NSPersistentStoreRemoteChange,
+            object: persistentContainer.persistentStoreCoordinator
+        )*/
 
         persistentContainer.loadPersistentStores(completionHandler: { (loadedStoreDescription, error) in
             guard error == nil else {
@@ -168,4 +175,5 @@ class PersistenceController: NSObject {
             }
         }
     }
+    
 }
