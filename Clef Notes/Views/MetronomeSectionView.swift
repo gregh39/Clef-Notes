@@ -34,7 +34,8 @@ private struct TimeSignature: Hashable, Identifiable {
 struct MetronomeSectionView: View {
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var settingsManager: SettingsManager // <<< USE THEME FROM ENVIRONMENT
-    
+    @EnvironmentObject var usageManager: UsageManager
+
     @AppStorage("metronomeVisualizerType") private var visualizerType: MetronomeVisualizerType = .pulse
     @AppStorage("metronomeTimeSignatureID") private var timeSignatureID: String = "4/4"
     @AppStorage("metronomeHighlightDownbeat") private var highlightDownbeat: Bool = true
@@ -130,18 +131,9 @@ struct MetronomeSectionView: View {
             Spacer()
             
             SaveButtonView(title: isPlaying ? "Stop" : "Start", action: {
+                usageManager.incrementMetronomeOpens()
                 toggleMetronome()
             })
-/*
-            Button(action: toggleMetronome) {
-                Label(isPlaying ? "Stop" : "Start", systemImage: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                    .frame(maxWidth: 250)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(isPlaying ? .red : settingsManager.activeAccentColor) // <<< USE THEME COLOR
-            .padding(.bottom, 40)
- */
         }
         .onDisappear(perform: stopMetronome)
         .sheet(isPresented: $showingTimeSignatureSheet) {

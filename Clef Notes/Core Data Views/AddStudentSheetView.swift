@@ -4,7 +4,8 @@ import PhotosUI
 
 struct AddStudentSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
-    
+    @Environment(\.dismiss) private var dismiss
+
     @Binding var isPresented: Bool
     @Binding var selectedStudent: StudentCD?
     
@@ -15,6 +16,7 @@ struct AddStudentSheetCD: View {
     
     @State private var isSuzukiStudent = false
     @State private var selectedSuzukiBook: SuzukiBook? = nil
+    
     
     var body: some View {
         NavigationStack {
@@ -66,9 +68,9 @@ struct AddStudentSheetCD: View {
                         }
 
                     }
-                                        
                 }
                 .addDoneButtonToKeyboard()
+
 
                 SaveButtonView(title: "Add Student", action: {
                     addStudent()
@@ -82,6 +84,7 @@ struct AddStudentSheetCD: View {
                         isPresented = false
                     }
                 }
+
             }
             .onChange(of: selectedAvatarItem) {
                 Task {

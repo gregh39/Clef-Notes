@@ -37,6 +37,7 @@ struct MailView: UIViewControllerRepresentable {
 
 struct SideMenuView: View {
     @Environment(\.managedObjectContext) private var viewContext
+
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
         animation: .default)
@@ -242,6 +243,7 @@ struct SideMenuView: View {
 // New rectangular student icon view
 private struct StudentIconView: View {
     @ObservedObject var student: StudentCD
+    
     var isSelected: Bool
 
     var body: some View {
@@ -280,6 +282,7 @@ private struct StudentIconView: View {
 private struct ToolsSectionView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var usageManager: UsageManager
+    @EnvironmentObject var settingsManager: SettingsManager
 
     @State private var showPaywallView = false
     
@@ -302,7 +305,7 @@ private struct ToolsSectionView: View {
 
             NavigationLink(destination:
                 MetronomeSectionView()
-                    .onAppear { usageManager.incrementMetronomeOpens() }
+                   // .onAppear { usageManager.incrementMetronomeOpens() }
             ) {
                 Label("Metronome", systemImage: "metronome")
             }
@@ -310,7 +313,7 @@ private struct ToolsSectionView: View {
 
             NavigationLink(destination:
                 TunerTabView()
-                    .onAppear { usageManager.incrementTunerOpens() }
+                   // .onAppear { usageManager.incrementTunerOpens() }
             ) {
                 Label("Tuner", systemImage: "tuningfork")
             }
@@ -326,6 +329,15 @@ private struct ToolsSectionView: View {
             }
         }
         
+        Section(header: Text("Practice Reminders")) {
+            Toggle("Practice Reminders", isOn: $settingsManager.practiceRemindersEnabled)
+
+            if settingsManager.practiceRemindersEnabled {
+                DatePicker("Reminder Time", selection: $settingsManager.practiceReminderTime, displayedComponents: .hourAndMinute)
+            }
+        }
+        
+
         Section("App Settings") {
             NavigationLink(destination: ThemeView()) {
                 Label("Appearance", systemImage: "paintpalette.fill")

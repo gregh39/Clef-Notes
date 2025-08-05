@@ -45,13 +45,6 @@ struct SettingsView: View {
             header: { Text("Default Session Title") }
             footer: { Text("Enter the default name for new practice sessions") }
             
-            Section(header: Text("Practice Reminders")) {
-                                                
-                if settingsManager.practiceRemindersEnabled {
-                    DatePicker("Reminder Time", selection: $settingsManager.practiceReminderTime, displayedComponents: .hourAndMinute)
-                }
-            }
-            
             Section(header: Text("Tools")) {
                 Stepper(value: $settingsManager.a4Frequency, in: 410...470, step: 0.5) {
                     Text("Tuner Calibration (A4): \(settingsManager.a4Frequency, specifier: "%.1f") Hz")

@@ -7,7 +7,7 @@ import WebKit
 import MusicKit
 import PDFKit
 
-// A new detail view for presenting sheet music full screen.
+// A detail view for presenting sheet music full screen.
 private struct SheetMusicDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let data: Data
@@ -37,6 +37,7 @@ private struct SheetMusicDetailView: View {
         }
     }
 }
+
 struct MediaCellCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject var media: MediaReferenceCD
@@ -69,7 +70,6 @@ struct MediaCellCD: View {
 
             case .youtubeVideo, .spotifyLink, .appleMusicLink, .sheetMusic:
                 
-                // --- THIS IS THE FIX: Updated sheet music case ---
                 if media.type == .sheetMusic {
                     if let data = media.data {
                         Button(action: { showingSheetMusicDetail = true }) {
@@ -115,7 +115,7 @@ struct MediaCellCD: View {
     }
 }
 
-// A new view for the sheet music preview in the list.
+// A view for the sheet music preview in the list.
 private struct SheetMusicPreview: View {
     let data: Data
     
@@ -142,7 +142,7 @@ private struct SheetMusicPreview: View {
     }
 }
 
-
+// A basic view for displaying a NoteCD object.
 struct NoteCellCD: View {
     @ObservedObject var note: NoteCD
     
@@ -198,6 +198,8 @@ private func extractYouTubeID(from url: URL) -> String? {
     return nil
 }
 
+// MARK: - Apple Music Views
+
 private struct AppleMusicPlayerView: View {
     let songID: MusicItemID
     @State private var song: Song?
@@ -236,30 +238,34 @@ private struct AppleMusicPlayerView: View {
                 .cornerRadius(12)
 
             } else {
-                ProgressView().onAppear(perform: fetchSong)
+                ProgressView()
             }
         }
-        .onAppear(perform: requestAuthorization)
+        .onAppear {
+            Task {
+                // First, request authorization and wait for the result
+                let status = await MusicAuthorization.request()
+                
+                // Only if authorized, proceed to fetch the song
+                if status == .authorized {
+                    await fetchSong()
+                }
+            }
+        }
         .onReceive(SystemMusicPlayer.shared.state.objectWillChange) { _ in
             updatePlaybackState()
         }
     }
-
-    private func requestAuthorization() {
-        Task {
-            await MusicAuthorization.request()
-        }
-    }
     
-    private func fetchSong() {
-        Task {
-            do {
-                let request = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: songID)
-                let response = try await request.response()
+    private func fetchSong() async {
+        do {
+            let request = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: songID)
+            let response = try await request.response()
+            await MainActor.run {
                 self.song = response.items.first
-            } catch {
-                print("Failed to fetch song: \(error)")
             }
+        } catch {
+            print("Failed to fetch song: \(error)")
         }
     }
 
@@ -290,7 +296,7 @@ private func extractAppleMusicID(from url: URL) -> MusicItemID? {
     return MusicItemID(idString)
 }
 
-import SwiftUI
+// MARK: - Zooming Scroll View
 
 /// A view that wraps a `UIScrollView` to allow for zooming and panning of its content.
 struct ZoomableScrollView<Content: View>: UIViewRepresentable {
@@ -307,6 +313,8 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         scrollView.maximumZoomScale = 20
         scrollView.minimumZoomScale = 1
         scrollView.bouncesZoom = true
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
 
         // Create a UIHostingController to hold the SwiftUI content
         let hostedView = context.coordinator.hostingController.view!
@@ -325,6 +333,7 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     func updateUIView(_ uiView: UIScrollView, context: Context) {
         // Update the SwiftUI content when it changes
         context.coordinator.hostingController.rootView = self.content
+        assert(context.coordinator.hostingController.view.superview == uiView)
     }
 
     // MARK: - Coordinator

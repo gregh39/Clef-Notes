@@ -27,7 +27,7 @@ struct AddMediaSheetCD: View {
                     Section {
                         Picker(selection: $newMediaType) {
                             ForEach(MediaType.allCases) { type in
-                                Label(type.rawValue.capitalized, systemImage: mediaTypeIcon(for: type)).tag(type)
+                                Label(type.rawValue, systemImage: mediaTypeIcon(for: type)).tag(type)
                             }
                         } label: {
                             Label("Media Type", systemImage: "doc.text.magnifyingglass")

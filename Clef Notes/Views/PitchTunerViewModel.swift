@@ -64,7 +64,8 @@ class PitchTunerViewModel: ObservableObject {
 
     func start() {
         print("[PitchTunerViewModel] start() called")
-        let requested = audioManager.requestSession(for: .tuner, category: .playAndRecord, options: .defaultToSpeaker)
+
+        let requested = audioManager.requestSession(for: .tuner, category: .record, options: [])
         print("[PitchTunerViewModel] Requested audio session for tuner: \(requested)")
         guard requested else {
             print("[PitchTunerViewModel] Failed to request audio session for tuner")
@@ -113,6 +114,12 @@ class PitchTunerViewModel: ObservableObject {
         print("[PitchTunerViewModel] isListening set to false.")
         audioManager.releaseSession(for: .tuner)
         print("[PitchTunerViewModel] Audio session released for tuner.")
+        
+        
+        detectedNoteName = "--"
+        detectedFrequency = 440.0
+        distance = 0.0
+
     }
 
     // MARK: - Private Methods

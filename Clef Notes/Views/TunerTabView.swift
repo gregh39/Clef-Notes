@@ -25,7 +25,8 @@ struct TunerTabView: View {
 private struct TunerTabContentView: View {
     @StateObject private var droneViewModel: TunerViewModel
     @StateObject private var pitchTunerViewModel: PitchTunerViewModel
-    
+    @EnvironmentObject var usageManager: UsageManager
+
     @State private var tunerMode: TunerMode = .listening
     
     init(audioManager: AudioManager) {
@@ -76,6 +77,8 @@ private struct PitchListeningView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
 
+    @EnvironmentObject var usageManager: UsageManager
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
@@ -109,6 +112,7 @@ private struct PitchListeningView: View {
             Spacer()
                            
             SaveButtonView(title: tuner.isListening ? "Stop Listening" : "Start Listening", action: {
+                usageManager.incrementTunerOpens()
                 if tuner.isListening {
                     tuner.stop()
                 } else {
@@ -170,6 +174,7 @@ private struct TunerMeter: View {
 private struct DroneView: View {
     @ObservedObject var viewModel: TunerViewModel
     @State private var selectedOctave: Int = 4
+    @EnvironmentObject var usageManager: UsageManager
 
     var body: some View {
         VStack {
@@ -243,7 +248,10 @@ private struct DroneView: View {
             
             SaveButtonView(
                 title: viewModel.isPlayingDrone ? "Stop Drone" : "Start Drone",
-                action: { viewModel.toggleDrone() }
+                action: {
+                    usageManager.incrementTunerOpens()
+                    viewModel.toggleDrone()
+                }
             )
         }
         .onChange(of: selectedOctave) { _, newOctave in

@@ -37,6 +37,8 @@ struct SessionDetailViewCD: View {
     
     @State private var selectedTab: Int = 0
     @State private var selectedSection: SessionDetailSection = .session
+    
+    @State private var showingPaywallView = false
 
     init(session: PracticeSessionCD, audioManager: AudioManager) {
         self.session = session
@@ -104,6 +106,9 @@ struct SessionDetailViewCD: View {
             .sheet(isPresented: $showingEditSessionSheet) {
                 EditSessionSheetCD(session: session)
             }
+            .sheet(isPresented: $showingPaywallView) {
+                PaywallView()
+            }
             .sheet(isPresented: $showingRandomSongPicker) {
                 if let songs = session.student?.songsArray {
                     RandomSongPickerViewCD(songs: songs)
@@ -135,7 +140,7 @@ struct SessionDetailViewCD: View {
             }
             .safeAreaInset(edge: .bottom) {
                 ZStack {
-                    SessionBottomNavBar(selectedSection: $selectedSection)
+                    SessionBottomNavBar(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
                         .environmentObject(audioRecorderManager)
                 }
             }
@@ -381,6 +386,8 @@ struct SessionBottomNavBar: View {
     @EnvironmentObject var usageManager: UsageManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) var colorScheme
+    
+    @Binding var showingPaywallView: Bool
 
     var body: some View {
             HStack {
@@ -392,7 +399,23 @@ struct SessionBottomNavBar: View {
                                 } else {
                                     audioRecorderManager.stopRecording()
                                 }
-                            } else {
+                            }
+                            else if section == .metronome {
+                                print("Metronome pressed")
+                                if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
+                                    showingPaywallView = true
+                                } else {
+                                    selectedSection = section
+                                }
+                            }
+                            else if section == .tuner {
+                                if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
+                                    showingPaywallView = true
+                                } else {
+                                    selectedSection = section
+                                }
+                            }
+                            else {
                                 selectedSection = section
                             }
                         }) {
@@ -405,7 +428,7 @@ struct SessionBottomNavBar: View {
                             .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
                             .frame(maxWidth: .infinity)
                         }
-                        .disabled((section == .metronome && !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || section == .tuner && usageManager.tunerOpens >= 10)))
+                        //.disabled((section == .metronome && !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || section == .tuner && usageManager.tunerOpens >= 10)))
                 }
             }
             .padding(.top, 5)

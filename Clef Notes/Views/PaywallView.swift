@@ -16,7 +16,7 @@ struct PaywallView: View {
     var body: some View {
         VStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 10) {
                     header
                     features
                     Spacer()
@@ -25,8 +25,7 @@ struct PaywallView: View {
             packages
             footer
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
+        .padding()
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .onAppear {
             Purchases.shared.getOfferings { (offerings, error) in
@@ -60,8 +59,9 @@ struct PaywallView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            Image(systemName: "music.quarternote.3")
-                .font(.system(size: 60))
+            Image("glassicon")
+                .resizable()
+                .frame(width: 60, height: 60)
                 .foregroundColor(.accentColor)
             Text("Unlock Clef Notes Pro")
                 .font(.largeTitle.bold())
@@ -70,6 +70,11 @@ struct PaywallView: View {
                 .font(.headline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+            Text("With the free version of ClefNotes you can add 2 students, 3 songs, 3 sessions, and have 10 uses of the tuner and metronome.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
         }
     }
 
@@ -79,7 +84,7 @@ struct PaywallView: View {
             FeatureRow(icon: "calendar.badge.plus", title: "Unlimited Sessions", description: "Log every practice session without limits.")
             FeatureRow(icon: "music.note.list", title: "Unlimited Songs", description: "Keep track of your entire repertoire.")
             FeatureRow(icon: "metronome.fill", title: "Full Tool Access", description: "Use the metronome and tuner anytime.")
-            FeatureRow(icon: "wand.and.stars", title: "Support Indie Dev", description: "Support an independent app developer and get continued updates.")
+            //FeatureRow(icon: "wand.and.stars", title: "Support Indie Dev", description: "Support independent app development and continued updates to ClefNotes.")
         }
         .padding()
         .background(.background.secondary)
