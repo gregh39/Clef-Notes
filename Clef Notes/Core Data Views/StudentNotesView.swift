@@ -78,8 +78,12 @@ struct StudentNotesView: View {
                 }
             }
             .sheet(item: $noteToEdit) { note in
-                AddNoteSheetCD(note: note)
-                    .presentationSizing(.page)
+                if #available(iOS 18.0, *) {
+                    AddNoteSheetCD(note: note)
+                        .presentationSizing(.page)
+                } else {
+                    AddNoteSheetCD(note: note)
+                }
             }
             .onChange(of: triggerAddNote) {
                 if triggerAddNote {

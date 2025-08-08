@@ -20,46 +20,88 @@ struct ContentView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
-        Group {
-            // If a student is selected, show their detail view.
-            if let student = selectedStudent {
-                NavigationStack {
-                    StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
+        if #available(iOS 18.0, *) {
+            Group {
+                // If a student is selected, show their detail view.
+                if let student = selectedStudent {
+                    NavigationStack {
+                        StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
+                    }
+                } else {
+                    // Otherwise, show the appropriate placeholder/selection view.
+                    noStudentView
                 }
-            } else {
-                // Otherwise, show the appropriate placeholder/selection view.
-                noStudentView
             }
-        }
-        .sheet(isPresented: $showingSideMenu) {
-            SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
-                .presentationSizing(.page)
-                .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
-        }
-        .presentationSizing(.page)
-        .sheet(isPresented: $showingAddSheet) {
-            AddStudentSheetCD(isPresented: $showingAddSheet, selectedStudent: $selectedStudent)
-        }
-        .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
-            OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-        }
-        .onAppear {
-            // On launch, try to restore the last selected student.
-            if let studentID = selectedStudentID,
-               let student = students.first(where: { $0.id?.uuidString == studentID }) {
-                selectedStudent = student
+            .sheet(isPresented: $showingSideMenu) {
+                    SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                        .presentationSizing(.page)
+                        .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
             }
-        }
-        .onChange(of: students.count) {
-            // When the student list changes (e.g., after initial sync),
-            // if no student is selected, select the first one automatically.
-            if selectedStudent == nil, let firstStudent = students.first {
-                selectedStudent = firstStudent
+            .presentationSizing(.page)
+            .sheet(isPresented: $showingAddSheet) {
+                AddStudentSheetCD(isPresented: $showingAddSheet, selectedStudent: $selectedStudent)
             }
-        }
-        .onChange(of: selectedStudent) {
-            // When the selection changes, save it for the next launch.
-            selectedStudentID = selectedStudent?.id?.uuidString
+            .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+            }
+            .onAppear {
+                // On launch, try to restore the last selected student.
+                if let studentID = selectedStudentID,
+                   let student = students.first(where: { $0.id?.uuidString == studentID }) {
+                    selectedStudent = student
+                }
+            }
+            .onChange(of: students.count) {
+                // When the student list changes (e.g., after initial sync),
+                // if no student is selected, select the first one automatically.
+                if selectedStudent == nil, let firstStudent = students.first {
+                    selectedStudent = firstStudent
+                }
+            }
+            .onChange(of: selectedStudent) {
+                // When the selection changes, save it for the next launch.
+                selectedStudentID = selectedStudent?.id?.uuidString
+            }
+        } else {
+            Group {
+                // If a student is selected, show their detail view.
+                if let student = selectedStudent {
+                    NavigationStack {
+                        StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
+                    }
+                } else {
+                    // Otherwise, show the appropriate placeholder/selection view.
+                    noStudentView
+                }
+            }
+            .sheet(isPresented: $showingSideMenu) {
+                    SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                        .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
+            }
+            .sheet(isPresented: $showingAddSheet) {
+                AddStudentSheetCD(isPresented: $showingAddSheet, selectedStudent: $selectedStudent)
+            }
+            .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+            }
+            .onAppear {
+                // On launch, try to restore the last selected student.
+                if let studentID = selectedStudentID,
+                   let student = students.first(where: { $0.id?.uuidString == studentID }) {
+                    selectedStudent = student
+                }
+            }
+            .onChange(of: students.count) {
+                // When the student list changes (e.g., after initial sync),
+                // if no student is selected, select the first one automatically.
+                if selectedStudent == nil, let firstStudent = students.first {
+                    selectedStudent = firstStudent
+                }
+            }
+            .onChange(of: selectedStudent) {
+                // When the selection changes, save it for the next launch.
+                selectedStudentID = selectedStudent?.id?.uuidString
+            }
         }
     }
 

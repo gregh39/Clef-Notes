@@ -45,7 +45,6 @@ struct SessionListViewCD: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
             Group {
                 if student.sessionsArray.isEmpty {
                     ContentUnavailableView {
@@ -105,7 +104,7 @@ struct SessionListViewCD: View {
                 SessionDetailViewCD(session: session, audioManager: audioManager)
             }
             .searchable(text: $searchText, prompt: "Search Sessions")
-        }
+        
     }
     
     private func deleteSession(_ session: PracticeSessionCD) {

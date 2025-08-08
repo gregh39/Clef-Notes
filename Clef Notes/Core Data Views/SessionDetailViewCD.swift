@@ -87,18 +87,30 @@ struct SessionDetailViewCD: View {
                 }
             }
             .sheet(isPresented: $showingAddPlaySheet) {
-                AddPlaySheetViewCD(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet)
-                    .presentationSizing(.page)
+                if #available(iOS 18.0, *) {
+                    AddPlaySheetViewCD(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet)
+                        .presentationSizing(.page)
+                } else {
+                    AddPlaySheetViewCD(session: session, showingAddPlaySheet: $showingAddPlaySheet, showingAddSongSheet: $showingAddSongSheet)
+                }
             }
             .sheet(isPresented: $showingAddSongSheet) {
                 if let student = session.student {
-                    AddSongSheetCD(student: student)
-                        .presentationSizing(.page)
+                    if #available(iOS 18.0, *) {
+                        AddSongSheetCD(student: student)
+                            .presentationSizing(.page)
+                    } else {
+                        AddSongSheetCD(student: student)
+                    }
                 }
             }
             .sheet(item: $editingNote) { note in
-                AddNoteSheetCD(note: note)
-                    .presentationSizing(.page)
+                if #available(iOS 18.0, *) {
+                    AddNoteSheetCD(note: note)
+                        .presentationSizing(.page)
+                } else {
+                    AddNoteSheetCD(note: note)
+                }
             }
             .sheet(item: $playToEdit) { play in
                 PlayEditSheetCD(play: play)
@@ -111,8 +123,12 @@ struct SessionDetailViewCD: View {
             }
             .sheet(isPresented: $showingRandomSongPicker) {
                 if let songs = session.student?.songsArray {
-                    RandomSongPickerViewCD(songs: songs)
-                        .presentationSizing(.page)
+                    if #available(iOS 18.0, *) {
+                        RandomSongPickerViewCD(songs: songs)
+                            .presentationSizing(.page)
+                    } else {
+                        RandomSongPickerViewCD(songs: songs)
+                    }
                 }
             }
             .sheet(item: $recordingURLForSheet, onDismiss: {

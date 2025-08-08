@@ -41,77 +41,154 @@ struct StudentDetailNavigationView: View {
     @State private var path = NavigationPath()
     
     var body: some View {
-        VStack {
-            switch selectedSection {
-            case .sessions:
-                SessionListViewCD(student: student) {
-                    showingAddSessionSheet = true
-                }
-            case .songs:
-                StudentSongsTabViewCD(student: student) {
-                    showingAddSongSheet = true
-                }
-            case .stats:
-                StatsTabViewCD(student: student)
-            case .awards:
-                AwardsView(student: student, context: viewContext)
-            case .notes:
-                StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
-            }
-        }
-        .navigationTitle(student.name ?? "Student")
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarLeading) {
-                Button(action: {
-                    showingSideMenu = true
-                }) {
-                    Label("Menu", systemImage: "line.3.horizontal")
-                }
-            }
-            // ... (The rest of your toolbar remains the same)
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if selectedSection == .sessions || selectedSection == .songs {
-                    Button {
-                        if subscriptionManager.isAllowedToCreateSong() {
-                            showingAddSongSheet = true
-                        } else {
-                            showingPaywall = true
-                        }
-                    } label: {
-                        Label("Add Song", image: "add.song")
-                    }
-
-                    Button {
-                        if subscriptionManager.isAllowedToCreateSession() {
+        NavigationStack(path: $path) {
+            if #available(iOS 18.0, *) {
+                VStack {
+                    switch selectedSection {
+                    case .sessions:
+                        SessionListViewCD(student: student) {
                             showingAddSessionSheet = true
-                        } else {
-                            showingPaywall = true
                         }
-                    } label: {
-                        Label("Add Session", systemImage: "calendar.badge.plus")
-                    }
-                } else if selectedSection == .notes {
-                    Button(action: { triggerAddNote = true }) {
-                        Label("Add Note", systemImage: "note.text.badge.plus")
+                    case .songs:
+                        StudentSongsTabViewCD(student: student) {
+                            showingAddSongSheet = true
+                        }
+                    case .stats:
+                        StatsTabViewCD(student: student)
+                    case .awards:
+                        AwardsView(student: student, context: viewContext)
+                    case .notes:
+                        StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
                     }
                 }
+                .navigationTitle(student.name ?? "Student")
+                .toolbar {
+                    ToolbarItemGroup(placement: .navigationBarLeading) {
+                        Button(action: {
+                            showingSideMenu = true
+                        }) {
+                            Label("Menu", systemImage: "line.3.horizontal")
+                        }
+                    }
+                    // ... (The rest of your toolbar remains the same)
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        if selectedSection == .sessions || selectedSection == .songs {
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSong() {
+                                    showingAddSongSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
+                                Label("Add Song", image: "add.song")
+                            }
+                            
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSession() {
+                                    showingAddSessionSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
+                                Label("Add Session", systemImage: "calendar.badge.plus")
+                            }
+                        } else if selectedSection == .notes {
+                            Button(action: { triggerAddNote = true }) {
+                                Label("Add Note", systemImage: "note.text.badge.plus")
+                            }
+                        }
+                    }
+                }
+                
+                .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
+                .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
+                .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
+                .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
+                .sheet(isPresented: $showingPaywall) {
+                    PaywallView()
+                }
+                .presentationSizing(.page)
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 0) {
+                        TimerBarView()
+                        BottomNavBar(selectedSection: $selectedSection)
+                    }
+                }
+                .ignoresSafeArea(edges: .bottom)
+            } else {
+                VStack {
+                    switch selectedSection {
+                    case .sessions:
+                        SessionListViewCD(student: student) {
+                            showingAddSessionSheet = true
+                        }
+                    case .songs:
+                        StudentSongsTabViewCD(student: student) {
+                            showingAddSongSheet = true
+                        }
+                    case .stats:
+                        StatsTabViewCD(student: student)
+                    case .awards:
+                        AwardsView(student: student, context: viewContext)
+                    case .notes:
+                        StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
+                    }
+                }
+                .navigationTitle(student.name ?? "Student")
+                .toolbar {
+                    ToolbarItemGroup(placement: .navigationBarLeading) {
+                        Button(action: {
+                            showingSideMenu = true
+                        }) {
+                            Label("Menu", systemImage: "line.3.horizontal")
+                        }
+                    }
+                    // ... (The rest of your toolbar remains the same)
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        if selectedSection == .sessions || selectedSection == .songs {
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSong() {
+                                    showingAddSongSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
+                                Label("Add Song", image: "add.song")
+                            }
+                            
+                            Button {
+                                if subscriptionManager.isAllowedToCreateSession() {
+                                    showingAddSessionSheet = true
+                                } else {
+                                    showingPaywall = true
+                                }
+                            } label: {
+                                Label("Add Session", systemImage: "calendar.badge.plus")
+                            }
+                        } else if selectedSection == .notes {
+                            Button(action: { triggerAddNote = true }) {
+                                Label("Add Note", systemImage: "note.text.badge.plus")
+                            }
+                        }
+                    }
+                }
+                
+                .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
+                .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
+                .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
+                .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
+                .sheet(isPresented: $showingPaywall) {
+                    PaywallView()
+                }
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 0) {
+                        TimerBarView()
+                        BottomNavBar(selectedSection: $selectedSection)
+                    }
+                }
+                .ignoresSafeArea(edges: .bottom)
             }
         }
-        .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
-        .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
-        .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
-        .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallView()
-        }
-        .presentationSizing(.page)
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                TimerBarView()
-                BottomNavBar(selectedSection: $selectedSection)
-            }
-        }
-        .ignoresSafeArea(edges: .bottom)
     }
 }
 

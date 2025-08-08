@@ -46,7 +46,7 @@ struct SideMenuView: View {
     @Binding var selectedStudent: StudentCD?
     @Binding var isPresented: Bool
     @Binding var showingAddStudentSheet: Bool
-    let student: StudentCD? // The currently selected student
+    let student: StudentCD?
 
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var settingsManager: SettingsManager // <<< ADD THIS LINE
@@ -144,6 +144,8 @@ struct SideMenuView: View {
                     ToolsSectionView()
                         .environmentObject(subscriptionManager)
                         .environmentObject(usageManager)
+                    
+                    AppSettingsView(student: student)
                     
                     Section("Support") {
                         Button(action: { showingPrivacyPolicy = true }) {
@@ -279,13 +281,34 @@ private struct StudentIconView: View {
     }
 }
 
+private struct AppSettingsView: View {
+    let student: StudentCD?
+    
+    var body: some View {
+        Section("App Settings") {
+            NavigationLink(destination: ThemeView()) {
+                Label("Appearance", systemImage: "paintpalette.fill")
+            }
+            
+            NavigationLink(destination: SettingsView()) {
+                Label("Settings", systemImage: "gearshape.fill")
+            }
+            if let s = student {
+                NavigationLink(destination: InstructorListView(student: s)) {
+                    Label("Manage Instructors", systemImage: "person.2.fill")
+                }
+            }
+        }
+    }
+}
+
 private struct ToolsSectionView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var usageManager: UsageManager
     @EnvironmentObject var settingsManager: SettingsManager
 
     @State private var showPaywallView = false
-    
+        
     var body: some View {
         if !subscriptionManager.isSubscribed {
             Section {
@@ -337,17 +360,6 @@ private struct ToolsSectionView: View {
             }
         }
         
-
-        Section("App Settings") {
-            NavigationLink(destination: ThemeView()) {
-                Label("Appearance", systemImage: "paintpalette.fill")
-            }
-            
-            NavigationLink(destination: SettingsView()) {
-                Label("Settings", systemImage: "gearshape.fill")
-            }
-
-        }
 
 
     }
