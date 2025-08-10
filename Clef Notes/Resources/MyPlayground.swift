@@ -1,49 +1,44 @@
-//
-//  MyPlayground.swift
-//  Clef Notes
-//
-//  Created by Greg Holland on 7/23/25.
-//
-
-
 import SwiftUI
 
+struct ContentView2: View {
+    @State private var selectedTab = 0
+    private let titles = ["People", "Fruits", "Sports", "Cities"]
 
-struct MyPlayground: View {
-    
-    let array1 = ["B","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C","C"]
     var body: some View {
-            TabView {
-                NavigationStack{
-                    List(array1, id: \.self) { item in
-                        Text(item)
-                    }
-                    .navigationBarTitle("TabView Test")
+        TabView {
+            NavigationStack {
+                List(["Alice", "Bob", "Charlie", "Diana"], id: \.self, rowContent: Text.init)
+                    .navigationTitle("People")
                     .navigationBarTitleDisplayMode(.large)
-                    .navigationDestination(for: String.self) { item in
-                        Text("You tapped \(item)")
-                    }
+                    .toolbar(.visible, for: .navigationBar)
+            }
+            .tabItem { Label("People", systemImage: "person.3") }
 
-                }
-                .tabItem { Text("Hi") }
-
-                NavigationStack{
-                    List(array1, id: \.self) { item in
-                        Text(item)
-                    }
-                    .navigationBarTitle("TabView Test 2")
+            NavigationStack {
+                List(["Apple", "Banana", "Cherry", "Date"], id: \.self, rowContent: Text.init)
+                    .navigationTitle("Fruits")
                     .navigationBarTitleDisplayMode(.large)
+                    .toolbar(.visible, for: .navigationBar)
+            }
+            .tabItem { Label("Fruits", systemImage: "leaf") }
 
-                }
-                .tabItem { Text("2") }
+            NavigationStack {
+                List(["Soccer", "Basketball", "Tennis", "Baseball"], id: \.self, rowContent: Text.init)
+                    .navigationTitle("Sports")
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbar(.visible, for: .navigationBar)
+            }
+            .tabItem { Label("Sports", systemImage: "sportscourt") }
 
-
+            NavigationStack {
+                List(["Paris", "London", "Tokyo", "New York"], id: \.self, rowContent: Text.init)
+                    .navigationTitle("Cities")
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbar(.visible, for: .navigationBar)
+            }
+            .tabItem { Label("Cities", systemImage: "building.2") }
         }
-        
     }
-    
 }
 
-#Preview {
-    MyPlayground()
-}
+#Preview { ContentView2() }

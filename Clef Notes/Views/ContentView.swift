@@ -24,9 +24,9 @@ struct ContentView: View {
             Group {
                 // If a student is selected, show their detail view.
                 if let student = selectedStudent {
-                    NavigationStack {
+                    //NavigationStack {
                         StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
-                    }
+                    //}
                 } else {
                     // Otherwise, show the appropriate placeholder/selection view.
                     noStudentView

@@ -88,6 +88,40 @@ private struct SongDetailBottomNavBar: View {
     }
 }
 
+private struct SongDetailNavButtons: View {
+    @Binding var selectedSection: SongDetailSection
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        HStack() {
+            ForEach(SongDetailSection.allCases) { section in
+                if #available(iOS 26.0, *) {
+                    Button {
+                        selectedSection = section
+                    } label: {
+                        Text(section.rawValue)
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .background(selectedSection == section ? Color.accentColor.opacity(0.18) : Color.clear)
+                    .buttonStyle(.glass)
+
+                } else {
+                    // Fallback on earlier versions
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        /*/.background(
+            // keep a subtle background so it reads as a control area
+            (colorScheme == .dark ? Color(UIColor.secondarySystemBackground)
+                                  : Color(UIColor.systemBackground))
+                .opacity(0.95)
+        )*/
+    }
+}
+
 
 // MARK: - Main Detail View
 struct SongDetailViewCD: View {
@@ -97,6 +131,7 @@ struct SongDetailViewCD: View {
 
     // State for the custom navigation bar
     @State private var selectedSection: SongDetailSection = .plays
+    
 
     @State private var showingEditSheet = false
     @State private var showingAddMediaSheet = false
@@ -126,20 +161,34 @@ struct SongDetailViewCD: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Main content area that switches based on the selected section
-            switch selectedSection {
-            case .plays:
-                playsTab
-            case .media:
-                mediaTab
-            case .notes:
-                notesTab
+            if #available(iOS 26.0, *) {
+                // Main content area that switches based on the selected section
+                NavigationStack{
+                    switch selectedSection {
+                    case .plays:
+                        playsTab
+                    case .media:
+                        mediaTab
+                    case .notes:
+                        notesTab
+                    }
+                }
+            } else {
+                switch selectedSection {
+                case .plays:
+                    playsTab
+                        .navigationTitle(song.title ?? "Song")
+                case .media:
+                    mediaTab
+                        .navigationTitle(song.title ?? "Song")
+                case .notes:
+                    notesTab
+                        .navigationTitle(song.title ?? "Song")
+                }
+                
+                SongDetailBottomNavBar(selectedSection: $selectedSection)
             }
-
-            // The custom navigation bar is placed at the bottom
-            SongDetailBottomNavBar(selectedSection: $selectedSection)
         }
-        .navigationTitle(song.title ?? "Song")
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button {
@@ -165,7 +214,10 @@ struct SongDetailViewCD: View {
         .sheet(item: $noteToEdit) { note in
             AddNoteSheetCD(note: note)
         }
-        .ignoresSafeArea(edges: .bottom)
+        .safeAreaInset(edge: .top) {
+            SongDetailNavButtons(selectedSection: $selectedSection)
+        }
+        //.ignoresSafeArea(edges: .bottom)
     }
 
     private var playsTab: some View {
@@ -205,6 +257,8 @@ struct SongDetailViewCD: View {
                         }
                     }
                 }
+                .navigationTitle(song.title ?? "Song")
+
             }
         }
     }
@@ -226,6 +280,7 @@ struct SongDetailViewCD: View {
                     }
                 }
             }
+            .navigationTitle(song.title ?? "Song")
         }
     }
     

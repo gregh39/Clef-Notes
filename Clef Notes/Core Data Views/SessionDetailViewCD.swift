@@ -154,14 +154,21 @@ struct SessionDetailViewCD: View {
                     }
                 }
             }
+            .toolbar(.hidden, for: .tabBar) // hide the main app tab bar on this screen
             .safeAreaInset(edge: .bottom) {
-                ZStack {
-                    SessionBottomNavBar(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
-                        .environmentObject(audioRecorderManager)
+                if #available(iOS 26.0, *) {
+                    SessionFloatingBottomNavBar(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
+                } else {
+                    ZStack {
+                        SessionBottomNavBar(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
+                            .environmentObject(audioRecorderManager)
+                    }
                 }
             }
             .ignoresSafeArea(edges: .bottom)
             
+            
+
             if audioRecorderManager.isRecording {
                 RecordingStopBar(audioRecorderManager: audioRecorderManager)
                     .padding(.bottom, 60)
@@ -408,43 +415,42 @@ struct SessionBottomNavBar: View {
     var body: some View {
             HStack {
                 ForEach(SessionDetailSection.allCases) { section in
-                        Button(action: {
-                            if section == .record {
-                                if !audioRecorderManager.isRecording{
-                                    audioRecorderManager.startRecording()
-                                } else {
-                                    audioRecorderManager.stopRecording()
-                                }
+                    Button(action: {
+                        if section == .record {
+                            if !audioRecorderManager.isRecording{
+                                audioRecorderManager.startRecording()
+                            } else {
+                                audioRecorderManager.stopRecording()
                             }
-                            else if section == .metronome {
-                                print("Metronome pressed")
-                                if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
-                                    showingPaywallView = true
-                                } else {
-                                    selectedSection = section
-                                }
-                            }
-                            else if section == .tuner {
-                                if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
-                                    showingPaywallView = true
-                                } else {
-                                    selectedSection = section
-                                }
-                            }
-                            else {
+                        }
+                        else if section == .metronome {
+                            print("Metronome pressed")
+                            if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
+                                showingPaywallView = true
+                            } else {
                                 selectedSection = section
                             }
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: section.systemImageName)
-                                    .font(.system(size: 22))
-                                Text(section.rawValue)
-                                    .font(.system(size: 10))
-                            }
-                            .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
-                            .frame(maxWidth: .infinity)
                         }
-                        //.disabled((section == .metronome && !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || section == .tuner && usageManager.tunerOpens >= 10)))
+                        else if section == .tuner {
+                            if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
+                                showingPaywallView = true
+                            } else {
+                                selectedSection = section
+                            }
+                        }
+                        else {
+                            selectedSection = section
+                        }
+                    }) {
+                        VStack(spacing: 4) {
+                            Image(systemName: section.systemImageName)
+                                .font(.system(size: 22))
+                            Text(section.rawValue)
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
+                        .frame(maxWidth: .infinity)
+                    }
                 }
             }
             .padding(.top, 5)
@@ -454,8 +460,73 @@ struct SessionBottomNavBar: View {
                 print("Subscription Status: \(subscriptionManager.isSubscribed)")
                 print("Metronome Count: \(usageManager.metronomeOpens)")
                 print("Tuner Count: \(usageManager.tunerOpens)")
-
+                
             }
+        
+    }
+}
+
+struct SessionFloatingBottomNavBar: View {
+    @Binding var selectedSection: SessionDetailSection
+    @EnvironmentObject var audioRecorderManager: AudioRecorderManager
+    @EnvironmentObject var usageManager: UsageManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @Environment(\.colorScheme) var colorScheme
+    
+    @Binding var showingPaywallView: Bool
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            HStack {
+                ForEach(SessionDetailSection.allCases) { section in
+                    Button(action: {
+                        if section == .record {
+                            if !audioRecorderManager.isRecording{
+                                audioRecorderManager.startRecording()
+                            } else {
+                                audioRecorderManager.stopRecording()
+                            }
+                        }
+                        else if section == .metronome {
+                            print("Metronome pressed")
+                            if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
+                                showingPaywallView = true
+                            } else {
+                                selectedSection = section
+                            }
+                        }
+                        else if section == .tuner {
+                            if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
+                                showingPaywallView = true
+                            } else {
+                                selectedSection = section
+                            }
+                        }
+                        else {
+                            selectedSection = section
+                        }
+                    }) {
+                        VStack(spacing: 4) {
+                            Image(systemName: section.systemImageName)
+                                .font(.system(size: 22))
+                            Text(section.rawValue)
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal)
+            .background(
+                Capsule()
+                    .glassEffect(.regular)
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+            )
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+        }
     }
 }
 

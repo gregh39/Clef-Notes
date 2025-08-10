@@ -9,7 +9,6 @@ struct StudentDetailNavigationView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     @State private var selectedSection: StudentDetailSection = .sessions
-    @State private var selectedTab = 0
     @State private var showingAddSongSheet = false
     @State private var showingAddSessionSheet = false
     @State private var showingEditStudentSheet = false
@@ -18,8 +17,25 @@ struct StudentDetailNavigationView: View {
     @State private var triggerAddNote = false
 
     @State private var path = NavigationPath()
-    
-    
+    @State private var selectedTab: Int = 0
+
+    var titleForSelectedSection: String {
+        switch selectedTab {
+        case 0: return "Sessions"
+        case 1: return "Songs"
+        case 2: return "Stats"
+        case 3: return "Awards"
+        case 4: return "Notes"
+        default: return ""
+        }
+    }
+
+    @State private var sessionsPath: [AnyHashable] = []
+    @State private var songsPath: [AnyHashable] = []
+    @State private var statsPath: [AnyHashable] = []
+    @State private var awardsPath: [AnyHashable] = []
+    @State private var notesPath: [AnyHashable] = []
+
     // Helper function to get navigation title based on selected tab
     private func getNavigationTitle(for tab: Int) -> String {
         switch tab {
@@ -38,105 +54,132 @@ struct StudentDetailNavigationView: View {
         }
     }
     
+    let sample: [Int] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    
     var body: some View {
             if #available(iOS 26.0, *) {
-                TabView{
-                    NavigationStack(path: $path) {
+                TabView(selection: $selectedTab) {
+                    // SESSIONS
+                    NavigationStack(path: $sessionsPath) {
                         SessionListViewCD(student: student) {
                             showingAddSessionSheet = true
                         }
+                        .navigationTitle("Sessions")
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar {
+                            CommonToolbar(
+                                context: .sessions,
+                                onMenu: { showingSideMenu = true },
+                                onAddSong: { showingAddSongSheet = true },
+                                onAddSession: { showingAddSessionSheet = true },
+                                onAddNote: { triggerAddNote = true },
+                                canCreateSong: { subscriptionManager.isAllowedToCreateSong() },
+                                canCreateSession: { subscriptionManager.isAllowedToCreateSession() },
+                                showPaywall: { showingPaywall = true }
+                            )
+                        }
                     }
-                    .tabItem {
-                        Label("Sessions", systemImage: "person.crop.circle")
-                    }
+                    .tabItem { Label("Sessions", systemImage: "person.crop.circle") }
                     .tag(0)
-                    NavigationStack(path: $path) {
+
+                    // SONGS
+                    NavigationStack(path: $songsPath) {
                         StudentSongsTabViewCD(student: student) {
                             showingAddSongSheet = true
                         }
+                        .navigationTitle("Songs")
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar {
+                            CommonToolbar(
+                                context: .songs,
+                                onMenu: { showingSideMenu = true },
+                                onAddSong: { showingAddSongSheet = true },
+                                onAddSession: { showingAddSessionSheet = true },
+                                onAddNote: { triggerAddNote = true },
+                                canCreateSong: { subscriptionManager.isAllowedToCreateSong() },
+                                canCreateSession: { subscriptionManager.isAllowedToCreateSession() },
+                                showPaywall: { showingPaywall = true }
+                            )
+                        }
                     }
-                    .tabItem {
-                        Label("Songs", systemImage: "music.note")
-                    }
+                    .tabItem { Label("Songs", systemImage: "music.note") }
                     .tag(1)
-                    NavigationStack(path: $path) {
+
+                    // STATS
+                    NavigationStack(path: $statsPath) {
                         StatsTabViewCD(student: student)
                             .navigationTitle("Stats")
-
+                            .navigationBarTitleDisplayMode(.large)
+                            .toolbar {
+                                CommonToolbar(
+                                    context: .stats,
+                                    onMenu: { showingSideMenu = true },
+                                    onAddSong: {},
+                                    onAddSession: {},
+                                    onAddNote: {},
+                                    canCreateSong: { false },
+                                    canCreateSession: { false },
+                                    showPaywall: {}
+                                )
+                            }
                     }
-                        .tabItem {
-                            Label("Stats", systemImage: "barometer")
-                        }
-                        .tag(2)
-                    NavigationStack(path: $path) {
+                    .tabItem { Label("Stats", systemImage: "barometer") }
+                    .tag(2)
+
+                    // AWARDS
+                    NavigationStack(path: $awardsPath) {
                         AwardsView(student: student, context: viewContext)
                             .navigationTitle("Awards")
-
+                            .navigationBarTitleDisplayMode(.large)
+                            .toolbar {
+                                CommonToolbar(
+                                    context: .awards,
+                                    onMenu: { showingSideMenu = true },
+                                    onAddSong: {},
+                                    onAddSession: {},
+                                    onAddNote: {},
+                                    canCreateSong: { false },
+                                    canCreateSession: { false },
+                                    showPaywall: {}
+                                )
+                            }
                     }
-                        .tabItem {
-                            Label("Awards", systemImage: "trophy")
-                        }
-                        .tag(3)
-                    NavigationStack(path: $path) {
+                    .tabItem { Label("Awards", systemImage: "trophy") }
+                    .tag(3)
+
+                    // NOTES
+                    NavigationStack(path: $notesPath) {
                         StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
                             .navigationTitle("Notes")
-
+                            .navigationBarTitleDisplayMode(.large)
+                            .toolbar {
+                                CommonToolbar(
+                                    context: .notes,
+                                    onMenu: { showingSideMenu = true },
+                                    onAddSong: {},
+                                    onAddSession: {},
+                                    onAddNote: { triggerAddNote = true },
+                                    canCreateSong: { false },
+                                    canCreateSession: { false },
+                                    showPaywall: {}
+                                )
+                            }
                     }
-                        .tabItem{
-                            Label("Notes", systemImage: "note.text")
-                        }
-                        .tag(4)
+                    .tabItem { Label("Notes", systemImage: "note.text") }
+                    .tag(4)
                 }
-                .navigationTitle(getNavigationTitle(for: selectedTab))
-                .toolbar {
-                    ToolbarItemGroup(placement: .navigationBarLeading) {
-                        Button(action: {
-                            showingSideMenu = true
-                        }) {
-                            Label("Menu", systemImage: "line.3.horizontal")
-                        }
-                    }
-                    ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        if selectedSection == .sessions || selectedSection == .songs {
-                            Button {
-                                if subscriptionManager.isAllowedToCreateSong() {
-                                    showingAddSongSheet = true
-                                } else {
-                                    showingPaywall = true
-                                }
-                            } label: {
-                                Label("Add Song", image: "add.song")
-                            }
-                            
-                            Button {
-                                if subscriptionManager.isAllowedToCreateSession() {
-                                    showingAddSessionSheet = true
-                                } else {
-                                    showingPaywall = true
-                                }
-                            } label: {
-                                Label("Add Session", systemImage: "calendar.badge.plus")
-                            }
-                        } else if selectedSection == .notes {
-                            Button(action: { triggerAddNote = true }) {
-                                Label("Add Note", systemImage: "note.text.badge.plus")
-                            }
-                        }
+                // Shared sheets
+                .sheet(isPresented: $showingAddSessionSheet) {
+                    AddSessionSheetCD(student: student) { session in
+                        sessionsPath.append(session)
                     }
                 }
-                .sheet(isPresented: $showingAddSessionSheet) { AddSessionSheetCD(student: student) { session in path.append(session) } }
                 .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
                 .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
                 .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
-                .sheet(isPresented: $showingPaywall) {
-                    PaywallView()
-                }
+                .sheet(isPresented: $showingPaywall) { PaywallView() }
                 .presentationSizing(.page)
-                .safeAreaInset(edge: .bottom) {
-                    VStack(spacing: 0) {
-                        TimerBarView()
-                    }
-                }
+                //.safeAreaInset(edge: .bottom) { VStack(spacing: 0) { TimerBarView() } }
                 .ignoresSafeArea(edges: .bottom)
             } else if #available(iOS 18.0, *) {
                 NavigationStack(path: $path) {
@@ -243,7 +286,6 @@ struct StudentDetailNavigationView: View {
                                 Label("Menu", systemImage: "line.3.horizontal")
                             }
                         }
-                        // ... (The rest of your toolbar remains the same)
                         ToolbarItemGroup(placement: .navigationBarTrailing) {
                             if selectedSection == .sessions || selectedSection == .songs {
                                 Button {

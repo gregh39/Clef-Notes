@@ -5,7 +5,7 @@ import TelemetryDeck
 struct SessionListViewCD: View {
     @ObservedObject var student: StudentCD
     @EnvironmentObject var audioManager: AudioManager
-    @State private var path = NavigationPath()
+    //@State private var path = NavigationPath()
     @State private var sessionToEdit: PracticeSessionCD? = nil
 
     var onAddSession: () -> Void
@@ -61,13 +61,13 @@ struct SessionListViewCD: View {
                     List {
                         ForEach(filteredSessions) { session in
                             Section {
-                                ZStack {
+                                NavigationLink {
+                                    SessionDetailViewCD(session: session, audioManager: audioManager)
+                                } label: {
                                     SessionCardViewCD(session: session)
-                                    NavigationLink(value: session) {
-                                        EmptyView()
-                                    }
-                                    .opacity(0)
+                                        .contentShape(Rectangle())   // ensures full row is tappable
                                 }
+                                .buttonStyle(.plain)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button(role: .destructive) {
                                         sessionToDelete = session
@@ -99,10 +99,9 @@ struct SessionListViewCD: View {
                     }
                 }
             }
-            .navigationTitle("Sessions")
-            .navigationDestination(for: PracticeSessionCD.self) { session in
-                SessionDetailViewCD(session: session, audioManager: audioManager)
-            }
+           // .navigationDestination(for: PracticeSessionCD.self) { session in
+           //     SessionDetailViewCD(session: session, audioManager: audioManager)
+           // }
             .searchable(text: $searchText, prompt: "Search Sessions")
         
     }
