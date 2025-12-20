@@ -12,6 +12,9 @@ struct SongFilterSheet: View {
     @Binding var selectedPieceType: PieceType?
     let isSuzuki: Bool
     @Binding var selectedSuzukiBook: SuzukiBook?
+    let availableCollections: [CollectionCD]
+    @Binding var selectedCollection: CollectionCD?
+    @Binding var showArchived: Bool
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -36,6 +39,19 @@ struct SongFilterSheet: View {
                         }
                     }
                 }
+                
+                Section("Collection") {
+                    Picker("Filter by Collection", selection: $selectedCollection) {
+                        Text("All Collections").tag(nil as CollectionCD?)
+                        ForEach(availableCollections, id: \.self) { collection in
+                            Text(collection.name ?? "Unnamed").tag(Optional(collection))
+                        }
+                    }
+                }
+                
+                Section {
+                    Toggle("Show Archived Songs", isOn: $showArchived)
+                }
             }
             .navigationTitle("Filter Songs")
             .navigationBarTitleDisplayMode(.inline)
@@ -44,6 +60,8 @@ struct SongFilterSheet: View {
                     Button("Reset") {
                         selectedPieceType = nil
                         selectedSuzukiBook = nil
+                        selectedCollection = nil
+                        showArchived = false
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -53,3 +71,4 @@ struct SongFilterSheet: View {
         }
     }
 }
+

@@ -17,8 +17,10 @@ struct TunerTabView: View {
     @EnvironmentObject var settingsManager: SettingsManager
 
     var body: some View {
+        Spacer()
         TunerTabContentView(audioManager: audioManager)
             .environmentObject(settingsManager)
+            .navigationTitle("Tuner")
     }
 }
 
@@ -35,7 +37,10 @@ private struct TunerTabContentView: View {
     }
 
     var body: some View {
+
         VStack {
+            Spacer()
+
             Picker("Tuner Mode", selection: $tunerMode) {
                 ForEach(TunerMode.allCases) { mode in
                     Text(mode.rawValue).tag(mode)
@@ -50,6 +55,7 @@ private struct TunerTabContentView: View {
                 DroneView(viewModel: droneViewModel)
             }
         }
+        .navigationTitle("Tuner")
         .onDisappear {
             // Stop both engines when the view disappears
             stopAllAudio()
@@ -81,7 +87,6 @@ private struct PitchListeningView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
             
             if tuner.isListening {
                 Text("Listening...")
@@ -108,8 +113,6 @@ private struct PitchListeningView: View {
             // Visual feedback meter
             TunerMeter(distance: $tuner.distance)
                 .opacity(tuner.isListening ? 1.0 : 0.3)
-
-            Spacer()
                            
             SaveButtonView(title: tuner.isListening ? "Stop Listening" : "Start Listening", action: {
                 usageManager.incrementTunerOpens()
@@ -204,7 +207,7 @@ private struct DroneView: View {
                 }
             }
             .padding(.horizontal)
-
+/*
             VStack(alignment: .leading, spacing: 8) {
                 Text("Volume")
                     .font(.subheadline)
@@ -212,7 +215,7 @@ private struct DroneView: View {
                 Slider(value: $viewModel.droneVolume, in: 0...1)
             }
             .padding(.horizontal)
-
+*/
             Spacer()
             
             // Visual feedback for drone

@@ -34,6 +34,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSideMenu) {
                     SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                        .environmentObject(SubscriptionManager.shared)
                         .presentationSizing(.page)
                         .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
             }
@@ -76,6 +77,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSideMenu) {
                     SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                        .environmentObject(SubscriptionManager.shared)
                         .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
             }
             .sheet(isPresented: $showingAddSheet) {

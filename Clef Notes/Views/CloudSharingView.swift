@@ -28,7 +28,7 @@ struct CloudSharingView: View {
                             }
                             .scaleEffect(1.5)
                             .padding()
-                        } else if let share = share {
+                        } else if share != nil {
                             ShareReadyView(isSharing: $isSharing)
                         } else if let error = error {
                             ShareErrorView(error: error) {

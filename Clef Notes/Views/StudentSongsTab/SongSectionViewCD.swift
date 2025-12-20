@@ -19,12 +19,11 @@ struct SongSectionViewCD: View {
         if !songs.isEmpty {
             Section(header: Text(title)) {
                 ForEach(songs) { song in
-                    ZStack {
+                    NavigationLink {
+                        SongDetailViewCD(song: song, audioManager: audioManager)
+                    } label: {
                         SongCardView(song: song)
-                        NavigationLink(value: song) {
-                            EmptyView()
-                        }
-                        .opacity(0)
+                            .contentShape(Rectangle())   // ensures full row is tappable
                     }
                     .swipeActions(edge: .leading) {
                         Button { editingSong = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)

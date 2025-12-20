@@ -44,11 +44,49 @@ struct AddSongSheetCD: View {
     @State private var songStatus: PlayType? = nil
     @State private var pieceType: PieceType? = nil
     @State private var selectedSuzukiBook: SuzukiBook? = nil
+    
+    // Image selection properties
+    @State private var selectedImageItem: PhotosPickerItem?
+    @State private var selectedImageData: Data?
+    
+    @FetchRequest(entity: CollectionCD.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CollectionCD.name, ascending: true)]) var collections: FetchedResults<CollectionCD>
+    
+    @State private var archived: Bool = false
+    @State private var selectedCollection: CollectionCD? = nil
+
+    @State private var showingAddCollectionSheet = false
+    @State private var newCollectionName = ""
 
     var body: some View {
         NavigationStack {
             VStack {
                 Form {
+                    Section("Song Image") {
+                        HStack {
+                            Spacer()
+                            VStack {
+                                if let imageData = selectedImageData, let uiImage = UIImage(data: imageData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    Image(systemName: "music.note")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(.gray)
+                                        .frame(width: 100, height: 100)
+                                        .background(Color.gray.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                PhotosPicker("Choose Image", selection: $selectedImageItem, matching: .images)
+                                    .buttonStyle(.bordered)
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical)
+                    }
+                    
                     Section {
                         TextField("Title", text: $title)
                             .focused($focusedField, equals: .title) // 3. Apply .focused
@@ -80,14 +118,6 @@ struct AddSongSheetCD: View {
                             Label("Initial Status", systemImage: "tag.fill")
                         }
                     }
-
-                    Section {
-                        TextField("Goal Plays (Optional)", text: $goalPlays)
-                            .keyboardType(.numberPad)
-                            .focused($focusedField, equals: .goalPlays) // 3. Apply .focused
-                    } footer: {
-                        Text("Set a target number of plays for songs with a 'Practice' status.")
-                    }
                     
                     if student.suzukiStudent?.boolValue ?? false {
                         Section("Suzuki") {
@@ -98,10 +128,47 @@ struct AddSongSheetCD: View {
                                 }
                             }
                         }
+                        Section("Song Options") {
+                            Toggle("Archived", isOn: $archived)
+                            Picker("Collection Tag", selection: $selectedCollection) {
+                                Text("None").tag(Optional<CollectionCD>(nil))
+                                ForEach(collections, id: \.self) { collection in
+                                    Text(collection.name ?? "Unnamed").tag(Optional(collection))
+                                }
+                            }
+                            Button("Add New Collection") { showingAddCollectionSheet = true }
+                        }
+                    } else {
+                        Section("Song Options") {
+                            Toggle("Archived", isOn: $archived)
+                            Picker("Collection Tag", selection: $selectedCollection) {
+                                Text("None").tag(Optional<CollectionCD>(nil))
+                                ForEach(collections, id: \.self) { collection in
+                                    Text(collection.name ?? "Unnamed").tag(Optional(collection))
+                                }
+                            }
+                            Button("Add New Collection") { showingAddCollectionSheet = true }
+                        }
                     }
+
+                    Section {
+                        TextField("Goal Plays (Optional)", text: $goalPlays)
+                            .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .goalPlays) // 3. Apply .focused
+                    } footer: {
+                        Text("Set a target number of plays for songs with a 'Practice' status.")
+                    }
+                    
                 }
                 // 4. Apply the new navigation modifier
                 .addKeyboardNavigation(for: FocusField.allCases, focus: $focusedField)
+                .onChange(of: selectedImageItem) {
+                    Task {
+                        if let data = try? await selectedImageItem?.loadTransferable(type: Data.self) {
+                            selectedImageData = data
+                        }
+                    }
+                }
 
                 SaveButtonView(title: "Add Song", action: addSong, isDisabled: title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -111,6 +178,9 @@ struct AddSongSheetCD: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+        }
+        .sheet(isPresented: $showingAddCollectionSheet) {
+            addCollectionSheet
         }
     }
 
@@ -124,6 +194,11 @@ struct AddSongSheetCD: View {
         newSong.songStatus = songStatus
         newSong.pieceType = pieceType
         newSong.suzukiBook = selectedSuzukiBook
+        newSong.image = selectedImageData
+
+        newSong.setValue(archived, forKey: "archived")
+        newSong.collection = selectedCollection
+        
         usageManager.incrementSongCreations()
 
         do {
@@ -132,6 +207,33 @@ struct AddSongSheetCD: View {
         } catch {
             let nsError = error as NSError
             fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+        }
+    }
+    
+    private var addCollectionSheet: some View {
+        NavigationStack {
+            VStack {
+                Form {
+                    TextField("Collection Name", text: $newCollectionName)
+                }
+                SaveButtonView(title: "Add Collection", action: {
+                    let newCollection = CollectionCD(context: viewContext)
+                    newCollection.name = newCollectionName
+                    try? viewContext.save()
+                    selectedCollection = newCollection
+                    showingAddCollectionSheet = false
+                    newCollectionName = ""
+                }, isDisabled: newCollectionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .navigationTitle("New Collection")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showingAddCollectionSheet = false
+                        newCollectionName = ""
+                    }
+                }
+            }
         }
     }
 }

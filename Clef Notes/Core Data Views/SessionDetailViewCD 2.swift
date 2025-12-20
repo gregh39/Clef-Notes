@@ -1,5 +1,13 @@
-// Clef Notes/Core Data Views/SessionDetailViewCD.swift
+//
+//  SessionDetailViewCD 2.swift
+//  Clef Notes
+//
+//  Created by Greg Holland on 9/7/25.
+//
 
+
+// Clef Notes/Core Data Views/SessionDetailViewCD.swift
+/*
 import SwiftUI
 import CoreData
 import AVFoundation
@@ -40,9 +48,6 @@ struct SessionDetailViewCD: View {
     
     @State private var showingPaywallView = false
 
-    // Inline rename state for recordings
-    @State private var audioRecordingToRename: AudioRecordingCD?
-
     init(session: PracticeSessionCD, audioManager: AudioManager) {
         self.session = session
         _audioRecorderManager = StateObject(wrappedValue: AudioRecorderManager(audioManager: audioManager))
@@ -72,7 +77,7 @@ struct SessionDetailViewCD: View {
                     switch selectedSection {
                     case .session, .record:
                         sessionTab
-
+                        
                     case .metronome:
                         MetronomeSectionView()
 
@@ -212,16 +217,6 @@ struct SessionDetailViewCD: View {
                 }
             }
         }
-        // Inline rename sheet for recordings
-        .sheet(item: $audioRecordingToRename) { rec in
-            InlineRenameTitleSheet(
-                title: rec.title ?? "",
-                onSave: { newTitle in
-                    rec.title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                    try? viewContext.save()
-                }
-            )
-        }
     }
 
     private var sessionTab: some View {
@@ -250,35 +245,10 @@ struct SessionDetailViewCD: View {
                         id: recording.objectID,
                         audioPlayerManager: audioPlayerManager
                     )
-                    // Leading swipe (right) for Rename
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button {
-                            audioRecordingToRename = recording
-                        } label: {
-                            Label("Rename", systemImage: "pencil")
-                                .foregroundStyle(Color.orange)
-
-                        }
-                        .tint(.orange)
-                    }
-                    // Trailing swipe (left) for Delete
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            if let index = session.recordingsArray.firstIndex(of: recording) {
-                                deleteRecordings(at: IndexSet(integer: index))
-                            }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                                .foregroundStyle(Color.red)
-                        }
-                        .tint(.red)
-
-                    }
                 }
                 .onDelete(perform: deleteRecordings)
             }
         }
-        .navigationTitle(session.title ?? "Practice Session")
     }
     
     private var staticDurationDisplay: some View {
@@ -501,7 +471,7 @@ struct ExpandingRecordingButton: View {
                     .padding(.leading, 24)
                     .matchedGeometryEffect(id: "recordButton", in: buttonTransition)
                 }
-                //.padding(.bottom, 30)
+                .padding(.bottom, 30)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             if !isExpanded {
@@ -679,38 +649,4 @@ private struct SessionDetailNavButtons: View {
     }
 }
 
-// MARK: - Inline Rename Sheet (local to this file)
-private struct InlineRenameTitleSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var titleText: String
-    let onSave: (String) -> Void
-    
-    init(title: String, onSave: @escaping (String) -> Void) {
-        _titleText = State(initialValue: title)
-        self.onSave = onSave
-    }
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Title") {
-                    TextField("Title", text: $titleText)
-                        .textInputAutocapitalization(.words)
-                }
-            }
-            .navigationTitle("Rename")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let trimmed = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        onSave(trimmed.isEmpty ? "Recording" : trimmed)
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
+*/

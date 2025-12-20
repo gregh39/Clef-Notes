@@ -87,7 +87,7 @@ struct ErrorHandling: ViewModifier {
                     errorWrapper = nil
                 }
                 
-                if let recovery = errorWrapper?.error.recoverySuggestion {
+                if (errorWrapper?.error.recoverySuggestion) != nil {
                     Button("Learn More") {
                         // Show more detailed error info
                     }

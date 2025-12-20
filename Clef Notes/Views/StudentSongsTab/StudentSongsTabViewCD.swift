@@ -13,11 +13,12 @@ struct StudentSongsTabViewCD: View {
     @State private var selectedPieceType: PieceType? = nil
     @State private var searchText = ""
     @State private var selectedSuzukiBook: SuzukiBook? = nil
+    @State private var selectedCollection: CollectionCD? = nil
     @State private var showingFilterSheet = false
+    @State private var showArchived: Bool = false
     
     // State for sheets and navigation
     @State private var editingSongForEditSheet: SongCD? = nil
-    @State private var path = NavigationPath()
 
     // Add state for the delete confirmation alert
     @State private var songToDelete: SongCD?
@@ -29,10 +30,17 @@ struct StudentSongsTabViewCD: View {
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
+    private var availableCollections: [CollectionCD] {
+        let allCollections = student.songsArray.compactMap { $0.collection }
+        return Array(Set(allCollections)).sorted { ($0.name ?? "") < ($1.name ?? "") }
+    }
+    
     private var activeFilterCount: Int {
         var count = 0
         if selectedPieceType != nil { count += 1 }
         if selectedSuzukiBook != nil { count += 1 }
+        if selectedCollection != nil { count += 1 }
+        if showArchived { count += 1 }
         return count
     }
     
@@ -40,6 +48,14 @@ struct StudentSongsTabViewCD: View {
     private var filteredAndSortedSongs: [SongCD] {
         // Start with the base array
         var filteredSongs = Array(student.songs as? Set<SongCD> ?? [])
+        
+        if !showArchived {
+            filteredSongs = filteredSongs.filter { !$0.archived }
+        }
+        
+        if let collection = selectedCollection {
+            filteredSongs = filteredSongs.filter { $0.collection == collection }
+        }
 
         // Apply piece type filter
         if let type = selectedPieceType {
@@ -71,63 +87,60 @@ struct StudentSongsTabViewCD: View {
     }
     
     var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if student.songsArray.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Songs Added", image: "add.song")
-                    } description: {
-                        Text("Tap the button to add your first song.")
-                    } actions: {
-                        Button("Add First Song", action: onAddSong)
-                            .buttonStyle(.borderedProminent)
-                    }
-                } else {
-                    songList
+        Group {
+            if student.songsArray.isEmpty {
+                ContentUnavailableView {
+                    Label("No Songs Added", image: "add.song")
+                } description: {
+                    Text("Tap the button to add your first song.")
+                } actions: {
+                    Button("Add First Song", action: onAddSong)
+                        .buttonStyle(.borderedProminent)
                 }
+            } else {
+                songList
             }
-            .navigationDestination(for: SongCD.self) { song in
-                SongDetailViewCD(song: song, audioManager: audioManager)
-            }
-            .navigationTitle("Songs")
-            .searchable(text: $searchText, prompt: "Search Songs or Composers")
-            .alert(isPresented: $showingDeleteAlert) {
-                Alert(
-                    title: Text("Delete Song?"),
-                    message: Text("Are you sure you want to delete this song? All of its plays will be deleted as well."),
-                    primaryButton: .destructive(Text("Delete")) {
-                        if let song = songToDelete {
-                            delete(song: song)
-                        }
-                    },
-                    secondaryButton: .cancel()
-                )
-            }
-            .sheet(isPresented: $showingFilterSheet) {
-                SongFilterSheet(
-                    availablePieceTypes: availablePieceTypes,
-                    selectedPieceType: $selectedPieceType,
-                    isSuzuki: student.suzukiStudent?.boolValue == true,
-                    selectedSuzukiBook: $selectedSuzukiBook
-                )
-                .presentationDetents([.medium])
-            }
-            .toolbar {
-                ToolbarItem() {
-                    Button {
-                        showingFilterSheet = true
-                    } label: {
-                        ZStack {
-                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                            if activeFilterCount > 0 {
-                                Text("\(activeFilterCount)")
-                                    .font(.caption2.bold())
-                                    .foregroundColor(.white)
-                                    .padding(5)
-                                    .background(Color.red)
-                                    .clipShape(Circle())
-                                    .offset(x: 12, y: -12)
-                            }
+        }
+        .searchable(text: $searchText, prompt: "Search Songs or Composers")
+        .alert(isPresented: $showingDeleteAlert) {
+            Alert(
+                title: Text("Delete Song?"),
+                message: Text("Are you sure you want to delete this song? All of its plays will be deleted as well."),
+                primaryButton: .destructive(Text("Delete")) {
+                    if let song = songToDelete {
+                        delete(song: song)
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .sheet(isPresented: $showingFilterSheet) {
+            SongFilterSheet(
+                availablePieceTypes: availablePieceTypes,
+                selectedPieceType: $selectedPieceType,
+                isSuzuki: student.suzukiStudent?.boolValue == true,
+                selectedSuzukiBook: $selectedSuzukiBook,
+                availableCollections: availableCollections,
+                selectedCollection: $selectedCollection,
+                showArchived: $showArchived
+            )
+            .presentationDetents([.medium])
+        }
+        .toolbar {
+            ToolbarItem() {
+                Button {
+                    showingFilterSheet = true
+                } label: {
+                    ZStack {
+                        Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                        if activeFilterCount > 0 {
+                            Text("\(activeFilterCount)")
+                                .font(.caption2.bold())
+                                .foregroundColor(.white)
+                                .padding(5)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                                .offset(x: 12, y: -12)
                         }
                     }
                 }
@@ -184,12 +197,11 @@ struct StudentSongsTabViewCD: View {
             if let songsInGroup = grouped[status], !songsInGroup.isEmpty {
                 Section(header: Text(status?.rawValue ?? "No Status")) {
                     ForEach(songsInGroup) { song in
-                        ZStack {
+                        NavigationLink {
+                            SongDetailViewCD(song: song, audioManager: audioManager)
+                        } label: {
                             SongCardView(song: song)
-                            NavigationLink(value: song) {
-                                EmptyView()
-                            }
-                            .opacity(0)
+                                .contentShape(Rectangle())   // ensures full row is tappable
                         }
                         .swipeActions(edge: .leading) {
                             Button { editingSongForEditSheet = song } label: { Label("Edit", systemImage: "pencil") }.tint(.orange)
@@ -223,5 +235,3 @@ struct StudentSongsTabViewCD: View {
         }
     }
 }
-
-

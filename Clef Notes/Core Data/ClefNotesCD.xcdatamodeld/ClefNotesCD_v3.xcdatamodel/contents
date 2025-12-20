@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24270" systemVersion="25A5316i" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24299" systemVersion="25B5057f" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
     <entity name="AudioRecordingCD" representedClassName="AudioRecordingCD" syncable="YES">
         <attribute name="data" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
         <attribute name="dateRecorded" attributeType="Date" defaultDateTimeInterval="774326640" usesScalarValueType="NO"/>
@@ -9,6 +9,10 @@
         <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PracticeSessionCD" inverseName="recordings" inverseEntity="PracticeSessionCD"/>
         <relationship name="songs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SongCD" inverseName="recordings" inverseEntity="SongCD"/>
         <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="audioRecordings" inverseEntity="StudentCD"/>
+    </entity>
+    <entity name="CollectionCD" representedClassName="CollectionCD" syncable="YES">
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="songs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SongCD" inverseName="collection" inverseEntity="SongCD"/>
     </entity>
     <entity name="EarnedAwardCD" representedClassName="EarnedAwardCD" syncable="YES">
         <attribute name="awardRawValue" optional="YES" attributeType="String"/>
@@ -60,6 +64,7 @@
         <relationship name="student" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="StudentCD" inverseName="sessions" inverseEntity="StudentCD"/>
     </entity>
     <entity name="SongCD" representedClassName="SongCD" syncable="YES">
+        <attribute name="archived" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="composer" optional="YES" attributeType="String"/>
         <attribute name="goalPlays" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="image" optional="YES" attributeType="Binary"/>
@@ -68,6 +73,7 @@
         <attribute name="studentID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="suzukiBookRaw" optional="YES" attributeType="String"/>
         <attribute name="title" attributeType="String" defaultValueString=""/>
+        <relationship name="collection" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CollectionCD" inverseName="songs" inverseEntity="CollectionCD"/>
         <relationship name="media" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MediaReferenceCD" inverseName="song" inverseEntity="MediaReferenceCD"/>
         <relationship name="notes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NoteCD" inverseName="songs" inverseEntity="NoteCD"/>
         <relationship name="plays" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PlayCD" inverseName="song" inverseEntity="PlayCD"/>

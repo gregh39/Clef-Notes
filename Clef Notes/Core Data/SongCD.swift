@@ -86,6 +86,8 @@ extension SongCD {
     @NSManaged public var plays: NSSet?
     @NSManaged public var recordings: NSSet?
     @NSManaged public var student: StudentCD?
+    @NSManaged public var archived: Bool     // <-- NEW
+    @NSManaged public var collection: CollectionCD?  // <-- NEW
     
     public var pieceType: PieceType? {
         get {

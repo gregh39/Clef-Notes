@@ -30,11 +30,11 @@ struct StudentDetailNavigationView: View {
         }
     }
 
-    @State private var sessionsPath: [AnyHashable] = []
-    @State private var songsPath: [AnyHashable] = []
-    @State private var statsPath: [AnyHashable] = []
-    @State private var awardsPath: [AnyHashable] = []
-    @State private var notesPath: [AnyHashable] = []
+    @State private var sessionsPath = NavigationPath()
+    @State private var songsPath = NavigationPath()
+    @State private var statsPath = NavigationPath()
+    @State private var awardsPath = NavigationPath()
+    @State private var notesPath = NavigationPath()
 
     // Helper function to get navigation title based on selected tab
     private func getNavigationTitle(for tab: Int) -> String {
@@ -66,6 +66,9 @@ struct StudentDetailNavigationView: View {
                         }
                         .navigationTitle("Sessions")
                         .navigationBarTitleDisplayMode(.large)
+                        .navigationDestination(for: PracticeSessionCD.self) { session in
+                            SessionDetailViewCD(session: session, audioManager: audioManager)
+                        }
                         .toolbar {
                             CommonToolbar(
                                 context: .sessions,
@@ -200,6 +203,9 @@ struct StudentDetailNavigationView: View {
                         case .notes:
                             StudentNotesView(student: student, triggerAddNote: $triggerAddNote)
                         }
+                    }
+                    .navigationDestination(for: PracticeSessionCD.self) { session in
+                        SessionDetailViewCD(session: session, audioManager: audioManager)
                     }
                     .navigationTitle(student.name ?? "Student")
                     .toolbar {

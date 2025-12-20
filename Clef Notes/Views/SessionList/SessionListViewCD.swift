@@ -61,28 +61,54 @@ struct SessionListViewCD: View {
                     List {
                         ForEach(filteredSessions) { session in
                             Section {
-                                NavigationLink {
-                                    SessionDetailViewCD(session: session, audioManager: audioManager)
-                                } label: {
-                                    SessionCardViewCD(session: session)
-                                        .contentShape(Rectangle())   // ensures full row is tappable
-                                }
-                                .buttonStyle(.plain)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        sessionToDelete = session
+                                if #available(iOS 26.0, *) {
+                                    NavigationLink {
+                                        SessionDetailViewCD(session: session, audioManager: audioManager)
                                     } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        SessionCardViewCD(session: session)
+                                            .contentShape(Rectangle())   // ensures full row is tappable
                                     }
-                                    .tint(.red)
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    Button {
-                                        sessionToEdit = session
+                                    .buttonStyle(.glass)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            sessionToDelete = session
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .tint(.red)
+                                    }
+                                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                        Button {
+                                            sessionToEdit = session
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        .tint(.orange)
+                                    }
+                                } else {
+                                    NavigationLink {
+                                        SessionDetailViewCD(session: session, audioManager: audioManager)
                                     } label: {
-                                        Label("Edit", systemImage: "pencil")
+                                        SessionCardViewCD(session: session)
+                                            .contentShape(Rectangle())   // ensures full row is tappable
                                     }
-                                    .tint(.orange)
+                                    .buttonStyle(.plain)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            sessionToDelete = session
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .tint(.red)
+                                    }
+                                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                        Button {
+                                            sessionToEdit = session
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        .tint(.orange)
+                                    }
                                 }
                             }
                         }

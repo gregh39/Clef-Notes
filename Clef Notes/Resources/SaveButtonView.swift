@@ -61,7 +61,7 @@ struct PageButtonView: View {
                     .padding()
                     .foregroundColor(.white)
             }
-            .glassEffect(.clear.tint(isSelected ? Color.gray : settingsManager.activeAccentColor))
+            .glassEffect(.clear.tint(isSelected ? Color.gray : settingsManager.activeAccentColor).interactive())
             .disabled(isSelected)
             .padding()
         }

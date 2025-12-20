@@ -92,6 +92,7 @@ struct SessionCardViewCD: View {
             }
         }
         .padding(.vertical, 6)
+        
     }
 }
 

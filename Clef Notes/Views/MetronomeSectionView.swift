@@ -57,15 +57,14 @@ struct MetronomeSectionView: View {
 
     var body: some View {
         VStack {
-            VStack(spacing: 12) {
+            Spacer()
+            VStack() {
                 Picker("Visualizer", selection: $visualizerType) {
                     ForEach(MetronomeVisualizerType.allCases) { type in
                         Text(type.rawValue).tag(type)
                     }
                 }
                 .pickerStyle(.segmented)
-                
-                Toggle("Highlight Downbeat", isOn: $highlightDownbeat)
             }
             .padding(.horizontal)
 
@@ -79,9 +78,9 @@ struct MetronomeSectionView: View {
                     MetronomeArmView(rotation: $armRotation, beatCount: $beatCount, highlightDownbeat: highlightDownbeat)
                 }
             }
-            .frame(height: 300)
+           // .frame(height: 300)
             
-            Spacer()
+            //Spacer()
             
             VStack {
                 Button {
@@ -125,19 +124,19 @@ struct MetronomeSectionView: View {
                 Slider(value: $bpm, in: tempoRange, step: 1)
                     .tint(settingsManager.activeAccentColor) // <<< USE THEME COLOR
                     .padding(.horizontal)
-                    .padding(.vertical)
             }
             
-            Spacer()
+            //Spacer()
             
             SaveButtonView(title: isPlaying ? "Stop" : "Start", action: {
                 usageManager.incrementMetronomeOpens()
                 toggleMetronome()
             })
         }
+        .navigationTitle("Metronome")
         .onDisappear(perform: stopMetronome)
         .sheet(isPresented: $showingTimeSignatureSheet) {
-            TimeSignatureSelectionSheet(selectedID: $timeSignatureID)
+            TimeSignatureSelectionSheet(selectedID: $timeSignatureID, highlightDownbeat: $highlightDownbeat)
                 .presentationDetents([.medium])
         }
     }
@@ -217,6 +216,8 @@ struct MetronomeSectionView: View {
 
 private struct TimeSignatureSelectionSheet: View {
     @Binding var selectedID: String
+    @Binding var highlightDownbeat: Bool
+    
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsManager: SettingsManager // <<< USE THEME FROM ENVIRONMENT
     
@@ -230,6 +231,8 @@ private struct TimeSignatureSelectionSheet: View {
                     Text("Select a Time Signature")
                         .font(.largeTitle.bold())
                         .padding(.horizontal)
+                    
+                    Toggle("Highlight Downbeat", isOn: $highlightDownbeat)
 
                     SignatureGroupView(title: "Common Time", signatures: commonTime, selectedID: $selectedID)
                     SignatureGroupView(title: "Compound Time", signatures: compoundTime, selectedID: $selectedID)
@@ -296,7 +299,7 @@ private struct PulseVisualizer: View {
                     endRadius: pulseRadius
                 )
             )
-            .frame(width: 300, height: 300)
+            //.frame(width: , height: 200)
     }
 }
 
