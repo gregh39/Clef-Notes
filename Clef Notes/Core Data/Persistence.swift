@@ -1,7 +1,8 @@
+import Foundation
 import CoreData
-import SwiftData
-import os.log
-import CloudKit // Import CloudKit
+import CloudKit
+import SwiftUI
+import os.log // Import CloudKit
 
 
 /*
@@ -11,10 +12,6 @@ Abstract:
 A class that sets up the Core Data stack.
 */
 
-import Foundation
-import CoreData
-import CloudKit
-import SwiftUI
 
 let gCloudKitContainerIdentifier = "iCloud.com.ClefNotesApp"
 
@@ -177,3 +174,4 @@ class PersistenceController: NSObject {
     }
     
 }
+

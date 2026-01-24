@@ -2,6 +2,7 @@ import SwiftUI
 import CoreData
 import CloudKit
 import TelemetryDeck
+import UIKit
 
 struct CloudSharingView: View {
     let student: StudentCD

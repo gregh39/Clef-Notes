@@ -176,7 +176,7 @@ struct ContentView: View {
                     Spacer()
                 }
             }
-            .navigationTitle("Clef Notes")
+            .navigationTitle("ClefNotes")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingSideMenu = true }) {

@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 import os.log
-import SwiftUI
 import CoreData
 
 // Centralized error handling

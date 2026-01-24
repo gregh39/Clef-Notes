@@ -64,7 +64,7 @@ struct StudentDetailNavigationView: View {
                         SessionListViewCD(student: student) {
                             showingAddSessionSheet = true
                         }
-                        .navigationTitle("Sessions")
+                        .navigationTitle(student.name ?? "Sessions")
                         .navigationBarTitleDisplayMode(.large)
                         .navigationDestination(for: PracticeSessionCD.self) { session in
                             SessionDetailViewCD(session: session, audioManager: audioManager)
@@ -215,6 +215,7 @@ struct StudentDetailNavigationView: View {
                             }) {
                                 Label("Menu", systemImage: "line.3.horizontal")
                             }
+                            
                         }
                         // ... (The rest of your toolbar remains the same)
                         ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -339,4 +340,3 @@ struct StudentDetailNavigationView: View {
         }
     }
 }
-
