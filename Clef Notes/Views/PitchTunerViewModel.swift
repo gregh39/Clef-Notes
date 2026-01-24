@@ -9,26 +9,26 @@ import TelemetryDeck
 @MainActor
 class PitchTunerViewModel: ObservableObject {
     // MARK: - Properties
-    
+
     @Published var detectedNoteName = "--"
     @Published var detectedFrequency: Double = 440.0
     @Published var distance: Double = 0.0
     @Published var isListening = false
 
     // AudioKit Engine - now self-contained
-    private let engine = AudioEngine()
-    private var mic: AudioEngine.InputNode
+    private var engine: AudioEngine!
+    private var mic: AudioEngine.InputNode!
     // --- FIX: Make tracker an implicitly unwrapped optional ---
     private var tracker: PitchTap!
-    private var mixer: Mixer
-    
+    private var mixer: Mixer!
+
     private let audioManager: AudioManager
 
     // Note names for manual calculation
     private static let noteNamesWithSharps = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
     private var a4Frequency: Double = SettingsManager.shared.a4Frequency
     private var transposition: Int = SettingsManager.shared.tunerTransposition
-    
+
     private var settingsCancellable: AnyCancellable?
 
 
@@ -37,27 +37,36 @@ class PitchTunerViewModel: ObservableObject {
     init(audioManager: AudioManager) {
         self.audioManager = audioManager
         print("[PitchTunerViewModel] Initialized with AudioManager")
-        mic = engine.input!
-        print("[PitchTunerViewModel] Mic input initialized")
+
+        settingsCancellable = SettingsManager.shared.objectWillChange.sink { [weak self] _ in
+            self?.a4Frequency = SettingsManager.shared.a4Frequency
+            self?.transposition = SettingsManager.shared.tunerTransposition
+        }
+        print("[PitchTunerViewModel] SettingsManager subscription set up")
+    }
+
+    private func setupAudioEngine() {
+        // Stop and reset existing engine if it exists
+        if engine != nil {
+            engine.stop()
+        }
+
+        // Create fresh engine after audio session is configured
+        engine = AudioEngine()
+        mic = engine.input
+        print("[PitchTunerViewModel] Mic input initialized with format: \(String(describing: mic?.avAudioNode.outputFormat(forBus: 0)))")
         mixer = Mixer(mic)
         print("[PitchTunerViewModel] Mixer initialized")
         engine.output = mixer
         print("[PitchTunerViewModel] Engine output set to mixer")
-        
-        // --- FIX: Initialize tracker after other properties are set ---
-        // The closure can now safely capture `self` because all other properties are initialized.
+
+        // Initialize tracker after other properties are set
         tracker = PitchTap(mic) { [weak self] pitch, amp in
             DispatchQueue.main.async {
                 self?.update(pitch: pitch[0], amp: amp[0])
             }
         }
         print("[PitchTunerViewModel] PitchTap (tracker) initialized")
-        
-        settingsCancellable = SettingsManager.shared.objectWillChange.sink { [weak self] _ in
-            self?.a4Frequency = SettingsManager.shared.a4Frequency
-            self?.transposition = SettingsManager.shared.tunerTransposition
-        }
-        print("[PitchTunerViewModel] SettingsManager subscription set up")
     }
 
     // MARK: - Public Methods
@@ -71,7 +80,7 @@ class PitchTunerViewModel: ObservableObject {
             print("[PitchTunerViewModel] Failed to request audio session for tuner")
             return
         }
-        
+
         // Request microphone permission directly.
         AVAudioApplication.requestRecordPermission { [weak self] granted in
             guard let self = self else { return }
@@ -80,11 +89,14 @@ class PitchTunerViewModel: ObservableObject {
                 TelemetryDeck.signal("mic_permission_denied")
                 return
             }
-            
-            print("[PitchTunerViewModel] Microphone permission granted. Starting tracker and engine...")
-            
+
+            print("[PitchTunerViewModel] Microphone permission granted. Setting up audio engine...")
+
             DispatchQueue.main.async {
                 do {
+                    // Setup engine AFTER audio session is configured
+                    self.setupAudioEngine()
+
                     // Start the tracker and then the engine.
                     // AudioKit will handle activating the audio session.
                     self.tracker.start()
@@ -106,16 +118,16 @@ class PitchTunerViewModel: ObservableObject {
             print("[PitchTunerViewModel] Was not listening. Nothing to stop.")
             return
         }
-        
-        engine.stop()
+
+        engine?.stop()
         print("[PitchTunerViewModel] Audio engine stopped.")
         isListening = false
         TelemetryDeck.signal("tuner_stopped")
         print("[PitchTunerViewModel] isListening set to false.")
         audioManager.releaseSession(for: .tuner)
         print("[PitchTunerViewModel] Audio session released for tuner.")
-        
-        
+
+
         detectedNoteName = "--"
         detectedFrequency = 440.0
         distance = 0.0
