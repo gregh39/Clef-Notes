@@ -4,19 +4,26 @@ import Combine
 
 @MainActor
 class AudioManager: ObservableObject {
-    
+
+    // Singleton instance
+    static let shared = AudioManager()
+
     enum AudioClient {
-        case recorder, player, tuner, metronome
+        case recorder, player, tuner, metronome, timer
     }
-    
+
     @Published private(set) var activeClient: AudioClient?
-    
+
     // --- THIS IS THE FIX: Separate audio players for the upbeat and downbeat sounds ---
     private var metronomeUpbeatPlayer: AVAudioPlayer?
     private var metronomeDownbeatPlayer: AVAudioPlayer?
 
+    // Silent audio player for background timer
+    private var timerSilentPlayer: AVAudioPlayer?
+
     init() {
         setupMetronomePlayers()
+        setupTimerSilentPlayer()
     }
     
     func requestSession(for client: AudioClient, category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions = []) -> Bool {
@@ -123,7 +130,83 @@ class AudioManager: ObservableObject {
             metronomeUpbeatPlayer?.play()
         }
     }
-    
+
+    // MARK: - Timer Specific Logic
+
+    private func setupTimerSilentPlayer() {
+        // Create a silent audio file for background timer
+        let silenceURL = createSilentAudioFile()
+
+        do {
+            timerSilentPlayer = try AVAudioPlayer(contentsOf: silenceURL)
+            timerSilentPlayer?.numberOfLoops = -1 // Loop indefinitely
+            timerSilentPlayer?.volume = 0.0 // Silent
+            timerSilentPlayer?.prepareToPlay()
+        } catch {
+            print("Failed to create timer silent audio player: \(error)")
+        }
+    }
+
+    private func createSilentAudioFile() -> URL {
+        // Create a silent audio file (1 second of silence)
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
+        let frameCount = AVAudioFrameCount(44100) // 1 second
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+        buffer.frameLength = frameCount
+
+        // Write to a temporary file
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("timer_silence.m4a")
+
+        // If file already exists, return it
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            return fileURL
+        }
+
+        // Create a simple silent audio file
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 2,
+            AVEncoderBitRateKey: 64000
+        ]
+
+        do {
+            let audioFile = try AVAudioFile(forWriting: fileURL, settings: settings)
+            try audioFile.write(from: buffer)
+        } catch {
+            print("Failed to create silent audio file: \(error)")
+        }
+
+        return fileURL
+    }
+
+    func startTimerAudio() {
+        let hasSession = requestSession(for: .timer, category: .playback, options: .mixWithOthers)
+        guard hasSession else {
+            print("AudioManager: Failed to acquire session for timer")
+            return
+        }
+        timerSilentPlayer?.play()
+        print("AudioManager: Timer silent audio started")
+    }
+
+    func stopTimerAudio() {
+        timerSilentPlayer?.stop()
+        releaseSession(for: .timer)
+        print("AudioManager: Timer silent audio stopped")
+    }
+
+    func pauseTimerAudio() {
+        timerSilentPlayer?.pause()
+        print("AudioManager: Timer silent audio paused")
+    }
+
+    func resumeTimerAudio() {
+        timerSilentPlayer?.play()
+        print("AudioManager: Timer silent audio resumed")
+    }
+
     func playSineWave(frequency: Double, duration: TimeInterval) {
         let hasSession = requestSession(for: .player, category: .playback)
         guard hasSession else { return }

@@ -38,7 +38,7 @@ struct Clef_NotesApp: App {
         WindowGroup {
             ContentView()
                .environment(\.managedObjectContext, PersistenceController.shared.persistentContainer.viewContext)
-               .environmentObject(AudioManager())
+               .environmentObject(AudioManager.shared)
                .environmentObject(sessionTimerManager)
                .environmentObject(subscriptionManager)
                .environmentObject(usageManager)

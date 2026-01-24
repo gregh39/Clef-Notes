@@ -14,9 +14,9 @@ class SessionTimerManager: ObservableObject {
 
     private var timer: Timer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
-    private var audioPlayer: AVAudioPlayer?
     private var backgroundEntryTime: Date?
     private let notificationIdentifier = "practice_session_background_reminder"
+    private var secondsSinceLastSave: Int = 0
 
     private var startTime: Date?
     private var accumulatedTime: TimeInterval = 0
@@ -25,70 +25,11 @@ class SessionTimerManager: ObservableObject {
 
     init(context: NSManagedObjectContext) {
         self.viewContext = context
-        setupBackgroundAudio()
         setupLifecycleObservers()
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
-    }
-
-    private func setupBackgroundAudio() {
-        // Configure audio session for background playback
-        do {
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try audioSession.setActive(true)
-        } catch {
-            print("Failed to setup audio session: \(error)")
-        }
-
-        // Create a silent audio file in memory
-        // This plays a 1-second silent audio file in a loop to keep the app alive in background
-        let silenceURL = createSilentAudioFile()
-
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: silenceURL)
-            audioPlayer?.numberOfLoops = -1 // Loop indefinitely
-            audioPlayer?.volume = 0.0 // Silent
-            audioPlayer?.prepareToPlay()
-        } catch {
-            print("Failed to create audio player: \(error)")
-        }
-    }
-
-    private func createSilentAudioFile() -> URL {
-        // Create a silent audio file (1 second of silence)
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
-        let frameCount = AVAudioFrameCount(44100) // 1 second
-        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
-        buffer.frameLength = frameCount
-
-        // Write to a temporary file
-        let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("silence.m4a")
-
-        // If file already exists, return it
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            return fileURL
-        }
-
-        // Create a simple silent audio file
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVSampleRateKey: 44100,
-            AVNumberOfChannelsKey: 2,
-            AVEncoderBitRateKey: 64000
-        ]
-
-        do {
-            let audioFile = try AVAudioFile(forWriting: fileURL, settings: settings)
-            try audioFile.write(from: buffer)
-        } catch {
-            print("Failed to create silent audio file: \(error)")
-        }
-
-        return fileURL
     }
 
     private func setupLifecycleObservers() {
@@ -104,14 +45,6 @@ class SessionTimerManager: ObservableObject {
             selector: #selector(appWillEnterForeground),
             name: UIApplication.willEnterForegroundNotification,
             object: nil
-        )
-
-        // Handle audio interruptions (like when YouTube starts playing)
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleAudioInterruption),
-            name: AVAudioSession.interruptionNotification,
-            object: AVAudioSession.sharedInstance()
         )
     }
 
@@ -134,40 +67,6 @@ class SessionTimerManager: ObservableObject {
         // Cancel any pending notifications
         cancelBackgroundReminder()
         backgroundEntryTime = nil
-    }
-
-    @objc private func handleAudioInterruption(notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
-            return
-        }
-
-        switch type {
-        case .began:
-            // Another app (like YouTube) started playing audio
-            // Our silent audio will be paused, but that's okay
-            // The timer will keep running in memory
-            print("Audio interrupted - timer continues in memory")
-
-        case .ended:
-            // The other app stopped, we can resume our silent audio if timer is still running
-            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-
-            if options.contains(.shouldResume) && activeSession != nil && !isPaused {
-                // Resume our silent audio to maintain background execution
-                do {
-                    try AVAudioSession.sharedInstance().setActive(true)
-                    audioPlayer?.play()
-                } catch {
-                    print("Failed to resume audio session: \(error)")
-                }
-            }
-
-        @unknown default:
-            break
-        }
     }
 
     private func saveTimerState() {
@@ -233,10 +132,13 @@ class SessionTimerManager: ObservableObject {
         TelemetryDeck.signal("session_timer_started")
         accumulatedTime = TimeInterval(session.durationMinutes * 60)
         isPaused = false
+        secondsSinceLastSave = 0
         resume()
 
-        // Start silent audio to keep app alive in background
-        audioPlayer?.play()
+        // Start silent audio through AudioManager to keep app alive in background
+        Task { @MainActor in
+            AudioManager.shared.startTimerAudio()
+        }
     }
 
     func stop() {
@@ -256,9 +158,12 @@ class SessionTimerManager: ObservableObject {
         accumulatedTime = 0
         elapsedTimeString = "00:00:00"
         backgroundEntryTime = nil
+        secondsSinceLastSave = 0
 
-        // Stop silent audio
-        audioPlayer?.stop()
+        // Stop silent audio through AudioManager
+        Task { @MainActor in
+            AudioManager.shared.stopTimerAudio()
+        }
 
         // Cancel any pending notifications
         cancelBackgroundReminder()
@@ -286,8 +191,10 @@ class SessionTimerManager: ObservableObject {
         // Update the display to the exact paused time
         self.elapsedTimeString = self.formatTime(seconds: accumulatedTime)
 
-        // Stop silent audio when paused
-        audioPlayer?.pause()
+        // Pause silent audio through AudioManager
+        Task { @MainActor in
+            AudioManager.shared.pauseTimerAudio()
+        }
 
         // Cancel any pending notifications since timer is paused
         cancelBackgroundReminder()
@@ -307,8 +214,10 @@ class SessionTimerManager: ObservableObject {
         // Re-register background task when resuming
         registerBackgroundTask()
 
-        // Resume silent audio to keep app alive in background
-        audioPlayer?.play()
+        // Resume silent audio through AudioManager to keep app alive in background
+        Task { @MainActor in
+            AudioManager.shared.resumeTimerAudio()
+        }
 
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self, let activeSession = self.activeSession, let startTime = self.startTime else {
@@ -319,12 +228,18 @@ class SessionTimerManager: ObservableObject {
             let elapsedSinceResume = Date().timeIntervalSince(startTime)
             let totalDuration = self.accumulatedTime + elapsedSinceResume
 
+            // Always update the display every second
             self.elapsedTimeString = self.formatTime(seconds: totalDuration)
 
+            // Update the session duration in memory (no save yet)
             let totalMinutes = Int64(totalDuration / 60)
-            if activeSession.durationMinutes != totalMinutes {
-                activeSession.durationMinutes = totalMinutes
+            activeSession.durationMinutes = totalMinutes
+
+            // Only save to Core Data every 60 seconds to reduce I/O
+            self.secondsSinceLastSave += 1
+            if self.secondsSinceLastSave >= 60 {
                 self.saveContext()
+                self.secondsSinceLastSave = 0
             }
         }
     }
