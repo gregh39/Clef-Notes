@@ -37,6 +37,7 @@ struct PlaysListViewCD: View {
                 }
             }
         }
+        .navigationTitle(song.title ?? "Song")
         .sheet(item: $playToEdit) { play in
             PlayEditSheetCD(play: play)
         }

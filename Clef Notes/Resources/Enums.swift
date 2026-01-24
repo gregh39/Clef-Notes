@@ -265,3 +265,23 @@ public enum SuzukiBook: String, CaseIterable, Identifiable {
 
     public var id: String { self.rawValue }
 }
+
+enum StudentDetailSection: String, CaseIterable, Identifiable {
+    case sessions = "Sessions"
+    case songs = "Songs"
+    case stats = "Stats"
+    case awards = "Awards"
+    case notes = "Notes"
+
+    var id: String { self.rawValue }
+
+    var systemImageName: String {
+        switch self {
+        case .sessions: "calendar"
+        case .songs: "music.note"
+        case .stats: "chart.bar"
+        case .awards: "rosette"
+        case .notes: "note.text"
+        }
+    }
+}

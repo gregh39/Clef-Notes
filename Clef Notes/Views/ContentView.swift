@@ -24,9 +24,9 @@ struct ContentView: View {
             Group {
                 // If a student is selected, show their detail view.
                 if let student = selectedStudent {
-                    NavigationStack {
+                    //NavigationStack {
                         StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
-                    }
+                    //}
                 } else {
                     // Otherwise, show the appropriate placeholder/selection view.
                     noStudentView
@@ -34,6 +34,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSideMenu) {
                     SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                        .environmentObject(SubscriptionManager.shared)
                         .presentationSizing(.page)
                         .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
             }
@@ -76,6 +77,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSideMenu) {
                     SideMenuView(selectedStudent: $selectedStudent, isPresented: $showingSideMenu, showingAddStudentSheet: $showingAddSheet, student: selectedStudent)
+                        .environmentObject(SubscriptionManager.shared)
                         .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
             }
             .sheet(isPresented: $showingAddSheet) {
@@ -174,7 +176,7 @@ struct ContentView: View {
                     Spacer()
                 }
             }
-            .navigationTitle("Clef Notes")
+            .navigationTitle("ClefNotes")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingSideMenu = true }) {

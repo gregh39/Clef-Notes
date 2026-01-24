@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 import os.log
-import SwiftUI
 import CoreData
 
 // Centralized error handling
@@ -87,7 +86,7 @@ struct ErrorHandling: ViewModifier {
                     errorWrapper = nil
                 }
                 
-                if let recovery = errorWrapper?.error.recoverySuggestion {
+                if (errorWrapper?.error.recoverySuggestion) != nil {
                     Button("Learn More") {
                         // Show more detailed error info
                     }

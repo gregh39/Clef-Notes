@@ -168,12 +168,24 @@ private struct WebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: webViewConfiguration)
         return webView
     }
+    
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        uiView.load(URLRequest(url: url))
+        
+        let bundleId = Bundle.main.bundleIdentifier ?? ""
+        let referrer = "https://\(bundleId)".lowercased()
+        let referrerUrl = URL(string: referrer)!
+
+        var request = URLRequest(url: url)
+        request.addValue(referrerUrl.absoluteString, forHTTPHeaderField: "Referer")
+        request.addValue(referrerUrl.absoluteString, forHTTPHeaderField: "origin")
+        print(url)
+        print(request)
+        uiView.load(request)
     }
 }
 
 private struct YouTubePlayerView: View {
+    
     let videoID: String
     var body: some View {
         if let url = URL(string: "https://www.youtube.com/embed/\(videoID)") {

@@ -2,14 +2,37 @@ import SwiftUI
 import CoreData
 
 struct RandomSongPickerViewCD: View {
+    /// Return the studentID of the first song (if available)
+    private var studentID: UUID? {
+        songs.first?.studentID
+    }
+    
+    /// Returns a UserDefaults key based on studentID and base key string.
+    /// If studentID is nil, returns base key as-is.
+    private static func key(for studentID: UUID?, base: String) -> String {
+        guard let id = studentID else { return base }
+        return "\(base).\(id.uuidString)"
+    }
+    
+    private static let baseStatusesKey = "RandomSongPickerViewCD.selectedStatuses"
+    private static let baseTypesKey = "RandomSongPickerViewCD.selectedTypes"
+    private static let baseBooksKey = "RandomSongPickerViewCD.selectedBooks"
+    
     let songs: [SongCD]
     @State private var selectedSong: SongCD? = nil
     @State private var wheelRotation: Double = 0
     @State private var isSpinning: Bool = false
     @State private var selectedStatuses: Set<PlayType> = []
+    @State private var selectedTypes: Set<PieceType> = []
+    @State private var selectedBooks: Set<SuzukiBook> = []
+    @State private var showFilterSheet = false
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsManager: SettingsManager // <<< ADD THIS LINE
 
+    private var availableBooks: [SuzukiBook] {
+        let booksInSongs = Set(songs.compactMap { $0.suzukiBook })
+        return SuzukiBook.allCases.filter { booksInSongs.contains($0) }
+    }
     
     var body: some View {
         NavigationStack {
@@ -18,33 +41,18 @@ struct RandomSongPickerViewCD: View {
 
                 Text("Spin to Decide!")
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                Spacer()
-                VStack() {
-                    Text("Filter by Status:")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        HStack(spacing: 8) {
-                            ForEach(PlayType.allCases, id: \.self) { status in
-                                let isSelected = selectedStatuses.contains(status)
-                                Button(action: {
-                                    if isSelected {
-                                        selectedStatuses.remove(status)
-                                    } else {
-                                        selectedStatuses.insert(status)
-                                    }
-                                }) {
-                                    Text(status.rawValue)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
-                                        .foregroundColor(isSelected ? .white : .primary)
-                                        .clipShape(Capsule())
-                                        .animation(.easeInOut, value: isSelected)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
+                
+                Button("Filters") {
+                    showFilterSheet = true
                 }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 8)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+                
+                Spacer()
+
                 Spacer()
                 ZStack(alignment: .top) {
                     WheelViewCD(songs: filteredSongs, rotation: $wheelRotation)
@@ -104,17 +112,153 @@ struct RandomSongPickerViewCD: View {
                     }
                 }
             }
+            .sheet(isPresented: $showFilterSheet) {
+                VStack(spacing: 24) {
+                    Text("Filters")
+                        .font(.title2.bold())
+                        .padding(.top)
+                    VStack {
+                        Text("Filter by Status:")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            ForEach(PlayType.allCases, id: \.self) { status in
+                                let isSelected = selectedStatuses.contains(status)
+                                Button(action: {
+                                    if isSelected {
+                                        selectedStatuses.remove(status)
+                                    } else {
+                                        selectedStatuses.insert(status)
+                                    }
+                                    // Save selectedStatuses to UserDefaults using student-specific key
+                                    let key = Self.key(for: studentID, base: Self.baseStatusesKey)
+                                    if selectedStatuses.isEmpty {
+                                        UserDefaults.standard.removeObject(forKey: key)
+                                    } else {
+                                        UserDefaults.standard.set(Array(selectedStatuses.map(\.rawValue)), forKey: key)
+                                    }
+                                }) {
+                                    Text(status.rawValue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
+                                        .foregroundColor(isSelected ? .white : .primary)
+                                        .clipShape(Capsule())
+                                        .animation(.easeInOut, value: isSelected)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    VStack {
+                        Text("Filter by Type:")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            ForEach(PieceType.allCases, id: \.self) { type in
+                                let isSelected = selectedTypes.contains(type)
+                                Button(action: {
+                                    if isSelected {
+                                        selectedTypes.remove(type)
+                                    } else {
+                                        selectedTypes.insert(type)
+                                    }
+                                    // Save selectedTypes to UserDefaults using student-specific key
+                                    let key = Self.key(for: studentID, base: Self.baseTypesKey)
+                                    if selectedTypes.isEmpty {
+                                        UserDefaults.standard.removeObject(forKey: key)
+                                    } else {
+                                        UserDefaults.standard.set(Array(selectedTypes.map(\.rawValue)), forKey: key)
+                                    }
+                                }) {
+                                    Text(type.rawValue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
+                                        .foregroundColor(isSelected ? .white : .primary)
+                                        .clipShape(Capsule())
+                                        .animation(.easeInOut, value: isSelected)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    if !availableBooks.isEmpty {
+                        VStack {
+                            Text("Filter by Book:")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 8) {
+                                ForEach(availableBooks, id: \.self) { book in
+                                    let isSelected = selectedBooks.contains(book)
+                                    Button(action: {
+                                        if isSelected {
+                                            selectedBooks.remove(book)
+                                        } else {
+                                            selectedBooks.insert(book)
+                                        }
+                                        // Save selectedBooks to UserDefaults using student-specific key
+                                        let key = Self.key(for: studentID, base: Self.baseBooksKey)
+                                        if selectedBooks.isEmpty {
+                                            UserDefaults.standard.removeObject(forKey: key)
+                                        } else {
+                                            UserDefaults.standard.set(Array(selectedBooks.map(\.rawValue)), forKey: key)
+                                        }
+                                    }) {
+                                        Text(book.rawValue)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(isSelected ? Color.accentColor : Color.gray.opacity(0.2))
+                                            .foregroundColor(isSelected ? .white : .primary)
+                                            .clipShape(Capsule())
+                                            .animation(.easeInOut, value: isSelected)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    Spacer()
+                    Button("Done") {
+                        showFilterSheet = false
+                    }
+                    .font(.headline)
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
+                    .padding(.bottom)
+                }
+                .padding()
+                .presentationDetents([.medium])
+            }
+            .onAppear {
+                loadSavedFilters()
+            }
         }
     }
     
     private var filteredSongs: [SongCD] {
-        if selectedStatuses.isEmpty {
-            return songs
-        } else {
-            return songs.filter { song in
-                guard let status = song.songStatus else { return false }
-                return selectedStatuses.contains(status)
+        songs.filter { song in
+            let statusOk: Bool
+            if selectedStatuses.isEmpty {
+                statusOk = true
+            } else {
+                statusOk = song.songStatus.map(selectedStatuses.contains) ?? false
             }
+            let typeOk: Bool
+            if selectedTypes.isEmpty {
+                typeOk = true
+            } else {
+                typeOk = song.pieceType.map(selectedTypes.contains) ?? false
+            }
+            let bookOk: Bool
+            if selectedBooks.isEmpty {
+                bookOk = true
+            } else {
+                bookOk = song.suzukiBook.map(selectedBooks.contains) ?? false
+            }
+            return statusOk && typeOk && bookOk
         }
     }
 
@@ -144,6 +288,61 @@ struct RandomSongPickerViewCD: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.1) {
             self.selectedSong = winner
             self.isSpinning = false
+        }
+    }
+    
+    /// Loads saved filters from UserDefaults.
+    /// Uses student-specific keys if studentID is available, else falls back to base keys.
+    private func loadSavedFilters() {
+        // Load selectedStatuses
+        let statusesKey = Self.key(for: studentID, base: Self.baseStatusesKey)
+        if let savedStatusRaw = UserDefaults.standard.array(forKey: statusesKey) as? [String] {
+            let loadedStatuses = savedStatusRaw.compactMap { PlayType(rawValue: $0) }
+            if !loadedStatuses.isEmpty {
+                selectedStatuses = Set(loadedStatuses)
+            }
+        } else if studentID != nil {
+            // Fallback to base key if student-specific key not found
+            if let savedStatusRaw = UserDefaults.standard.array(forKey: Self.baseStatusesKey) as? [String] {
+                let loadedStatuses = savedStatusRaw.compactMap { PlayType(rawValue: $0) }
+                if !loadedStatuses.isEmpty {
+                    selectedStatuses = Set(loadedStatuses)
+                }
+            }
+        }
+        
+        // Load selectedTypes
+        let typesKey = Self.key(for: studentID, base: Self.baseTypesKey)
+        if let savedTypeRaw = UserDefaults.standard.array(forKey: typesKey) as? [String] {
+            let loadedTypes = savedTypeRaw.compactMap { PieceType(rawValue: $0) }
+            if !loadedTypes.isEmpty {
+                selectedTypes = Set(loadedTypes)
+            }
+        } else if studentID != nil {
+            // Fallback to base key if student-specific key not found
+            if let savedTypeRaw = UserDefaults.standard.array(forKey: Self.baseTypesKey) as? [String] {
+                let loadedTypes = savedTypeRaw.compactMap { PieceType(rawValue: $0) }
+                if !loadedTypes.isEmpty {
+                    selectedTypes = Set(loadedTypes)
+                }
+            }
+        }
+        
+        // Load selectedBooks
+        let booksKey = Self.key(for: studentID, base: Self.baseBooksKey)
+        if let savedBooksRaw = UserDefaults.standard.array(forKey: booksKey) as? [String] {
+            let loadedBooks = savedBooksRaw.compactMap { SuzukiBook(rawValue: $0) }
+            if !loadedBooks.isEmpty {
+                selectedBooks = Set(loadedBooks)
+            }
+        } else if studentID != nil {
+            // Fallback to base key if student-specific key not found
+            if let savedBooksRaw = UserDefaults.standard.array(forKey: Self.baseBooksKey) as? [String] {
+                let loadedBooks = savedBooksRaw.compactMap { SuzukiBook(rawValue: $0) }
+                if !loadedBooks.isEmpty {
+                    selectedBooks = Set(loadedBooks)
+                }
+            }
         }
     }
 }

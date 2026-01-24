@@ -71,7 +71,7 @@ class SessionTimerManager: ObservableObject {
     }
     
     func resume() {
-        guard let session = activeSession, isPaused || timer == nil else { return }
+        //guard let session = activeSession, isPaused || timer == nil else { return }
 
         startTime = Date()
         isPaused = false
