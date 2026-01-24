@@ -4,6 +4,7 @@ import SwiftUI
 import Combine
 import TelemetryDeck
 import AVFoundation
+import UserNotifications
 
 @MainActor
 class SessionTimerManager: ObservableObject {
@@ -14,6 +15,8 @@ class SessionTimerManager: ObservableObject {
     private var timer: Timer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var audioPlayer: AVAudioPlayer?
+    private var backgroundEntryTime: Date?
+    private let notificationIdentifier = "practice_session_background_reminder"
 
     private var startTime: Date?
     private var accumulatedTime: TimeInterval = 0
@@ -102,17 +105,69 @@ class SessionTimerManager: ObservableObject {
             name: UIApplication.willEnterForegroundNotification,
             object: nil
         )
+
+        // Handle audio interruptions (like when YouTube starts playing)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
     }
 
     @objc private func appDidEnterBackground() {
         // Timer will continue running in background thanks to audio playback
         // Save current state in case app is terminated
         saveTimerState()
+
+        // Track when we entered background
+        if activeSession != nil && !isPaused {
+            backgroundEntryTime = Date()
+            scheduleBackgroundReminder()
+        }
     }
 
     @objc private func appWillEnterForeground() {
         // Restore state if needed
         restoreTimerState()
+
+        // Cancel any pending notifications
+        cancelBackgroundReminder()
+        backgroundEntryTime = nil
+    }
+
+    @objc private func handleAudioInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            // Another app (like YouTube) started playing audio
+            // Our silent audio will be paused, but that's okay
+            // The timer will keep running in memory
+            print("Audio interrupted - timer continues in memory")
+
+        case .ended:
+            // The other app stopped, we can resume our silent audio if timer is still running
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+
+            if options.contains(.shouldResume) && activeSession != nil && !isPaused {
+                // Resume our silent audio to maintain background execution
+                do {
+                    try AVAudioSession.sharedInstance().setActive(true)
+                    audioPlayer?.play()
+                } catch {
+                    print("Failed to resume audio session: \(error)")
+                }
+            }
+
+        @unknown default:
+            break
+        }
     }
 
     private func saveTimerState() {
@@ -141,6 +196,34 @@ class SessionTimerManager: ObservableObject {
                 self.elapsedTimeString = self.formatTime(seconds: totalDuration)
             }
         }
+    }
+
+    private func scheduleBackgroundReminder() {
+        let content = UNMutableNotificationContent()
+        content.title = "Practice Session Active"
+        content.body = "Your practice timer is still running in the background."
+        content.sound = .default
+
+        // Trigger after 5 minutes
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 300, repeats: false)
+
+        let request = UNNotificationRequest(
+            identifier: notificationIdentifier,
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to schedule notification: \(error)")
+            }
+        }
+    }
+
+    private func cancelBackgroundReminder() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [notificationIdentifier]
+        )
     }
 
     func start(session: PracticeSessionCD) {
@@ -172,9 +255,13 @@ class SessionTimerManager: ObservableObject {
         isPaused = false
         accumulatedTime = 0
         elapsedTimeString = "00:00:00"
+        backgroundEntryTime = nil
 
         // Stop silent audio
         audioPlayer?.stop()
+
+        // Cancel any pending notifications
+        cancelBackgroundReminder()
 
         // Clear saved state
         UserDefaults.standard.removeObject(forKey: "activeSessionID")
@@ -201,6 +288,10 @@ class SessionTimerManager: ObservableObject {
 
         // Stop silent audio when paused
         audioPlayer?.pause()
+
+        // Cancel any pending notifications since timer is paused
+        cancelBackgroundReminder()
+        backgroundEntryTime = nil
 
         // A paused timer doesn't need to run in the background
         endBackgroundTask()
