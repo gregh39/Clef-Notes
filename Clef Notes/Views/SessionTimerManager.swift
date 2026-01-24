@@ -263,7 +263,17 @@ class SessionTimerManager: ObservableObject {
     private func registerBackgroundTask() {
         if backgroundTask == .invalid {
             backgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
-                self?.stop()
+                // Background task is expiring, but don't stop the timer
+                // The audio playback will keep the app alive
+                // Just save current state and end the background task gracefully
+                guard let self = self else { return }
+                self.saveTimerState()
+                if let session = self.activeSession, let startTime = self.startTime {
+                    let totalDuration = self.accumulatedTime + Date().timeIntervalSince(startTime)
+                    session.durationMinutes = Int64(totalDuration / 60)
+                    self.saveContext()
+                }
+                self.endBackgroundTask()
             }
         }
     }

@@ -20,19 +20,76 @@ class AudioManager: ObservableObject {
 
     // Silent audio player for background timer
     private var timerSilentPlayer: AVAudioPlayer?
+    private var timerShouldBeRunning = false
+    private var previousClient: AudioClient?
 
     init() {
         setupMetronomePlayers()
         setupTimerSilentPlayer()
+        setupAudioInterruptionHandling()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func setupAudioInterruptionHandling() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    @objc private func handleAudioInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            // Another app (like YouTube) started playing audio
+            print("AudioManager: Audio interrupted - client: \(String(describing: activeClient))")
+
+        case .ended:
+            // The other app stopped, we can resume our audio if needed
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+
+            if options.contains(.shouldResume) {
+                print("AudioManager: Interruption ended - should resume, timerShouldBeRunning: \(timerShouldBeRunning)")
+
+                // Resume timer audio if it should be running
+                if timerShouldBeRunning {
+                    do {
+                        try AVAudioSession.sharedInstance().setActive(true)
+                        let hasSession = requestSession(for: .timer, category: .playback, options: .mixWithOthers)
+                        if hasSession {
+                            timerSilentPlayer?.play()
+                            print("AudioManager: Timer audio resumed after interruption")
+                        }
+                    } catch {
+                        print("AudioManager: Failed to resume audio session: \(error)")
+                    }
+                }
+            }
+
+        @unknown default:
+            break
+        }
     }
     
     func requestSession(for client: AudioClient, category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions = []) -> Bool {
         let session = AVAudioSession.sharedInstance()
-        
+
         print("AudioManager: Requesting session for \(client)")
-        
+
         if activeClient != nil && activeClient != client {
             print("AudioManager: Deactivating previous client (\(String(describing: activeClient))) for new client (\(client)).")
+            previousClient = activeClient
         }
         
         do {
@@ -85,11 +142,18 @@ class AudioManager: ObservableObject {
             print("AudioManager: Ignoring release request from inactive client \(client). Active is \(String(describing: activeClient)).")
             return
         }
-        
+
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             self.activeClient = nil
             print("AudioManager: Session released by \(client).")
+
+            // If timer should be running and was interrupted by another client, restart it
+            if timerShouldBeRunning && previousClient == .timer {
+                print("AudioManager: Restarting timer audio after \(client) released session")
+                startTimerAudio()
+                previousClient = nil
+            }
         } catch {
             print("AudioManager: Failed to release session for \(client). Error: \(error.localizedDescription)")
         }
@@ -182,6 +246,7 @@ class AudioManager: ObservableObject {
     }
 
     func startTimerAudio() {
+        timerShouldBeRunning = true
         let hasSession = requestSession(for: .timer, category: .playback, options: .mixWithOthers)
         guard hasSession else {
             print("AudioManager: Failed to acquire session for timer")
@@ -192,17 +257,20 @@ class AudioManager: ObservableObject {
     }
 
     func stopTimerAudio() {
+        timerShouldBeRunning = false
         timerSilentPlayer?.stop()
         releaseSession(for: .timer)
         print("AudioManager: Timer silent audio stopped")
     }
 
     func pauseTimerAudio() {
+        timerShouldBeRunning = false
         timerSilentPlayer?.pause()
         print("AudioManager: Timer silent audio paused")
     }
 
     func resumeTimerAudio() {
+        timerShouldBeRunning = true
         timerSilentPlayer?.play()
         print("AudioManager: Timer silent audio resumed")
     }
