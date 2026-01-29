@@ -10,6 +10,11 @@ class AudioPlayerManager: NSObject, ObservableObject {
     @Published var isPlaying: Bool = false
     @Published var playbackRate: Float = 1.0 // Speed: 0.5x to 2.0x
 
+    // A-B Loop properties
+    @Published var loopA: TimeInterval? = nil
+    @Published var loopB: TimeInterval? = nil
+    @Published var isLooping: Bool = false
+
     var audioPlayer: AVAudioPlayer?
     private var progressTimer: Timer?
 
@@ -42,15 +47,27 @@ class AudioPlayerManager: NSObject, ObservableObject {
             currentlyPlayingID = id
             isPlaying = true
 
-            progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-                guard let self = self, let player = self.audioPlayer, player.isPlaying else {
-                    return
-                }
-                self.currentTime = player.currentTime
-            }
+            startProgressTimer()
         } catch {
             print("Playback failed: \(error.localizedDescription)")
             audioManager.releaseSession(for: .player)
+        }
+    }
+
+    private func startProgressTimer() {
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, let player = self.audioPlayer, player.isPlaying else {
+                return
+            }
+            self.currentTime = player.currentTime
+
+            // Check A-B loop
+            if self.isLooping, let loopA = self.loopA, let loopB = self.loopB {
+                if self.currentTime >= loopB {
+                    player.currentTime = loopA
+                    self.currentTime = loopA
+                }
+            }
         }
     }
 
@@ -102,8 +119,43 @@ class AudioPlayerManager: NSObject, ObservableObject {
         audioPlayer?.rate = playbackRate
     }
 
+    // MARK: - A-B Loop Functions
+
+    func setLoopA() {
+        loopA = currentTime
+        // If we have both points and they're in wrong order, swap them
+        if let a = loopA, let b = loopB, a > b {
+            loopA = b
+            loopB = a
+        }
+    }
+
+    func setLoopB() {
+        loopB = currentTime
+        // If we have both points and they're in wrong order, swap them
+        if let a = loopA, let b = loopB, a > b {
+            loopA = b
+            loopB = a
+        }
+    }
+
+    func clearLoop() {
+        loopA = nil
+        loopB = nil
+        isLooping = false
+    }
+
+    func toggleLoop() {
+        guard loopA != nil, loopB != nil else { return }
+        isLooping.toggle()
+    }
+
     var duration: TimeInterval {
         return audioPlayer?.duration ?? 0
+    }
+
+    var hasLoopPoints: Bool {
+        return loopA != nil && loopB != nil
     }
 
     deinit {
@@ -113,10 +165,17 @@ class AudioPlayerManager: NSObject, ObservableObject {
 
 extension AudioPlayerManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        progressTimer?.invalidate()
-        currentTime = 0
-        currentlyPlayingID = nil
-        isPlaying = false
-        audioManager.releaseSession(for: .player)
+        // If looping, restart from loop A, otherwise finish normally
+        if isLooping, let loopA = loopA {
+            player.currentTime = loopA
+            player.play()
+            currentTime = loopA
+        } else {
+            progressTimer?.invalidate()
+            currentTime = 0
+            currentlyPlayingID = nil
+            isPlaying = false
+            audioManager.releaseSession(for: .player)
+        }
     }
 }
