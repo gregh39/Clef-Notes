@@ -47,249 +47,239 @@ struct AudioPlaybackCellCD: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Main content
-            VStack(spacing: 18) {
-                // Header row
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Text(subtitle)
-                            .font(.subheadline)
+        VStack(alignment: .leading, spacing: 20) {
+            // Header row
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if effectiveDuration > 0 {
+                        Text(formatDuration(effectiveDuration))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                Spacer()
+
+                // Action buttons
+                HStack(spacing: 16) {
+                    if let audioData = data {
+                        ShareLink(
+                            item: AudioFile(data: audioData, filename: "\(title).m4a"),
+                            preview: SharePreview(title, image: Image(systemName: "waveform"))
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button(action: {
+                        if audioPlayerManager.currentlyPlayingID == id {
+                            audioPlayerManager.togglePlayPause()
+                        } else if let audioData = data {
+                            audioPlayerManager.play(data: audioData, id: id)
+                        }
+                    }) {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .frame(width: 54, height: 54)
+                            .background(Circle().fill(Color.accentColor))
+                    }
+                    .disabled(data == nil)
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Playback controls (when playing or loaded)
+            if isPlaying || audioPlayerManager.currentlyPlayingID == id {
+                VStack(spacing: 20) {
+                    // Seek slider with loop indicators
+                    ZStack(alignment: .leading) {
+                        // Loop region background
+                        if let loopA = audioPlayerManager.loopA, let loopB = audioPlayerManager.loopB, effectiveDuration > 0 {
+                            let startPercent = CGFloat(loopA / effectiveDuration)
+                            let endPercent = CGFloat(loopB / effectiveDuration)
+
+                            GeometryReader { geometry in
+                                Rectangle()
+                                    .fill(Color.accentColor.opacity(0.15))
+                                    .frame(width: geometry.size.width * (endPercent - startPercent))
+                                    .offset(x: geometry.size.width * startPercent)
+                            }
+                            .frame(height: 4)
+                        }
+
+                        Slider(
+                            value: Binding(
+                                get: { isScrubbing ? audioPlayerManager.currentTime : min(audioPlayerManager.currentTime, effectiveDuration) },
+                                set: { isScrubbing = true; audioPlayerManager.currentTime = $0 }
+                            ),
+                            in: 0...max(effectiveDuration, 1),
+                            onEditingChanged: { editing in
+                                isScrubbing = editing
+                                if !editing {
+                                    audioPlayerManager.seek(to: audioPlayerManager.currentTime)
+                                }
+                            }
+                        )
+                        .tint(.accentColor)
+                    }
+
+                    // Time display
+                    HStack {
+                        Text(formatDuration(audioPlayerManager.currentTime))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
-                        if effectiveDuration > 0 {
-                            Text(formatDuration(effectiveDuration))
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                        Spacer()
+                        Text(formatDuration(effectiveDuration))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+
+                    // Control buttons
+                    HStack(spacing: 0) {
+                        // Skip back
+                        controlButton(icon: "gobackward.5") {
+                            audioPlayerManager.skipBackward()
+                        }
+                        .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
+
+                        Divider()
+                            .frame(height: 28)
+
+                        // Stop
+                        controlButton(icon: "stop.fill") {
+                            audioPlayerManager.stop()
+                        }
+                        .disabled(audioPlayerManager.currentlyPlayingID != id)
+
+                        Divider()
+                            .frame(height: 28)
+
+                        // Skip forward
+                        controlButton(icon: "goforward.5") {
+                            audioPlayerManager.skipForward()
+                        }
+                        .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
+
+                        Divider()
+                            .frame(height: 28)
+
+                        // Speed control
+                        controlButton(icon: nil, label: "\(Int(audioPlayerManager.playbackRate * 100))%") {
+                            withAnimation(.spring(response: 0.3)) {
+                                showSpeedControl.toggle()
+                            }
                         }
                     }
-                    Spacer()
+                    .frame(height: 52)
 
-                    // Action buttons
-                    HStack(spacing: 14) {
-                        if let audioData = data {
-                            ShareLink(
-                                item: AudioFile(data: audioData, filename: "\(title).m4a"),
-                                preview: SharePreview(title, image: Image(systemName: "waveform"))
-                            ) {
-                                Image(systemName: "square.and.arrow.up")
-                                    .font(.title3)
+                    // A-B Loop controls
+                    HStack(spacing: 12) {
+                        loopButton(
+                            label: "A",
+                            isSet: audioPlayerManager.loopA != nil,
+                            time: audioPlayerManager.loopA
+                        ) {
+                            audioPlayerManager.setLoopA()
+                        }
+
+                        loopButton(
+                            label: "B",
+                            isSet: audioPlayerManager.loopB != nil,
+                            time: audioPlayerManager.loopB
+                        ) {
+                            audioPlayerManager.setLoopB()
+                        }
+
+                        if audioPlayerManager.hasLoopPoints {
+                            Button(action: {
+                                audioPlayerManager.toggleLoop()
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: audioPlayerManager.isLooping ? "repeat.circle.fill" : "repeat.circle")
+                                    Text("Loop")
+                                        .font(.subheadline.weight(.medium))
+                                }
+                                .foregroundStyle(audioPlayerManager.isLooping ? .white : .primary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(
+                                    audioPlayerManager.isLooping ?
+                                        AnyShapeStyle(Color.accentColor) :
+                                        AnyShapeStyle(.quaternary.opacity(0.4))
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+
+                            Button(action: {
+                                audioPlayerManager.clearLoop()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title2)
                                     .foregroundStyle(.secondary)
                                     .frame(width: 40, height: 40)
                             }
                             .buttonStyle(.plain)
                         }
-
-                        Button(action: {
-                            if audioPlayerManager.currentlyPlayingID == id {
-                                audioPlayerManager.togglePlayPause()
-                            } else if let audioData = data {
-                                audioPlayerManager.play(data: audioData, id: id)
-                            }
-                        }) {
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.title3)
-                                .foregroundStyle(.white)
-                                .frame(width: 48, height: 48)
-                                .background(
-                                    Circle()
-                                        .fill(Color.accentColor.gradient)
-                                )
-                        }
-                        .disabled(data == nil)
-                        .buttonStyle(.plain)
                     }
-                }
 
-                // Playback controls (when playing or loaded)
-                if isPlaying || audioPlayerManager.currentlyPlayingID == id {
-                    VStack(spacing: 16) {
-                        // Seek slider with loop indicators
-                        ZStack(alignment: .leading) {
-                            // Loop region background
-                            if let loopA = audioPlayerManager.loopA, let loopB = audioPlayerManager.loopB, effectiveDuration > 0 {
-                                let startPercent = CGFloat(loopA / effectiveDuration)
-                                let endPercent = CGFloat(loopB / effectiveDuration)
-
-                                GeometryReader { geometry in
-                                    Rectangle()
-                                        .fill(Color.accentColor.opacity(0.15))
-                                        .frame(width: geometry.size.width * (endPercent - startPercent))
-                                        .offset(x: geometry.size.width * startPercent)
-                                }
-                                .frame(height: 4)
+                    // Speed control slider
+                    if showSpeedControl {
+                        VStack(spacing: 14) {
+                            HStack {
+                                Text("Playback Speed")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(Int(audioPlayerManager.playbackRate * 100))%")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .monospacedDigit()
                             }
 
-                            Slider(
-                                value: Binding(
-                                    get: { isScrubbing ? audioPlayerManager.currentTime : min(audioPlayerManager.currentTime, effectiveDuration) },
-                                    set: { isScrubbing = true; audioPlayerManager.currentTime = $0 }
-                                ),
-                                in: 0...max(effectiveDuration, 1),
-                                onEditingChanged: { editing in
-                                    isScrubbing = editing
-                                    if !editing {
-                                        audioPlayerManager.seek(to: audioPlayerManager.currentTime)
-                                    }
-                                }
-                            )
-                            .tint(.accentColor)
-                        }
+                            HStack(spacing: 14) {
+                                Text("50")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                    .monospacedDigit()
 
-                        // Time display
-                        HStack {
-                            Text(formatDuration(audioPlayerManager.currentTime))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                            Spacer()
-                            Text(formatDuration(effectiveDuration))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
+                                Slider(
+                                    value: Binding(
+                                        get: { Double(audioPlayerManager.playbackRate) },
+                                        set: { audioPlayerManager.setPlaybackRate(Float($0)) }
+                                    ),
+                                    in: 0.5...2.0,
+                                    step: 0.01
+                                )
+                                .tint(.accentColor)
 
-                        // Control buttons
-                        HStack(spacing: 0) {
-                            // Skip back
-                            controlButton(icon: "gobackward.5") {
-                                audioPlayerManager.skipBackward()
-                            }
-                            .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
-
-                            Divider()
-                                .frame(height: 24)
-
-                            // Stop
-                            controlButton(icon: "stop.fill") {
-                                audioPlayerManager.stop()
-                            }
-                            .disabled(audioPlayerManager.currentlyPlayingID != id)
-
-                            Divider()
-                                .frame(height: 24)
-
-                            // Skip forward
-                            controlButton(icon: "goforward.5") {
-                                audioPlayerManager.skipForward()
-                            }
-                            .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
-
-                            Divider()
-                                .frame(height: 24)
-
-                            // Speed control
-                            controlButton(icon: nil, label: "\(Int(audioPlayerManager.playbackRate * 100))%") {
-                                withAnimation(.spring(response: 0.3)) {
-                                    showSpeedControl.toggle()
-                                }
+                                Text("200")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                    .monospacedDigit()
                             }
                         }
-                        .frame(height: 48)
-
-                        // A-B Loop controls
-                        HStack(spacing: 10) {
-                            loopButton(
-                                label: "A",
-                                isSet: audioPlayerManager.loopA != nil,
-                                time: audioPlayerManager.loopA
-                            ) {
-                                audioPlayerManager.setLoopA()
-                            }
-
-                            loopButton(
-                                label: "B",
-                                isSet: audioPlayerManager.loopB != nil,
-                                time: audioPlayerManager.loopB
-                            ) {
-                                audioPlayerManager.setLoopB()
-                            }
-
-                            if audioPlayerManager.hasLoopPoints {
-                                Button(action: {
-                                    audioPlayerManager.toggleLoop()
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: audioPlayerManager.isLooping ? "repeat.circle.fill" : "repeat.circle")
-                                        Text("Loop")
-                                            .font(.caption.weight(.medium))
-                                    }
-                                    .foregroundStyle(audioPlayerManager.isLooping ? .white : .primary)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 36)
-                                    .background(
-                                        audioPlayerManager.isLooping ?
-                                            AnyShapeStyle(Color.accentColor.gradient) :
-                                            AnyShapeStyle(.quaternary.opacity(0.5))
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                                }
-                                .buttonStyle(.plain)
-
-                                Button(action: {
-                                    audioPlayerManager.clearLoop()
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 36, height: 36)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-
-                        // Speed control slider
-                        if showSpeedControl {
-                            VStack(spacing: 12) {
-                                HStack {
-                                    Text("Playback Speed")
-                                        .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(Int(audioPlayerManager.playbackRate * 100))%")
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                        .monospacedDigit()
-                                }
-
-                                HStack(spacing: 12) {
-                                    Text("50")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                        .monospacedDigit()
-
-                                    Slider(
-                                        value: Binding(
-                                            get: { Double(audioPlayerManager.playbackRate) },
-                                            set: { audioPlayerManager.setPlaybackRate(Float($0)) }
-                                        ),
-                                        in: 0.5...2.0,
-                                        step: 0.01
-                                    )
-                                    .tint(.accentColor)
-
-                                    Text("200")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                        .monospacedDigit()
-                                }
-                            }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 16)
-                            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
-                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        }
+                        .padding(16)
+                        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 14))
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     }
                 }
             }
-            .padding(.vertical, 16)
-            .padding(.horizontal, 20)
-
-            // Divider between cells
-            Divider()
         }
+        .padding(.horizontal)
+        .padding(.vertical, 20)
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: showSpeedControl)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
@@ -303,16 +293,16 @@ struct AudioPlaybackCellCD: View {
             Group {
                 if let icon = icon {
                     Image(systemName: icon)
-                        .font(.title3)
+                        .font(.title2)
                 } else if let label = label {
                     Text(label)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.body.weight(.semibold))
                         .monospacedDigit()
                 }
             }
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .frame(height: 52)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -321,9 +311,9 @@ struct AudioPlaybackCellCD: View {
     @ViewBuilder
     private func loopButton(label: String, isSet: Bool, time: TimeInterval?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Text(label)
-                    .font(.subheadline.weight(.bold))
+                    .font(.body.weight(.bold))
                     .foregroundStyle(isSet ? .white : .primary)
                 if let time = time {
                     Text(formatDuration(time))
@@ -333,13 +323,13 @@ struct AudioPlaybackCellCD: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 36)
+            .frame(height: 40)
             .background(
                 isSet ?
-                    AnyShapeStyle(Color.accentColor.gradient) :
-                    AnyShapeStyle(.quaternary.opacity(0.5))
+                    AnyShapeStyle(Color.accentColor) :
+                    AnyShapeStyle(.quaternary.opacity(0.4))
             )
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }
