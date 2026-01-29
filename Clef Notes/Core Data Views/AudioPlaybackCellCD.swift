@@ -169,11 +169,11 @@ struct AudioPlaybackCellCD: View {
                         Button(action: {
                             showSpeedControl.toggle()
                         }) {
-                            HStack(spacing: 2) {
-                                Text("\(audioPlayerManager.playbackRate, specifier: "%.1f")")
+                            VStack(spacing: 0) {
+                                Text("\(Int(audioPlayerManager.playbackRate * 100))")
                                     .font(.caption)
-                                    .fontWeight(.semibold)
-                                Text("×")
+                                    .fontWeight(.bold)
+                                Text("%")
                                     .font(.caption2)
                             }
                             .frame(width: 44, height: 44)
@@ -184,39 +184,80 @@ struct AudioPlaybackCellCD: View {
                     }
                     .buttonStyle(.plain)
 
-                    // Speed control picker (shown when button tapped)
+                    // Speed control slider (shown when button tapped)
                     if showSpeedControl {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Playback Speed")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Playback Speed")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(Int(audioPlayerManager.playbackRate * 100))%")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.accentColor)
+                            }
 
+                            // Slider for fine control
+                            HStack(spacing: 12) {
+                                Text("0.5×")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+
+                                Slider(
+                                    value: Binding(
+                                        get: { Double(audioPlayerManager.playbackRate) },
+                                        set: { audioPlayerManager.setPlaybackRate(Float($0)) }
+                                    ),
+                                    in: 0.5...2.0,
+                                    step: 0.05
+                                )
+                                .tint(.accentColor)
+
+                                Text("2.0×")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            // Quick preset buttons
                             HStack(spacing: 8) {
                                 ForEach(SpeedOption.options) { option in
                                     Button(action: {
                                         audioPlayerManager.setPlaybackRate(option.value)
-                                        withAnimation {
-                                            showSpeedControl = false
-                                        }
                                     }) {
                                         Text(option.label)
-                                            .font(.caption)
-                                            .fontWeight(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? .bold : .regular)
-                                            .foregroundColor(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? .white : .primary)
-                                            .frame(minWidth: 48)
-                                            .padding(.vertical, 8)
+                                            .font(.caption2)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
                                             .background(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? Color.accentColor : Color(UIColor.systemGray6))
-                                            .cornerRadius(8)
+                                            .foregroundColor(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? .white : .secondary)
+                                            .cornerRadius(6)
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
+
+                            // Close button
+                            Button(action: {
+                                withAnimation {
+                                    showSpeedControl = false
+                                }
+                            }) {
+                                Text("Done")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.accentColor)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(Color(UIColor.systemGray6))
+                                    .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 4)
+                        .padding(12)
                         .background(Color(UIColor.systemBackground))
                         .cornerRadius(12)
-                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
                         .transition(.opacity)
                     }
                 }
