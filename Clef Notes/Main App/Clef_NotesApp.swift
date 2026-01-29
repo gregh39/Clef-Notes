@@ -31,7 +31,17 @@ struct Clef_NotesApp: App {
         let config = TelemetryDeck.Config(appID: getAPIKey(named: "TelemetryDeckAPIKey"))
         TelemetryDeck.initialize(config: config)
 
+        // Run audio duration migration once
+        migrateAudioDurationsIfNeeded(context: context)
+    }
 
+    private func migrateAudioDurationsIfNeeded(context: NSManagedObjectContext) {
+        let migrationKey = "AudioDurationMigrationCompleted_v1"
+
+        if !UserDefaults.standard.bool(forKey: migrationKey) {
+            AudioDurationMigrationHelper.migrateAudioDurations(context: context)
+            UserDefaults.standard.set(true, forKey: migrationKey)
+        }
     }
         
     var body: some Scene {

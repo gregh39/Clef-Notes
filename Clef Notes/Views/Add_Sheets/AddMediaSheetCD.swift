@@ -2,6 +2,7 @@ import SwiftUI
 import CoreData
 import PhotosUI
 import UniformTypeIdentifiers
+import AVFoundation
 
 struct AddMediaSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -204,6 +205,7 @@ struct AddMediaSheetCD: View {
                 mediaReference.type = .audioRecording
                 mediaReference.data = data
                 mediaReference.title = audioDisplayName
+                mediaReference.duration = extractAudioDuration(from: data)
             }
         case .sheetMusic:
             if let item = selectedSheetMusicItem, let data = try? await item.loadTransferable(type: Data.self) {
@@ -225,5 +227,15 @@ struct AddMediaSheetCD: View {
         }
         
         try? viewContext.save()
+    }
+
+    private func extractAudioDuration(from data: Data) -> Double {
+        do {
+            let player = try AVAudioPlayer(data: data)
+            return player.duration
+        } catch {
+            print("Failed to extract audio duration: \(error)")
+            return 0
+        }
     }
 }
