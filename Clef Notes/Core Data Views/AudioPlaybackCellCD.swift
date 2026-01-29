@@ -48,8 +48,8 @@ struct AudioPlaybackCellCD: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Main content card
-            VStack(spacing: 14) {
+            // Main content
+            VStack(spacing: 18) {
                 // Header row
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -68,17 +68,16 @@ struct AudioPlaybackCellCD: View {
                     Spacer()
 
                     // Action buttons
-                    HStack(spacing: 10) {
+                    HStack(spacing: 14) {
                         if let audioData = data {
                             ShareLink(
                                 item: AudioFile(data: audioData, filename: "\(title).m4a"),
                                 preview: SharePreview(title, image: Image(systemName: "waveform"))
                             ) {
                                 Image(systemName: "square.and.arrow.up")
-                                    .font(.body)
+                                    .font(.title3)
                                     .foregroundStyle(.secondary)
-                                    .frame(width: 36, height: 36)
-                                    .background(.ultraThinMaterial, in: Circle())
+                                    .frame(width: 40, height: 40)
                             }
                             .buttonStyle(.plain)
                         }
@@ -91,18 +90,13 @@ struct AudioPlaybackCellCD: View {
                             }
                         }) {
                             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.body)
+                                .font(.title3)
                                 .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
+                                .frame(width: 48, height: 48)
                                 .background(
-                                    LinearGradient(
-                                        colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    in: Circle()
+                                    Circle()
+                                        .fill(Color.accentColor.gradient)
                                 )
-                                .shadow(color: Color.accentColor.opacity(0.3), radius: 8, y: 4)
                         }
                         .disabled(data == nil)
                         .buttonStyle(.plain)
@@ -111,7 +105,7 @@ struct AudioPlaybackCellCD: View {
 
                 // Playback controls (when playing or loaded)
                 if isPlaying || audioPlayerManager.currentlyPlayingID == id {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 16) {
                         // Seek slider with loop indicators
                         ZStack(alignment: .leading) {
                             // Loop region background
@@ -157,7 +151,7 @@ struct AudioPlaybackCellCD: View {
                                 .monospacedDigit()
                         }
 
-                        // Control buttons in rounded container
+                        // Control buttons
                         HStack(spacing: 0) {
                             // Skip back
                             controlButton(icon: "gobackward.5") {
@@ -166,8 +160,7 @@ struct AudioPlaybackCellCD: View {
                             .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
 
                             Divider()
-                                .frame(height: 20)
-                                .overlay(.separator.opacity(0.3))
+                                .frame(height: 24)
 
                             // Stop
                             controlButton(icon: "stop.fill") {
@@ -176,8 +169,7 @@ struct AudioPlaybackCellCD: View {
                             .disabled(audioPlayerManager.currentlyPlayingID != id)
 
                             Divider()
-                                .frame(height: 20)
-                                .overlay(.separator.opacity(0.3))
+                                .frame(height: 24)
 
                             // Skip forward
                             controlButton(icon: "goforward.5") {
@@ -186,8 +178,7 @@ struct AudioPlaybackCellCD: View {
                             .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
 
                             Divider()
-                                .frame(height: 20)
-                                .overlay(.separator.opacity(0.3))
+                                .frame(height: 24)
 
                             // Speed control
                             controlButton(icon: nil, label: "\(Int(audioPlayerManager.playbackRate * 100))%") {
@@ -196,15 +187,10 @@ struct AudioPlaybackCellCD: View {
                                 }
                             }
                         }
-                        .frame(height: 44)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .strokeBorder(.separator.opacity(0.2), lineWidth: 0.5)
-                        )
+                        .frame(height: 48)
 
                         // A-B Loop controls
-                        HStack(spacing: 8) {
+                        HStack(spacing: 10) {
                             loopButton(
                                 label: "A",
                                 isSet: audioPlayerManager.loopA != nil,
@@ -232,17 +218,13 @@ struct AudioPlaybackCellCD: View {
                                     }
                                     .foregroundStyle(audioPlayerManager.isLooping ? .white : .primary)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 32)
+                                    .frame(height: 36)
                                     .background(
                                         audioPlayerManager.isLooping ?
                                             AnyShapeStyle(Color.accentColor.gradient) :
-                                            AnyShapeStyle(.thinMaterial)
+                                            AnyShapeStyle(.quaternary.opacity(0.5))
                                     )
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .strokeBorder(audioPlayerManager.isLooping ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
-                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
                                 .buttonStyle(.plain)
 
@@ -250,9 +232,9 @@ struct AudioPlaybackCellCD: View {
                                     audioPlayerManager.clearLoop()
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
+                                        .font(.title3)
                                         .foregroundStyle(.secondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                        .frame(width: 36, height: 36)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -260,21 +242,21 @@ struct AudioPlaybackCellCD: View {
 
                         // Speed control slider
                         if showSpeedControl {
-                            VStack(spacing: 10) {
+                            VStack(spacing: 12) {
                                 HStack {
                                     Text("Playback Speed")
-                                        .font(.caption.weight(.medium))
+                                        .font(.subheadline.weight(.medium))
                                         .foregroundStyle(.secondary)
                                     Spacer()
                                     Text("\(Int(audioPlayerManager.playbackRate * 100))%")
-                                        .font(.caption.weight(.semibold))
+                                        .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.primary)
                                         .monospacedDigit()
                                 }
 
                                 HStack(spacing: 12) {
                                     Text("50")
-                                        .font(.caption2)
+                                        .font(.caption)
                                         .foregroundStyle(.tertiary)
                                         .monospacedDigit()
 
@@ -289,29 +271,24 @@ struct AudioPlaybackCellCD: View {
                                     .tint(.accentColor)
 
                                     Text("200")
-                                        .font(.caption2)
+                                        .font(.caption)
                                         .foregroundStyle(.tertiary)
                                         .monospacedDigit()
                                 }
                             }
-                            .padding(12)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .strokeBorder(.separator.opacity(0.2), lineWidth: 0.5)
-                            )
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
                             .transition(.opacity.combined(with: .scale(scale: 0.95)))
                         }
                     }
                 }
             }
-            .padding(16)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.separator.opacity(0.15), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 20)
+
+            // Divider between cells
+            Divider()
         }
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: showSpeedControl)
@@ -326,15 +303,16 @@ struct AudioPlaybackCellCD: View {
             Group {
                 if let icon = icon {
                     Image(systemName: icon)
-                        .font(.body)
+                        .font(.title3)
                 } else if let label = label {
                     Text(label)
-                        .font(.caption.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
                 }
             }
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity)
+            .frame(height: 48)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -343,29 +321,25 @@ struct AudioPlaybackCellCD: View {
     @ViewBuilder
     private func loopButton(label: String, isSet: Bool, time: TimeInterval?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(label)
-                    .font(.caption.weight(.bold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(isSet ? .white : .primary)
                 if let time = time {
                     Text(formatDuration(time))
-                        .font(.caption2)
-                        .foregroundStyle(isSet ? .white.opacity(0.8) : .secondary)
+                        .font(.caption)
+                        .foregroundStyle(isSet ? .white.opacity(0.9) : .secondary)
                         .monospacedDigit()
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 32)
+            .frame(height: 36)
             .background(
                 isSet ?
                     AnyShapeStyle(Color.accentColor.gradient) :
-                    AnyShapeStyle(.thinMaterial)
+                    AnyShapeStyle(.quaternary.opacity(0.5))
             )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(isSet ? Color.accentColor.opacity(0.3) : .separator.opacity(0.2), lineWidth: 0.5)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
     }
