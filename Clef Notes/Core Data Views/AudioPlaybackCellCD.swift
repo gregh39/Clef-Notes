@@ -21,22 +21,6 @@ private struct AudioFile: Transferable {
     }
 }
 
-// Speed option with stable ID
-private struct SpeedOption: Identifiable {
-    let id: Int
-    let value: Float
-    let label: String
-
-    static let options = [
-        SpeedOption(id: 0, value: 0.5, label: "0.50×"),
-        SpeedOption(id: 1, value: 0.75, label: "0.75×"),
-        SpeedOption(id: 2, value: 1.0, label: "1.00×"),
-        SpeedOption(id: 3, value: 1.25, label: "1.25×"),
-        SpeedOption(id: 4, value: 1.5, label: "1.50×"),
-        SpeedOption(id: 5, value: 2.0, label: "2.00×")
-    ]
-}
-
 struct AudioPlaybackCellCD: View {
     let title: String
     let subtitle: String
@@ -63,37 +47,57 @@ struct AudioPlaybackCellCD: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Title and share button
-            HStack {
-                VStack(alignment: .leading) {
+        VStack(spacing: 10) {
+            // Title and buttons row
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.headline)
                     Text(subtitle).font(.caption).foregroundColor(.secondary)
                     if effectiveDuration > 0 {
-                        Text("Duration: \(formatDuration(effectiveDuration))").font(.caption2).foregroundColor(.gray)
+                        Text(formatDuration(effectiveDuration)).font(.caption2).foregroundColor(.gray)
                     }
                 }
                 Spacer()
 
-                if let audioData = data {
-                    ShareLink(
-                        item: AudioFile(data: audioData, filename: "\(title).m4a"),
-                        preview: SharePreview(title, image: Image(systemName: "waveform"))
-                    ) {
-                        Image(systemName: "square.and.arrow.up")
+                // Buttons always on same row
+                HStack(spacing: 12) {
+                    if let audioData = data {
+                        ShareLink(
+                            item: AudioFile(data: audioData, filename: "\(title).m4a"),
+                            preview: SharePreview(title, image: Image(systemName: "waveform"))
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title3)
+                                .frame(width: 40, height: 40)
+                                .background(Color(UIColor.systemGray6))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button(action: {
+                        if audioPlayerManager.currentlyPlayingID == id {
+                            audioPlayerManager.togglePlayPause()
+                        } else if let audioData = data {
+                            audioPlayerManager.play(data: audioData, id: id)
+                        }
+                    }) {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                             .font(.title3)
                             .frame(width: 40, height: 40)
-                            .background(Color(UIColor.systemGray6))
+                            .background(isPlaying ? Color.accentColor : Color(UIColor.systemGray5))
+                            .foregroundColor(isPlaying ? .white : .primary)
                             .clipShape(Circle())
                     }
+                    .disabled(data == nil)
                     .buttonStyle(.plain)
                 }
             }
 
-            // Playback controls - always visible when playing
+            // Playback controls - only when playing or loaded
             if isPlaying || audioPlayerManager.currentlyPlayingID == id {
-                VStack(spacing: 8) {
-                    // Seek slider
+                VStack(spacing: 6) {
+                    // Seek slider and time
                     Slider(
                         value: Binding(
                             get: { isScrubbing ? audioPlayerManager.currentTime : min(audioPlayerManager.currentTime, effectiveDuration) },
@@ -108,7 +112,6 @@ struct AudioPlaybackCellCD: View {
                         }
                     )
 
-                    // Time display
                     HStack {
                         Text(formatDuration(audioPlayerManager.currentTime))
                         Spacer()
@@ -116,67 +119,44 @@ struct AudioPlaybackCellCD: View {
                     }
                     .font(.caption2).foregroundColor(.gray)
 
-                    // Main playback controls
-                    HStack(spacing: 20) {
-                        // Skip back button
-                        Button(action: {
-                            audioPlayerManager.skipBackward()
-                        }) {
+                    // Control buttons row
+                    HStack(spacing: 16) {
+                        Button(action: { audioPlayerManager.skipBackward() }) {
                             Image(systemName: "gobackward.5")
-                                .font(.title3)
-                                .frame(width: 44, height: 44)
+                                .font(.body)
+                                .frame(width: 36, height: 36)
                         }
                         .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
 
-                        // Play/Pause button
-                        Button(action: {
-                            if audioPlayerManager.currentlyPlayingID == id {
-                                audioPlayerManager.togglePlayPause()
-                            } else if let audioData = data {
-                                audioPlayerManager.play(data: audioData, id: id)
-                            }
-                        }) {
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.title2)
-                                .frame(width: 50, height: 50)
-                                .background(Color.accentColor)
-                                .foregroundColor(.white)
-                                .clipShape(Circle())
-                        }
-                        .disabled(data == nil)
+                        Spacer()
 
-                        // Skip forward button
-                        Button(action: {
-                            audioPlayerManager.skipForward()
-                        }) {
-                            Image(systemName: "goforward.5")
-                                .font(.title3)
-                                .frame(width: 44, height: 44)
-                        }
-                        .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
-
-                        // Stop button
-                        Button(action: {
-                            audioPlayerManager.stop()
-                        }) {
+                        Button(action: { audioPlayerManager.stop() }) {
                             Image(systemName: "stop.fill")
-                                .font(.title3)
-                                .frame(width: 44, height: 44)
+                                .font(.body)
+                                .frame(width: 36, height: 36)
                         }
                         .disabled(audioPlayerManager.currentlyPlayingID != id)
 
-                        // Speed control button
-                        Button(action: {
-                            showSpeedControl.toggle()
-                        }) {
-                            VStack(spacing: 0) {
+                        Spacer()
+
+                        Button(action: { audioPlayerManager.skipForward() }) {
+                            Image(systemName: "goforward.5")
+                                .font(.body)
+                                .frame(width: 36, height: 36)
+                        }
+                        .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
+
+                        Spacer()
+
+                        Button(action: { showSpeedControl.toggle() }) {
+                            VStack(spacing: -2) {
                                 Text("\(Int(audioPlayerManager.playbackRate * 100))")
                                     .font(.caption)
                                     .fontWeight(.bold)
                                 Text("%")
                                     .font(.caption2)
                             }
-                            .frame(width: 44, height: 44)
+                            .frame(width: 36, height: 36)
                             .background(showSpeedControl ? Color.accentColor : Color(UIColor.systemGray5))
                             .foregroundColor(showSpeedControl ? .white : .primary)
                             .clipShape(Circle())
@@ -184,11 +164,11 @@ struct AudioPlaybackCellCD: View {
                     }
                     .buttonStyle(.plain)
 
-                    // Speed control slider (shown when button tapped)
+                    // Speed control slider
                     if showSpeedControl {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(spacing: 8) {
                             HStack {
-                                Text("Playback Speed")
+                                Text("Speed")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
@@ -198,9 +178,8 @@ struct AudioPlaybackCellCD: View {
                                     .foregroundColor(.accentColor)
                             }
 
-                            // Slider for fine control
-                            HStack(spacing: 12) {
-                                Text("0.5×")
+                            HStack(spacing: 8) {
+                                Text("50")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
 
@@ -210,75 +189,22 @@ struct AudioPlaybackCellCD: View {
                                         set: { audioPlayerManager.setPlaybackRate(Float($0)) }
                                     ),
                                     in: 0.5...2.0,
-                                    step: 0.05
+                                    step: 0.01
                                 )
                                 .tint(.accentColor)
 
-                                Text("2.0×")
+                                Text("200")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
-
-                            // Quick preset buttons
-                            HStack(spacing: 8) {
-                                ForEach(SpeedOption.options) { option in
-                                    Button(action: {
-                                        audioPlayerManager.setPlaybackRate(option.value)
-                                    }) {
-                                        Text(option.label)
-                                            .font(.caption2)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? Color.accentColor : Color(UIColor.systemGray6))
-                                            .foregroundColor(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? .white : .secondary)
-                                            .cornerRadius(6)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-
-                            // Close button
-                            Button(action: {
-                                withAnimation {
-                                    showSpeedControl = false
-                                }
-                            }) {
-                                Text("Done")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.accentColor)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                                    .background(Color(UIColor.systemGray6))
-                                    .cornerRadius(8)
-                            }
-                            .buttonStyle(.plain)
                         }
-                        .padding(12)
-                        .background(Color(UIColor.systemBackground))
-                        .cornerRadius(12)
-                        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+                        .padding(10)
+                        .background(Color(UIColor.systemGray6).opacity(0.5))
+                        .cornerRadius(8)
                         .transition(.opacity)
                     }
                 }
-            } else {
-                // Simple play button when not playing
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        if let audioData = data {
-                            audioPlayerManager.play(data: audioData, id: id)
-                        }
-                    }) {
-                        Image(systemName: "play.fill")
-                            .font(.title3)
-                            .frame(width: 40, height: 40)
-                            .background(Color(UIColor.systemGray5))
-                            .clipShape(Circle())
-                    }
-                    .disabled(data == nil)
-                    .buttonStyle(.plain)
-                }
+                .padding(.top, 4)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isPlaying)
