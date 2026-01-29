@@ -21,6 +21,22 @@ private struct AudioFile: Transferable {
     }
 }
 
+// Speed option with stable ID
+private struct SpeedOption: Identifiable {
+    let id: Int
+    let value: Float
+    let label: String
+
+    static let options = [
+        SpeedOption(id: 0, value: 0.5, label: "0.50×"),
+        SpeedOption(id: 1, value: 0.75, label: "0.75×"),
+        SpeedOption(id: 2, value: 1.0, label: "1.00×"),
+        SpeedOption(id: 3, value: 1.25, label: "1.25×"),
+        SpeedOption(id: 4, value: 1.5, label: "1.50×"),
+        SpeedOption(id: 5, value: 2.0, label: "2.00×")
+    ]
+}
+
 struct AudioPlaybackCellCD: View {
     let title: String
     let subtitle: String
@@ -70,6 +86,7 @@ struct AudioPlaybackCellCD: View {
                             .background(Color(UIColor.systemGray6))
                             .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -174,24 +191,32 @@ struct AudioPlaybackCellCD: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            HStack(spacing: 12) {
-                                ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { speed in
+                            HStack(spacing: 8) {
+                                ForEach(SpeedOption.options) { option in
                                     Button(action: {
-                                        audioPlayerManager.setPlaybackRate(Float(speed))
+                                        audioPlayerManager.setPlaybackRate(option.value)
+                                        withAnimation {
+                                            showSpeedControl = false
+                                        }
                                     }) {
-                                        Text("\(speed, specifier: "%.2f")×")
+                                        Text(option.label)
                                             .font(.caption)
-                                            .fontWeight(audioPlayerManager.playbackRate == Float(speed) ? .bold : .regular)
-                                            .foregroundColor(audioPlayerManager.playbackRate == Float(speed) ? .white : .primary)
-                                            .frame(minWidth: 50)
-                                            .padding(.vertical, 6)
-                                            .background(audioPlayerManager.playbackRate == Float(speed) ? Color.accentColor : Color(UIColor.systemGray6))
+                                            .fontWeight(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? .bold : .regular)
+                                            .foregroundColor(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? .white : .primary)
+                                            .frame(minWidth: 48)
+                                            .padding(.vertical, 8)
+                                            .background(abs(audioPlayerManager.playbackRate - option.value) < 0.01 ? Color.accentColor : Color(UIColor.systemGray6))
                                             .cornerRadius(8)
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
                         .padding(.vertical, 8)
+                        .padding(.horizontal, 4)
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                         .transition(.opacity)
                     }
                 }
