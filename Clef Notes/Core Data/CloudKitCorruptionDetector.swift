@@ -94,28 +94,14 @@ class CloudKitCorruptionDetector {
 
     /// Alternative approach: Reset CloudKit mirroring state
     /// This forces CloudKit to re-evaluate all objects
+    /// Note: This method is currently unused but kept for reference
+    /*
     static func resetCloudKitState(persistentContainer: NSPersistentCloudKitContainer) {
         // This is a more aggressive approach that resets the CloudKit sync state
         // It will cause a full re-sync but can fix zone assignment issues
-
-        let privateStore = persistentContainer.persistentStoreCoordinator.persistentStores.first { store in
-            guard let options = store.cloudKitContainerOptions else { return false }
-            return options.databaseScope == .private
-        }
-
-        if let store = privateStore {
-            let request = NSPersistentCloudKitContainer.InitializeCloudKitSchemaRequest(
-                containerOptions: store.cloudKitContainerOptions!
-            )
-
-            do {
-                try persistentContainer.initializeCloudKitSchema(options: request)
-                print("CloudKit schema reinitialized successfully")
-            } catch {
-                print("Failed to reinitialize CloudKit schema: \(error)")
-            }
-        }
+        // Requires access to store descriptions, not store instances
     }
+    */
 
     /// More targeted approach: Find and delete specific corrupted object by URI
     static func findAndDeleteCorruptedObject(
