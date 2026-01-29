@@ -67,6 +67,9 @@ struct SettingsView: View {
                 NavigationLink("Cloud Sync Status") {
                     CloudSyncStatusView()
                 }
+                NavigationLink("Fix CloudKit Corruption") {
+                    CloudKitCorruptionView()
+                }
             }
             
             Section(header: Text("About")) {
