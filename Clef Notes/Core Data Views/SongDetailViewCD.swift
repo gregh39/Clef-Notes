@@ -164,6 +164,11 @@ struct SongDetailViewCD: View {
     // Expanded audio cell tracking
     @State private var expandedAudioCellID: NSManagedObjectID? = nil
 
+    // Share state
+    @State private var showingShareSheet = false
+    @State private var audioDataToShare: Data?
+    @State private var shareFileName: String = ""
+
     init(song: SongCD, audioManager: AudioManager) {
         self.song = song
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
@@ -268,6 +273,11 @@ struct SongDetailViewCD: View {
                     try? viewContext.save()
                 }
             )
+        }
+        .sheet(isPresented: $showingShareSheet) {
+            if let data = audioDataToShare {
+                ActivityViewController(activityItems: [data])
+            }
         }
     }
 
@@ -673,24 +683,25 @@ struct SongDetailViewCD: View {
                                     expandedCellID: $expandedAudioCellID
                                 )
                                 .padding(.vertical, 4)
-                                // Leading swipe (right) for Rename and Share
+                                // Leading swipe (right) for Share and Rename
                                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    if let audioData = recording.data {
-                                        ShareLink(
-                                            item: AudioFile(data: audioData, filename: "\(recording.title ?? "Recording").m4a"),
-                                            preview: SharePreview(recording.title ?? "Recording", image: Image(systemName: "waveform"))
-                                        ) {
-                                            Label("Share", systemImage: "square.and.arrow.up")
-                                        }
-                                        .tint(.green)
-                                    }
-
                                     Button {
                                         audioRecordingToRename = recording
                                     } label: {
                                         Label("Rename", systemImage: "pencil")
                                     }
                                     .tint(.blue)
+
+                                    if let audioData = recording.data {
+                                        Button {
+                                            audioDataToShare = audioData
+                                            shareFileName = "\(recording.title ?? "Recording").m4a"
+                                            showingShareSheet = true
+                                        } label: {
+                                            Label("Share", systemImage: "square.and.arrow.up")
+                                        }
+                                        .tint(.green)
+                                    }
                                 }
                                 // Trailing swipe (left) for Delete
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {

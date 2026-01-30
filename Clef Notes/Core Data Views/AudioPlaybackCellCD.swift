@@ -277,7 +277,7 @@ struct AudioPlaybackCellCD: View {
             Group {
                 if let icon = icon {
                     Image(systemName: icon)
-                        .font(.title3)
+                        .font(.title2)
                 } else if let label = label {
                     Text(label)
                         .font(.caption.weight(.semibold))
