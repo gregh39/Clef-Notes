@@ -31,6 +31,7 @@ struct AudioPlaybackCellCD: View {
     @Binding var expandedCellID: NSManagedObjectID?
 
     @State private var isScrubbing = false
+    @State private var showingShareSheet = false
 
     var isExpanded: Bool {
         expandedCellID == id
@@ -264,11 +265,42 @@ struct AudioPlaybackCellCD: View {
                             }
                         }
                     }
+
+                    // Share button
+                    if let audioData = data {
+                        Button(action: {
+                            showingShareSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up")
+                                Text("Share")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 36)
+                            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                        .sheet(isPresented: $showingShareSheet) {
+                            ActivityViewController(activityItems: [audioData])
+                        }
+                    }
                 }
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private struct ActivityViewController: UIViewControllerRepresentable {
+        var activityItems: [Any]
+
+        func makeUIViewController(context: Context) -> UIActivityViewController {
+            UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        }
+
+        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
     }
 
     @ViewBuilder

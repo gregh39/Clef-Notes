@@ -7,23 +7,6 @@ import PDFKit
 import UniformTypeIdentifiers
 import CoreText
 
-// A helper struct to make audio data transferable for the ShareLink.
-private struct AudioFile: Transferable {
-    let data: Data
-    let filename: String
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(contentType: .mpeg4Audio) { audio in
-            audio.data
-        } importing: { data in
-            AudioFile(data: data, filename: "imported.m4a")
-        }
-        .suggestedFileName { audio in
-            audio.filename
-        }
-    }
-}
-
 // A wrapper to display different media types in one list.
 enum DisplayableMedia: Identifiable, Hashable {
     case mediaReference(MediaReferenceCD)
@@ -164,11 +147,6 @@ struct SongDetailViewCD: View {
     // Expanded audio cell tracking
     @State private var expandedAudioCellID: NSManagedObjectID? = nil
 
-    // Share state
-    @State private var showingShareSheet = false
-    @State private var audioDataToShare: Data?
-    @State private var shareFileName: String = ""
-
     init(song: SongCD, audioManager: AudioManager) {
         self.song = song
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
@@ -273,11 +251,6 @@ struct SongDetailViewCD: View {
                     try? viewContext.save()
                 }
             )
-        }
-        .sheet(isPresented: $showingShareSheet) {
-            if let data = audioDataToShare {
-                ActivityViewController(activityItems: [data])
-            }
         }
     }
 
@@ -683,7 +656,7 @@ struct SongDetailViewCD: View {
                                     expandedCellID: $expandedAudioCellID
                                 )
                                 .padding(.vertical, 4)
-                                // Leading swipe (right) for Share and Rename
+                                // Leading swipe (right) for Rename
                                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                     Button {
                                         audioRecordingToRename = recording
@@ -691,17 +664,6 @@ struct SongDetailViewCD: View {
                                         Label("Rename", systemImage: "pencil")
                                     }
                                     .tint(.blue)
-
-                                    if let audioData = recording.data {
-                                        Button {
-                                            audioDataToShare = audioData
-                                            shareFileName = "\(recording.title ?? "Recording").m4a"
-                                            showingShareSheet = true
-                                        } label: {
-                                            Label("Share", systemImage: "square.and.arrow.up")
-                                        }
-                                        .tint(.green)
-                                    }
                                 }
                                 // Trailing swipe (left) for Delete
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {

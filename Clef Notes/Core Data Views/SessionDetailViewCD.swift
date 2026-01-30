@@ -64,11 +64,6 @@ struct SessionDetailViewCD: View {
     // Inline rename state for recordings
     @State private var audioRecordingToRename: AudioRecordingCD?
 
-    // Share state
-    @State private var showingShareSheet = false
-    @State private var audioDataToShare: Data?
-    @State private var shareFileName: String = ""
-
     init(session: PracticeSessionCD, audioManager: AudioManager) {
         self.session = session
         _audioRecorderManager = StateObject(wrappedValue: AudioRecorderManager(audioManager: audioManager))
@@ -248,11 +243,6 @@ struct SessionDetailViewCD: View {
                 }
             )
         }
-        .sheet(isPresented: $showingShareSheet) {
-            if let data = audioDataToShare {
-                ActivityViewController(activityItems: [data])
-            }
-        }
     }
 
     private var sessionTab: some View {
@@ -282,7 +272,7 @@ struct SessionDetailViewCD: View {
                         audioPlayerManager: audioPlayerManager,
                         expandedCellID: $expandedAudioCellID
                     )
-                    // Leading swipe (right) for Share and Rename
+                    // Leading swipe (right) for Rename
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         Button {
                             audioRecordingToRename = recording
@@ -292,17 +282,6 @@ struct SessionDetailViewCD: View {
 
                         }
                         .tint(.orange)
-
-                        if let audioData = recording.data {
-                            Button {
-                                audioDataToShare = audioData
-                                shareFileName = "\(recording.title ?? "Recording").m4a"
-                                showingShareSheet = true
-                            } label: {
-                                Label("Share", systemImage: "square.and.arrow.up")
-                            }
-                            .tint(.green)
-                        }
                     }
                     // Trailing swipe (left) for Delete
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -756,17 +735,4 @@ private struct InlineRenameTitleSheet: View {
             }
         }
     }
-}
-
-/// MARK: - ActivityViewController for Share Sheet
-private struct ActivityViewController: UIViewControllerRepresentable {
-    var activityItems: [Any]
-    var applicationActivities: [UIActivity]? = nil
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
