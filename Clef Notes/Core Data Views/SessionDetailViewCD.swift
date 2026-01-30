@@ -758,8 +758,8 @@ private struct InlineRenameTitleSheet: View {
     }
 }
 
-// MARK: - ActivityViewController for Share Sheet
-struct ActivityViewController: UIViewControllerRepresentable {
+/// MARK: - ActivityViewController for Share Sheet
+private struct ActivityViewController: UIViewControllerRepresentable {
     var activityItems: [Any]
     var applicationActivities: [UIActivity]? = nil
 

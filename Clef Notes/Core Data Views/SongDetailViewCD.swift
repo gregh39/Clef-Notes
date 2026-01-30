@@ -980,7 +980,7 @@ struct IdentifiableURL: Identifiable {
 }
 
 // MARK: - ActivityViewController for Share Sheet
-struct ActivityViewController: UIViewControllerRepresentable {
+private struct ActivityViewController: UIViewControllerRepresentable {
     var activityItems: [Any]
     var applicationActivities: [UIActivity]? = nil
     
