@@ -303,8 +303,8 @@ struct AudioPlaybackCellCD: View {
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: showSpeedControl)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
