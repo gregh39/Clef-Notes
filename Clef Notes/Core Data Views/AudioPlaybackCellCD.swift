@@ -48,7 +48,7 @@ struct AudioPlaybackCellCD: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 14) {
             // Header row - tappable to expand
             Button(action: {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -56,7 +56,7 @@ struct AudioPlaybackCellCD: View {
                 }
             }) {
                 HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(title)
                             .font(.headline)
                             .foregroundStyle(.primary)
@@ -73,7 +73,7 @@ struct AudioPlaybackCellCD: View {
 
                     // Expand/collapse indicator
                     Image(systemName: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
@@ -84,18 +84,18 @@ struct AudioPlaybackCellCD: View {
             // Playback controls (when expanded)
             if isExpanded {
                 // Action buttons row
-                HStack(spacing: 16) {
+                HStack(spacing: 10) {
                     if let audioData = data {
                         ShareLink(
                             item: AudioFile(data: audioData, filename: "\(title).m4a"),
                             preview: SharePreview(title, image: Image(systemName: "waveform"))
                         ) {
                             Label("Share", systemImage: "square.and.arrow.up")
-                                .font(.subheadline)
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
+                                .frame(height: 36)
+                                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
                         }
                         .buttonStyle(.plain)
                     }
@@ -108,16 +108,16 @@ struct AudioPlaybackCellCD: View {
                         }
                     }) {
                         Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12))
+                            .frame(height: 36)
+                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 10))
                     }
                     .disabled(data == nil)
                     .buttonStyle(.plain)
                 }
-                VStack(spacing: 20) {
+                VStack(spacing: 14) {
                     // Seek slider with loop indicators
                     ZStack(alignment: .leading) {
                         // Loop region background
@@ -172,7 +172,7 @@ struct AudioPlaybackCellCD: View {
                         .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
 
                         Divider()
-                            .frame(height: 28)
+                            .frame(height: 20)
 
                         // Stop
                         controlButton(icon: "stop.fill") {
@@ -181,7 +181,7 @@ struct AudioPlaybackCellCD: View {
                         .disabled(audioPlayerManager.currentlyPlayingID != id)
 
                         Divider()
-                            .frame(height: 28)
+                            .frame(height: 20)
 
                         // Skip forward
                         controlButton(icon: "goforward.5") {
@@ -190,7 +190,7 @@ struct AudioPlaybackCellCD: View {
                         .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
 
                         Divider()
-                            .frame(height: 28)
+                            .frame(height: 20)
 
                         // Speed control
                         controlButton(icon: nil, label: "\(Int(audioPlayerManager.playbackRate * 100))%") {
@@ -199,76 +199,84 @@ struct AudioPlaybackCellCD: View {
                             }
                         }
                     }
-                    .frame(height: 52)
+                    .frame(height: 42)
 
-                    // A-B Loop controls
-                    HStack(spacing: 12) {
-                        loopButton(
-                            label: "A",
-                            isSet: audioPlayerManager.loopA != nil,
-                            time: audioPlayerManager.loopA
-                        ) {
-                            audioPlayerManager.setLoopA()
-                        }
+                    // Loop Points Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Loop Points")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
 
-                        loopButton(
-                            label: "B",
-                            isSet: audioPlayerManager.loopB != nil,
-                            time: audioPlayerManager.loopB
-                        ) {
-                            audioPlayerManager.setLoopB()
-                        }
+                        HStack(spacing: 8) {
+                            loopButton(
+                                label: "A",
+                                isSet: audioPlayerManager.loopA != nil,
+                                time: audioPlayerManager.loopA
+                            ) {
+                                audioPlayerManager.setLoopA()
+                            }
 
-                        if audioPlayerManager.hasLoopPoints {
-                            Button(action: {
-                                audioPlayerManager.toggleLoop()
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: audioPlayerManager.isLooping ? "repeat.circle.fill" : "repeat.circle")
-                                    Text("Loop")
-                                        .font(.subheadline.weight(.medium))
+                            loopButton(
+                                label: "B",
+                                isSet: audioPlayerManager.loopB != nil,
+                                time: audioPlayerManager.loopB
+                            ) {
+                                audioPlayerManager.setLoopB()
+                            }
+
+                            if audioPlayerManager.hasLoopPoints {
+                                Button(action: {
+                                    audioPlayerManager.toggleLoop()
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: audioPlayerManager.isLooping ? "repeat.circle.fill" : "repeat.circle")
+                                            .font(.caption)
+                                        Text("Loop")
+                                            .font(.caption.weight(.medium))
+                                    }
+                                    .foregroundStyle(audioPlayerManager.isLooping ? .white : .primary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 32)
+                                    .background(
+                                        audioPlayerManager.isLooping ?
+                                            AnyShapeStyle(Color.accentColor) :
+                                            AnyShapeStyle(.quaternary.opacity(0.4))
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
-                                .foregroundStyle(audioPlayerManager.isLooping ? .white : .primary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 40)
-                                .background(
-                                    audioPlayerManager.isLooping ?
-                                        AnyShapeStyle(Color.accentColor) :
-                                        AnyShapeStyle(.quaternary.opacity(0.4))
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                            .buttonStyle(.plain)
+                                .buttonStyle(.plain)
 
-                            Button(action: {
-                                audioPlayerManager.clearLoop()
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 40, height: 40)
+                                Button(action: {
+                                    audioPlayerManager.clearLoop()
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 32, height: 32)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
 
                     // Speed control slider
                     if showSpeedControl {
-                        VStack(spacing: 14) {
+                        VStack(spacing: 10) {
                             HStack {
                                 Text("Playback Speed")
-                                    .font(.subheadline.weight(.medium))
+                                    .font(.caption.weight(.medium))
                                     .foregroundStyle(.secondary)
                                 Spacer()
                                 Text("\(Int(audioPlayerManager.playbackRate * 100))%")
-                                    .font(.title3.weight(.semibold))
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.primary)
                                     .monospacedDigit()
                             }
 
-                            HStack(spacing: 14) {
+                            HStack(spacing: 12) {
                                 Text("50")
-                                    .font(.caption)
+                                    .font(.caption2)
                                     .foregroundStyle(.tertiary)
                                     .monospacedDigit()
 
@@ -283,20 +291,20 @@ struct AudioPlaybackCellCD: View {
                                 .tint(.accentColor)
 
                                 Text("200")
-                                    .font(.caption)
+                                    .font(.caption2)
                                     .foregroundStyle(.tertiary)
                                     .monospacedDigit()
                             }
                         }
-                        .padding(16)
-                        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(12)
+                        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     }
                 }
             }
         }
         .padding(.horizontal)
-        .padding(.vertical, 20)
+        .padding(.vertical, 14)
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: showSpeedControl)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
@@ -310,16 +318,16 @@ struct AudioPlaybackCellCD: View {
             Group {
                 if let icon = icon {
                     Image(systemName: icon)
-                        .font(.title2)
+                        .font(.title3)
                 } else if let label = label {
                     Text(label)
-                        .font(.body.weight(.semibold))
+                        .font(.caption.weight(.semibold))
                         .monospacedDigit()
                 }
             }
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: 42)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -328,25 +336,25 @@ struct AudioPlaybackCellCD: View {
     @ViewBuilder
     private func loopButton(label: String, isSet: Bool, time: TimeInterval?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text(label)
-                    .font(.body.weight(.bold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(isSet ? .white : .primary)
                 if let time = time {
                     Text(formatDuration(time))
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(isSet ? .white.opacity(0.9) : .secondary)
                         .monospacedDigit()
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 40)
+            .frame(height: 32)
             .background(
                 isSet ?
                     AnyShapeStyle(Color.accentColor) :
                     AnyShapeStyle(.quaternary.opacity(0.4))
             )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
     }
