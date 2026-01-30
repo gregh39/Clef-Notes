@@ -299,11 +299,6 @@ struct AudioPlaybackCellCD: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
-        .animation(.spring(response: 0.3), value: isPlaying)
-        .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
-        .animation(.spring(response: 0.3), value: audioPlayerManager.loopB)
-        .animation(.spring(response: 0.3), value: audioPlayerManager.isLooping)
     }
 
     @ViewBuilder
