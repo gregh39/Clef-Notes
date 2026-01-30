@@ -50,9 +50,7 @@ struct AudioPlaybackCellCD: View {
         VStack(alignment: .leading, spacing: 14) {
             // Header row - tappable to expand
             Button(action: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    isExpanded.toggle()
-                }
+                isExpanded.toggle()
             }) {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -215,12 +213,12 @@ struct AudioPlaybackCellCD: View {
                                     get: { Double(audioPlayerManager.playbackRate) },
                                     set: { audioPlayerManager.setPlaybackRate(Float($0)) }
                                 ),
-                                in: 0.5...2.0,
+                                in: 0.5...1.5,
                                 step: 0.01
                             )
                             .tint(.accentColor)
 
-                            Text("200")
+                            Text("150")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                                 .monospacedDigit()
@@ -286,10 +284,12 @@ struct AudioPlaybackCellCD: View {
                         }
                     }
                 }
+                .transition(.opacity)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopB)
