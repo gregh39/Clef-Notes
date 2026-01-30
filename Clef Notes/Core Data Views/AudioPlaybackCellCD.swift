@@ -31,6 +31,7 @@ struct AudioPlaybackCellCD: View {
 
     @State private var isScrubbing = false
     @State private var showSpeedControl = false
+    @State private var isExpanded = false
 
     var isPlaying: Bool {
         audioPlayerManager.currentlyPlayingID == id && audioPlayerManager.isPlaying
@@ -48,34 +49,53 @@ struct AudioPlaybackCellCD: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Header row
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    if effectiveDuration > 0 {
-                        Text(formatDuration(effectiveDuration))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
+            // Header row - tappable to expand
+            Button(action: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    isExpanded.toggle()
                 }
-                Spacer()
+            }) {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        if effectiveDuration > 0 {
+                            Text(formatDuration(effectiveDuration))
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    Spacer()
 
-                // Action buttons
+                    // Expand/collapse indicator
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Playback controls (when expanded)
+            if isExpanded {
+                // Action buttons row
                 HStack(spacing: 16) {
                     if let audioData = data {
                         ShareLink(
                             item: AudioFile(data: audioData, filename: "\(title).m4a"),
                             preview: SharePreview(title, image: Image(systemName: "waveform"))
                         ) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.title2)
+                            Label("Share", systemImage: "square.and.arrow.up")
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                                .frame(width: 44, height: 44)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.plain)
                     }
@@ -87,19 +107,16 @@ struct AudioPlaybackCellCD: View {
                             audioPlayerManager.play(data: audioData, id: id)
                         }
                     }) {
-                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                            .font(.title2)
+                        Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
-                            .frame(width: 54, height: 54)
-                            .background(Circle().fill(Color.accentColor))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12))
                     }
                     .disabled(data == nil)
                     .buttonStyle(.plain)
                 }
-            }
-
-            // Playback controls (when playing or loaded)
-            if isPlaying || audioPlayerManager.currentlyPlayingID == id {
                 VStack(spacing: 20) {
                     // Seek slider with loop indicators
                     ZStack(alignment: .leading) {
