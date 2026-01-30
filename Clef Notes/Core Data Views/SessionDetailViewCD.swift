@@ -29,6 +29,9 @@ struct SessionDetailViewCD: View {
     @State private var editingNote: NoteCD?
     @State private var playToEdit: PlayCD?
 
+    // Expanded audio cell tracking
+    @State private var expandedAudioCellID: NSManagedObjectID? = nil
+
     @StateObject private var audioRecorderManager: AudioRecorderManager
     @StateObject private var audioPlayerManager: AudioPlayerManager
     
@@ -248,7 +251,8 @@ struct SessionDetailViewCD: View {
                         data: recording.data,
                         duration: recording.duration,
                         id: recording.objectID,
-                        audioPlayerManager: audioPlayerManager
+                        audioPlayerManager: audioPlayerManager,
+                        expandedCellID: $expandedAudioCellID
                     )
                     // Leading swipe (right) for Rename
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {

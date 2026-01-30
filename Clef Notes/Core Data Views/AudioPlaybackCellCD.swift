@@ -28,9 +28,13 @@ struct AudioPlaybackCellCD: View {
     let duration: Double
     let id: NSManagedObjectID
     @ObservedObject var audioPlayerManager: AudioPlayerManager
+    @Binding var expandedCellID: NSManagedObjectID?
 
     @State private var isScrubbing = false
-    @State private var isExpanded = false
+
+    var isExpanded: Bool {
+        expandedCellID == id
+    }
 
     var isPlaying: Bool {
         audioPlayerManager.currentlyPlayingID == id && audioPlayerManager.isPlaying
@@ -50,7 +54,9 @@ struct AudioPlaybackCellCD: View {
         VStack(alignment: .leading, spacing: 14) {
             // Header row - tappable to expand
             Button(action: {
-                isExpanded.toggle()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    expandedCellID = isExpanded ? nil : id
+                }
             }) {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -284,12 +290,10 @@ struct AudioPlaybackCellCD: View {
                         }
                     }
                 }
-                .transition(.opacity)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopB)

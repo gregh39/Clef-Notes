@@ -42,7 +42,8 @@ struct MediaCellCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject var media: MediaReferenceCD
     @ObservedObject var audioPlayerManager: AudioPlayerManager
-    
+    @Binding var expandedAudioCellID: NSManagedObjectID?
+
     // State to control the presentation of the sheet music detail view.
     @State private var showingSheetMusicDetail = false
 
@@ -56,7 +57,8 @@ struct MediaCellCD: View {
                     data: media.data,
                     duration: media.duration,
                     id: media.objectID,
-                    audioPlayerManager: audioPlayerManager
+                    audioPlayerManager: audioPlayerManager,
+                    expandedCellID: $expandedAudioCellID
                 )
                 
             case .localVideo:
