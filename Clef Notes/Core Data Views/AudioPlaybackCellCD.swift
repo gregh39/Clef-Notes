@@ -30,7 +30,6 @@ struct AudioPlaybackCellCD: View {
     @ObservedObject var audioPlayerManager: AudioPlayerManager
 
     @State private var isScrubbing = false
-    @State private var showSpeedControl = false
     @State private var isExpanded = false
 
     var isPlaying: Bool {
@@ -188,18 +187,45 @@ struct AudioPlaybackCellCD: View {
                             audioPlayerManager.skipForward()
                         }
                         .disabled(!isPlaying && audioPlayerManager.currentlyPlayingID != id)
-
-                        Divider()
-                            .frame(height: 20)
-
-                        // Speed control
-                        controlButton(icon: nil, label: "\(Int(audioPlayerManager.playbackRate * 100))%") {
-                            withAnimation(.spring(response: 0.3)) {
-                                showSpeedControl.toggle()
-                            }
-                        }
                     }
                     .frame(height: 42)
+
+                    // Playback Speed Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Playback Speed")
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                            Spacer()
+                            Text("\(Int(audioPlayerManager.playbackRate * 100))%")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .monospacedDigit()
+                        }
+
+                        HStack(spacing: 12) {
+                            Text("50")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .monospacedDigit()
+
+                            Slider(
+                                value: Binding(
+                                    get: { Double(audioPlayerManager.playbackRate) },
+                                    set: { audioPlayerManager.setPlaybackRate(Float($0)) }
+                                ),
+                                in: 0.5...2.0,
+                                step: 0.01
+                            )
+                            .tint(.accentColor)
+
+                            Text("200")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .monospacedDigit()
+                        }
+                    }
 
                     // Loop Points Section
                     VStack(alignment: .leading, spacing: 8) {
@@ -259,54 +285,12 @@ struct AudioPlaybackCellCD: View {
                             }
                         }
                     }
-
-                    // Speed control slider
-                    if showSpeedControl {
-                        VStack(spacing: 10) {
-                            HStack {
-                                Text("Playback Speed")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text("\(Int(audioPlayerManager.playbackRate * 100))%")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                    .monospacedDigit()
-                            }
-
-                            HStack(spacing: 12) {
-                                Text("50")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                    .monospacedDigit()
-
-                                Slider(
-                                    value: Binding(
-                                        get: { Double(audioPlayerManager.playbackRate) },
-                                        set: { audioPlayerManager.setPlaybackRate(Float($0)) }
-                                    ),
-                                    in: 0.5...2.0,
-                                    step: 0.01
-                                )
-                                .tint(.accentColor)
-
-                                Text("200")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                    .monospacedDigit()
-                            }
-                        }
-                        .padding(12)
-                        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                    }
                 }
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .animation(.spring(response: 0.3), value: isPlaying)
-        .animation(.spring(response: 0.3), value: showSpeedControl)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopB)
         .animation(.spring(response: 0.3), value: audioPlayerManager.isLooping)
