@@ -54,9 +54,7 @@ struct AudioPlaybackCellCD: View {
         VStack(alignment: .leading, spacing: 14) {
             // Header row - tappable to expand
             Button(action: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    expandedCellID = isExpanded ? nil : id
-                }
+                expandedCellID = isExpanded ? nil : id
             }) {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -79,6 +77,7 @@ struct AudioPlaybackCellCD: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
                 }
                 .contentShape(Rectangle())
             }
@@ -151,6 +150,9 @@ struct AudioPlaybackCellCD: View {
                             }
                         )
                         .tint(.accentColor)
+                        .transaction { transaction in
+                            transaction.animation = nil
+                        }
                     }
 
                     // Time display
@@ -223,6 +225,9 @@ struct AudioPlaybackCellCD: View {
                                 step: 0.01
                             )
                             .tint(.accentColor)
+                            .transaction { transaction in
+                                transaction.animation = nil
+                            }
 
                             Text("150")
                                 .font(.caption2)
@@ -294,6 +299,7 @@ struct AudioPlaybackCellCD: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
         .animation(.spring(response: 0.3), value: isPlaying)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopA)
         .animation(.spring(response: 0.3), value: audioPlayerManager.loopB)
