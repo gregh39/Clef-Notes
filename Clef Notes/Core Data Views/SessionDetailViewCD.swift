@@ -3,6 +3,24 @@
 import SwiftUI
 import CoreData
 import AVFoundation
+import UniformTypeIdentifiers
+
+// A helper struct to make audio data transferable for the ShareLink.
+private struct AudioFile: Transferable {
+    let data: Data
+    let filename: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(contentType: .mpeg4Audio) { audio in
+            audio.data
+        } importing: { data in
+            AudioFile(data: data, filename: "imported.m4a")
+        }
+        .suggestedFileName { audio in
+            audio.filename
+        }
+    }
+}
 
 // Add this extension to make URL identifiable for the .sheet(item:) modifier
 extension URL: Identifiable {
@@ -254,8 +272,18 @@ struct SessionDetailViewCD: View {
                         audioPlayerManager: audioPlayerManager,
                         expandedCellID: $expandedAudioCellID
                     )
-                    // Leading swipe (right) for Rename
+                    // Leading swipe (right) for Rename and Share
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        if let audioData = recording.data {
+                            ShareLink(
+                                item: AudioFile(data: audioData, filename: "\(recording.title ?? "Recording").m4a"),
+                                preview: SharePreview(recording.title ?? "Recording", image: Image(systemName: "waveform"))
+                            ) {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                            .tint(.green)
+                        }
+
                         Button {
                             audioRecordingToRename = recording
                         } label: {

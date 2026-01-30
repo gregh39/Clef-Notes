@@ -85,40 +85,6 @@ struct AudioPlaybackCellCD: View {
 
             // Playback controls (when expanded)
             if isExpanded {
-                // Action buttons row
-                HStack(spacing: 10) {
-                    if let audioData = data {
-                        ShareLink(
-                            item: AudioFile(data: audioData, filename: "\(title).m4a"),
-                            preview: SharePreview(title, image: Image(systemName: "waveform"))
-                        ) {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 36)
-                                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Button(action: {
-                        if audioPlayerManager.currentlyPlayingID == id {
-                            audioPlayerManager.togglePlayPause()
-                        } else if let audioData = data {
-                            audioPlayerManager.play(data: audioData, id: id)
-                        }
-                    }) {
-                        Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 36)
-                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    .disabled(data == nil)
-                    .buttonStyle(.plain)
-                }
                 VStack(spacing: 14) {
                     // Seek slider with loop indicators
                     ZStack(alignment: .leading) {
@@ -179,11 +145,15 @@ struct AudioPlaybackCellCD: View {
                         Divider()
                             .frame(height: 20)
 
-                        // Stop
-                        controlButton(icon: "stop.fill") {
-                            audioPlayerManager.stop()
+                        // Play/Pause
+                        controlButton(icon: isPlaying ? "pause.fill" : "play.fill") {
+                            if audioPlayerManager.currentlyPlayingID == id {
+                                audioPlayerManager.togglePlayPause()
+                            } else if let audioData = data {
+                                audioPlayerManager.play(data: audioData, id: id)
+                            }
                         }
-                        .disabled(audioPlayerManager.currentlyPlayingID != id)
+                        .disabled(data == nil)
 
                         Divider()
                             .frame(height: 20)

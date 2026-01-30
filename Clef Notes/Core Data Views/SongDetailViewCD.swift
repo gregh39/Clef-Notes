@@ -7,6 +7,23 @@ import PDFKit
 import UniformTypeIdentifiers
 import CoreText
 
+// A helper struct to make audio data transferable for the ShareLink.
+private struct AudioFile: Transferable {
+    let data: Data
+    let filename: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(contentType: .mpeg4Audio) { audio in
+            audio.data
+        } importing: { data in
+            AudioFile(data: data, filename: "imported.m4a")
+        }
+        .suggestedFileName { audio in
+            audio.filename
+        }
+    }
+}
+
 // A wrapper to display different media types in one list.
 enum DisplayableMedia: Identifiable, Hashable {
     case mediaReference(MediaReferenceCD)
@@ -656,8 +673,18 @@ struct SongDetailViewCD: View {
                                     expandedCellID: $expandedAudioCellID
                                 )
                                 .padding(.vertical, 4)
-                                // Leading swipe (right) for Rename
+                                // Leading swipe (right) for Rename and Share
                                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    if let audioData = recording.data {
+                                        ShareLink(
+                                            item: AudioFile(data: audioData, filename: "\(recording.title ?? "Recording").m4a"),
+                                            preview: SharePreview(recording.title ?? "Recording", image: Image(systemName: "waveform"))
+                                        ) {
+                                            Label("Share", systemImage: "square.and.arrow.up")
+                                        }
+                                        .tint(.green)
+                                    }
+
                                     Button {
                                         audioRecordingToRename = recording
                                     } label: {
