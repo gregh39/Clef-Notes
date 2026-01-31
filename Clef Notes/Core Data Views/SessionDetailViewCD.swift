@@ -359,29 +359,7 @@ struct RecordingStopBar: View {
     @ObservedObject var audioRecorderManager: AudioRecorderManager
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Pause/Resume button
-            Button(action: {
-                if audioRecorderManager.isPaused {
-                    audioRecorderManager.resumeRecording()
-                } else {
-                    audioRecorderManager.pauseRecording()
-                }
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 44, height: 44)
-                        .shadow(radius: 4)
-
-                    Image(systemName: audioRecorderManager.isPaused ? "play.fill" : "pause.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.red)
-                }
-            }
-            .buttonStyle(.plain)
-
-            // Recording waveform and time
+        HStack {
             Button(action: {
                 if audioRecorderManager.isRecording {
                     audioRecorderManager.stopRecording()
@@ -393,26 +371,14 @@ struct RecordingStopBar: View {
                         .shadow(radius: 7)
 
                     HStack(spacing: 12) {
-                        // Elapsed time
-                        Text(audioRecorderManager.elapsedTimeString)
-                            .font(.system(.body, design: .monospaced))
-                            .fontWeight(.semibold)
-
-                        if !audioRecorderManager.isPaused {
-                            WaveformView(samples: audioRecorderManager.waveformSamples)
-                                .frame(height: 35)
-                        } else {
-                            Text("Paused")
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-
                         Image(systemName: "stop.fill")
+                        WaveformView(samples: audioRecorderManager.waveformSamples)
+                            .frame(height: 35)
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal)
                     .foregroundColor(.white)
                 }
-                .frame(height: 44)
+                .frame(height: 35)
             }
             .buttonStyle(.plain)
         }
@@ -429,32 +395,7 @@ struct ExpandingRecordingButton: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             if isExpanded {
-                HStack(spacing: 12) {
-                    // Pause/Resume button
-                    if #available(iOS 26.0, *) {
-                        Button(action: {
-                            if audioRecorderManager.isPaused {
-                                audioRecorderManager.resumeRecording()
-                            } else {
-                                audioRecorderManager.pauseRecording()
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 50, height: 50)
-                                    .shadow(radius: 4)
-                                    .glassEffect()
-
-                                Image(systemName: audioRecorderManager.isPaused ? "play.fill" : "pause.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.red)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    // Stop button with waveform
+                HStack {
                     Button(action: {
                         withAnimation(.spring()) {
                             isExpanded = false
@@ -470,31 +411,19 @@ struct ExpandingRecordingButton: View {
                             }
 
                             HStack(spacing: 12) {
-                                // Elapsed time
-                                Text(audioRecorderManager.elapsedTimeString)
-                                    .font(.system(.body, design: .monospaced))
-                                    .fontWeight(.semibold)
-
-                                if !audioRecorderManager.isPaused {
-                                    WaveformView(samples: audioRecorderManager.waveformSamples)
-                                        .frame(height: 45)
-                                } else {
-                                    Text("Paused")
-                                        .font(.caption)
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-
                                 Image(systemName: "stop.fill")
+                                WaveformView(samples: audioRecorderManager.waveformSamples)
+                                    .frame(height: 45)
                             }
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal)
                             .foregroundColor(.white)
                         }
-                        .frame(height: 50)
+                        .frame(height: 45)
                     }
                     .buttonStyle(.plain)
+                    .padding(.leading, 24)
                     .matchedGeometryEffect(id: "recordButton", in: buttonTransition)
                 }
-                .padding(.trailing, 24)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             if !isExpanded {
