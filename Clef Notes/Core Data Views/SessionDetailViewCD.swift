@@ -63,18 +63,32 @@ struct SessionDetailViewCD: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack {
-                switch selectedSection {
-                case .session, .record:
-                    sessionTab
-                        .navigationTitle(session.title ?? "Practice Session")
-                case .metronome:
-                    MetronomeSectionView()
-                        .navigationTitle("Metronome")
+                if #available(iOS 26.0, *) {
+                    // Main content area that switches based on the selected section
+                    switch selectedSection {
+                    case .session, .record:
+                        sessionTab
 
-                case .tuner:
-                    TunerTabView()
-                        .navigationTitle("Tuner")
+                    case .metronome:
+                        MetronomeSectionView()
 
+                    case .tuner:
+                        TunerTabView()
+                    }
+                } else {
+                    switch selectedSection {
+                    case .session, .record:
+                        sessionTab
+                            .navigationTitle(session.title ?? "Practice Session")
+
+                    case .metronome:
+                        MetronomeSectionView()
+                            .navigationTitle("Metronome")
+
+                    case .tuner:
+                        TunerTabView()
+                            .navigationTitle("Tuner")
+                    }
                 }
             }
             .toolbar {
@@ -162,44 +176,57 @@ struct SessionDetailViewCD: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                ZStack {
-                    SessionBottomNavBar(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
+                if #available(iOS 26.0, *) {
+                    HStack {
+                        Spacer()
+                        if audioRecorderManager.isRecording {
+                            // No button when recording - RecordingStopBar will show inline
+                            EmptyView()
+                        } else {
+                            // Floating record button when not recording
+                            Button(action: {
+                                audioRecorderManager.startRecording()
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 60, height: 60)
+                                        .shadow(radius: 8)
+
+                                    Image(systemName: "record.circle")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .padding(.trailing, 30)
+                            .padding(.bottom, 65)
+                        }
+                    }
+                } else {
+                    ZStack {
+                        SessionBottomNavBar(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
+                            .environmentObject(audioRecorderManager)
+                    }
+                }
+            }
+            .safeAreaInset(edge: .top) {
+                if #available(iOS 26.0, *) {
+                    SessionDetailNavButtons(selectedSection: $selectedSection, showingPaywallView: $showingPaywallView)
                         .environmentObject(audioRecorderManager)
                 }
             }
             .ignoresSafeArea(edges: .bottom)
-            
-            if audioRecorderManager.isRecording {
-                RecordingStopBar(audioRecorderManager: audioRecorderManager)
-                    .padding(.bottom, 60)
-                    .padding(.horizontal)
-                    .animation(.spring(), value: audioRecorderManager.isRecording)
-            } else {
-                // Floating record button when not recording
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            audioRecorderManager.startRecording()
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 60, height: 60)
-                                    .shadow(radius: 8)
 
-                                Image(systemName: "record.circle")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .padding(.trailing, 24)
-                        .padding(.bottom, 80)
-                    }
+            if #available(iOS 26.0, *) {
+                // On iOS 26+, RecordingStopBar appears inline at top when recording
+            } else {
+                // On older iOS, RecordingStopBar overlays at bottom when recording
+                if audioRecorderManager.isRecording {
+                    RecordingStopBar(audioRecorderManager: audioRecorderManager)
+                        .padding(.bottom, 60)
+                        .padding(.horizontal)
+                        .animation(.spring(), value: audioRecorderManager.isRecording)
                 }
-                .transition(.opacity)
-                .animation(.spring(), value: audioRecorderManager.isRecording)
             }
 
         }
@@ -459,6 +486,59 @@ enum SessionDetailSection: String, CaseIterable, Identifiable {
         case .metronome: "metronome"
         case .tuner: "tuningfork"
         case .record: "record.circle"
+        }
+    }
+}
+
+private struct SessionDetailNavButtons: View {
+    @Binding var selectedSection: SessionDetailSection
+    @EnvironmentObject var audioRecorderManager: AudioRecorderManager
+    @EnvironmentObject var usageManager: UsageManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @Environment(\.colorScheme) var colorScheme
+
+    @Binding var showingPaywallView: Bool
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack {
+                ForEach(SessionDetailSection.allCases) { section in
+                    if section != .record {
+                        if #available(iOS 26.0, *) {
+                            Button(action: {
+                                if section == .metronome {
+                                    if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
+                                        showingPaywallView = true
+                                    } else {
+                                        selectedSection = section
+                                    }
+                                } else if section == .tuner {
+                                    if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
+                                        showingPaywallView = true
+                                    } else {
+                                        selectedSection = section
+                                    }
+                                } else {
+                                    selectedSection = section
+                                }
+                            }) {
+                                Text(section.rawValue)
+                                    .font(.callout.weight(.semibold))
+                            }
+                            .padding(.vertical, 5)
+                            .padding(.horizontal)
+                            .foregroundStyle(colorScheme == .dark ? .white : .black)
+                            .glassEffect(selectedSection == section ? .regular.tint(.accentColor).interactive() : .clear.interactive())
+                        }
+                    }
+                }
+
+                // Recording indicator when recording
+                if audioRecorderManager.isRecording {
+                    RecordingStopBar(audioRecorderManager: audioRecorderManager)
+                }
+            }
+            .padding()
         }
     }
 }
