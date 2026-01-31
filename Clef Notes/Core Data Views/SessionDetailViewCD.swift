@@ -143,6 +143,10 @@ struct SessionDetailViewCD: View {
                         selectedSongs: $selectedSongsForRecording,
                         onSave: { newTitle, newSongs in
                             saveRecording(url: url, title: newTitle, songs: newSongs)
+                        },
+                        onRetake: {
+                            audioRecorderManager.reset()
+                            audioRecorderManager.startRecording()
                         }
                     )
                 }
@@ -351,7 +355,29 @@ struct RecordingStopBar: View {
     @ObservedObject var audioRecorderManager: AudioRecorderManager
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            // Pause/Resume button
+            Button(action: {
+                if audioRecorderManager.isPaused {
+                    audioRecorderManager.resumeRecording()
+                } else {
+                    audioRecorderManager.pauseRecording()
+                }
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 44, height: 44)
+                        .shadow(radius: 4)
+
+                    Image(systemName: audioRecorderManager.isPaused ? "play.fill" : "pause.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.red)
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Recording waveform and time
             Button(action: {
                 if audioRecorderManager.isRecording {
                     audioRecorderManager.stopRecording()
@@ -363,14 +389,26 @@ struct RecordingStopBar: View {
                         .shadow(radius: 7)
 
                     HStack(spacing: 12) {
+                        // Elapsed time
+                        Text(audioRecorderManager.elapsedTimeString)
+                            .font(.system(.body, design: .monospaced))
+                            .fontWeight(.semibold)
+
+                        if !audioRecorderManager.isPaused {
+                            WaveformView(samples: audioRecorderManager.waveformSamples)
+                                .frame(height: 35)
+                        } else {
+                            Text("Paused")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+
                         Image(systemName: "stop.fill")
-                        WaveformView(samples: audioRecorderManager.waveformSamples)
-                            .frame(height: 35)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 20)
                     .foregroundColor(.white)
                 }
-                .frame(height: 35)
+                .frame(height: 44)
             }
             .buttonStyle(.plain)
         }
@@ -378,6 +416,109 @@ struct RecordingStopBar: View {
 }
 // --- END OF WAVEFORM CODE ---
 
+/// A button that expands into the RecordingStopBar when pressed.
+struct ExpandingRecordingButton: View {
+    @ObservedObject var audioRecorderManager: AudioRecorderManager
+    @State private var isExpanded = false
+    @Namespace private var buttonTransition
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            if isExpanded {
+                HStack(spacing: 12) {
+                    // Pause/Resume button
+                    if #available(iOS 26.0, *) {
+                        Button(action: {
+                            if audioRecorderManager.isPaused {
+                                audioRecorderManager.resumeRecording()
+                            } else {
+                                audioRecorderManager.pauseRecording()
+                            }
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 50, height: 50)
+                                    .shadow(radius: 4)
+                                    .glassEffect()
+
+                                Image(systemName: audioRecorderManager.isPaused ? "play.fill" : "pause.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Stop button with waveform
+                    Button(action: {
+                        withAnimation(.spring()) {
+                            isExpanded = false
+                        }
+                        audioRecorderManager.stopRecording()
+                    }) {
+                        ZStack {
+                            if #available(iOS 26.0, *) {
+                                RoundedRectangle(cornerRadius: 35)
+                                    .fill(Color.red)
+                                    .shadow(radius: 7)
+                                    .glassEffect()
+                            }
+
+                            HStack(spacing: 12) {
+                                // Elapsed time
+                                Text(audioRecorderManager.elapsedTimeString)
+                                    .font(.system(.body, design: .monospaced))
+                                    .fontWeight(.semibold)
+
+                                if !audioRecorderManager.isPaused {
+                                    WaveformView(samples: audioRecorderManager.waveformSamples)
+                                        .frame(height: 45)
+                                } else {
+                                    Text("Paused")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+
+                                Image(systemName: "stop.fill")
+                            }
+                            .padding(.horizontal, 20)
+                            .foregroundColor(.white)
+                        }
+                        .frame(height: 50)
+                    }
+                    .buttonStyle(.plain)
+                    .matchedGeometryEffect(id: "recordButton", in: buttonTransition)
+                }
+                .padding(.trailing, 24)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if !isExpanded {
+                if #available(iOS 26.0, *) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            isExpanded = true
+                        }
+                        audioRecorderManager.startRecording()
+                    }) {
+                        Image(systemName: "record.circle")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 45, height: 45)
+                            .background(Circle().fill(Color.red))
+                            .foregroundColor(.white)
+                            .shadow(radius: 6)
+                            .glassEffect(.clear)
+
+                    }
+                    .matchedGeometryEffect(id: "recordButton", in: buttonTransition)
+                    .padding(.bottom, 30)
+                }
+            }
+        }
+        .animation(.spring(), value: isExpanded)
+    }
+}
 enum SessionDetailSection: String, CaseIterable, Identifiable {
     case session = "Session"
     case metronome = "Metronome"
