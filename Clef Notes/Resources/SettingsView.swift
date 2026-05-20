@@ -1,6 +1,7 @@
 // Clef Notes/Theme System/SettingsView.swift
 
 import SwiftUI
+import CoreData
 
 // An enum to represent the available tint colors
 enum AccentColor: String, CaseIterable, Identifiable {
@@ -27,14 +28,16 @@ enum AccentColor: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
+    @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
         animation: .default)
     private var students: FetchedResults<StudentCD>
-    
+
     @State private var showingExportSheet = false
     @State private var exportURL: URL?
-    
+    @State private var isExporting = false
+
     private let dataExporter = DataExporter()
     
     var body: some View {
@@ -56,17 +59,27 @@ struct SettingsView: View {
             }
             
             Section(header: Text("Data Management")) {
-                /*Button("Export All Student Data") {
-                    if let student = students.first {
-                        exportURL = dataExporter.exportStudentToCSV(student: student)
-                        if exportURL != nil {
-                            showingExportSheet = true
+                Button {
+                    isExporting = true
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let url = dataExporter.exportAllDataToJSON(context: viewContext)
+                        DispatchQueue.main.async {
+                            isExporting = false
+                            exportURL = url
+                            showingExportSheet = url != nil
                         }
                     }
-                }*/
-                NavigationLink("Cloud Sync Status") {
-                    CloudSyncStatusView()
+                } label: {
+                    if isExporting {
+                        HStack {
+                            ProgressView().padding(.trailing, 4)
+                            Text("Exporting…")
+                        }
+                    } else {
+                        Label("Export All Data as JSON", systemImage: "square.and.arrow.up")
+                    }
                 }
+                .disabled(isExporting)
             }
             
             Section(header: Text("About")) {

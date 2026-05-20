@@ -29,6 +29,9 @@ struct SessionDetailViewCD: View {
     @State private var editingNote: NoteCD?
     @State private var playToEdit: PlayCD?
 
+    // Expanded audio cell tracking
+    @State private var expandedAudioCellID: NSManagedObjectID? = nil
+
     @StateObject private var audioRecorderManager: AudioRecorderManager
     @StateObject private var audioPlayerManager: AudioPlayerManager
     
@@ -39,9 +42,6 @@ struct SessionDetailViewCD: View {
     @State private var selectedSection: SessionDetailSection = .session
     
     @State private var showingPaywallView = false
-
-    // Inline rename state for recordings
-    @State private var audioRecordingToRename: AudioRecordingCD?
 
     init(session: PracticeSessionCD, audioManager: AudioManager) {
         self.session = session
@@ -59,10 +59,6 @@ struct SessionDetailViewCD: View {
             return "\(minutes)m"
         }
     }
-    
-    private var navigationTitle: String {
-        session.title ?? "Practice Session"
-    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -72,28 +68,39 @@ struct SessionDetailViewCD: View {
                     switch selectedSection {
                     case .session, .record:
                         sessionTab
-
+                            .navigationTitle(session.title ?? "Practice Session")
                     case .metronome:
                         MetronomeSectionView()
+                            .navigationTitle("Metronome")
 
                     case .tuner:
                         TunerTabView()
-
-                    }
+                            .navigationTitle("Tuner")                    }
                 } else {
                     switch selectedSection {
                     case .session, .record:
                         sessionTab
-                            .navigationTitle(navigationTitle)
-                        
+                            .navigationTitle(session.title ?? "Practice Session")
+
                     case .metronome:
                         MetronomeSectionView()
-                            .navigationTitle(navigationTitle)
+                            .navigationTitle("Metronome")
 
                     case .tuner:
                         TunerTabView()
-                            .navigationTitle(navigationTitle)
-
+                            .navigationTitle("Tuner")
+                    }
+                }
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button(action: { showingRandomSongPicker = true }) {
+                        Image(systemName: "die.face.5")
+                    }
+                    .accessibilityLabel("Pick Random Song")
+                    
+                    Button { showingEditSessionSheet = true } label: {
+                        Label("Edit", systemImage: "square.and.pencil")
                     }
                 }
             }
@@ -154,6 +161,10 @@ struct SessionDetailViewCD: View {
                         selectedSongs: $selectedSongsForRecording,
                         onSave: { newTitle, newSongs in
                             saveRecording(url: url, title: newTitle, songs: newSongs)
+                        },
+                        onRetake: {
+                            audioRecorderManager.reset()
+                            audioRecorderManager.startRecording()
                         }
                     )
                 }
@@ -165,14 +176,33 @@ struct SessionDetailViewCD: View {
                     }
                 }
             }
-            //.toolbar(.hidden, for: .tabBar) // hide the main app tab bar on this screen
             .safeAreaInset(edge: .bottom) {
                 if #available(iOS 26.0, *) {
                     HStack {
                         Spacer()
-                        ExpandingRecordingButton(audioRecorderManager: audioRecorderManager)
-                            .padding(.trailing, 30)
-                            .padding(.bottom, 65)
+                        if audioRecorderManager.isRecording {
+                            // No button when recording - RecordingStopBar will show inline
+                            EmptyView()
+                        } else {
+                            // Floating record button when not recording
+                            Button(action: {
+                                audioRecorderManager.startRecording()
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 50, height: 50)
+                                        .shadow(radius: 8)
+
+                                    Image(systemName: "record.circle")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .glassEffect(.clear.interactive())
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 100)
+                        }
                     }
                 } else {
                     ZStack {
@@ -187,40 +217,16 @@ struct SessionDetailViewCD: View {
                         .environmentObject(audioRecorderManager)
                 }
             }
-
             .ignoresSafeArea(edges: .bottom)
-            if #available(iOS 26.0, *) {
-            } else {
+                // On older iOS, RecordingStopBar overlays at bottom when recording
                 if audioRecorderManager.isRecording {
                     RecordingStopBar(audioRecorderManager: audioRecorderManager)
-                        .padding(.bottom, 60)
-                        .padding(.horizontal)
+                        .padding(.bottom, 20)
+                        .padding(.horizontal, 20)
                         .animation(.spring(), value: audioRecorderManager.isRecording)
                 }
-            }
+            
 
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button(action: { showingRandomSongPicker = true }) {
-                    Image(systemName: "die.face.5")
-                }
-                .accessibilityLabel("Pick Random Song")
-                
-                Button { showingEditSessionSheet = true } label: {
-                    Label("Edit", systemImage: "square.and.pencil")
-                }
-            }
-        }
-        // Inline rename sheet for recordings
-        .sheet(item: $audioRecordingToRename) { rec in
-            InlineRenameTitleSheet(
-                title: rec.title ?? "",
-                onSave: { newTitle in
-                    rec.title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                    try? viewContext.save()
-                }
-            )
         }
     }
 
@@ -248,37 +254,13 @@ struct SessionDetailViewCD: View {
                         data: recording.data,
                         duration: recording.duration,
                         id: recording.objectID,
-                        audioPlayerManager: audioPlayerManager
+                        audioPlayerManager: audioPlayerManager,
+                        expandedCellID: $expandedAudioCellID
                     )
-                    // Leading swipe (right) for Rename
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button {
-                            audioRecordingToRename = recording
-                        } label: {
-                            Label("Rename", systemImage: "pencil")
-                                .foregroundStyle(Color.orange)
-
-                        }
-                        .tint(.orange)
-                    }
-                    // Trailing swipe (left) for Delete
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            if let index = session.recordingsArray.firstIndex(of: recording) {
-                                deleteRecordings(at: IndexSet(integer: index))
-                            }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                                .foregroundStyle(Color.red)
-                        }
-                        .tint(.red)
-
-                    }
                 }
                 .onDelete(perform: deleteRecordings)
             }
         }
-        .navigationTitle(session.title ?? "Practice Session")
     }
     
     private var staticDurationDisplay: some View {
@@ -428,7 +410,29 @@ struct RecordingStopBar: View {
     @ObservedObject var audioRecorderManager: AudioRecorderManager
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            // Pause/Resume button
+            Button(action: {
+                if audioRecorderManager.isPaused {
+                    audioRecorderManager.resumeRecording()
+                } else {
+                    audioRecorderManager.pauseRecording()
+                }
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 44, height: 44)
+                        .shadow(radius: 4)
+
+                    Image(systemName: audioRecorderManager.isPaused ? "play.fill" : "pause.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.red)
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Stop button with waveform and elapsed time
             Button(action: {
                 if audioRecorderManager.isRecording {
                     audioRecorderManager.stopRecording()
@@ -440,97 +444,31 @@ struct RecordingStopBar: View {
                         .shadow(radius: 7)
 
                     HStack(spacing: 12) {
+                        // Elapsed time
+                        Text(audioRecorderManager.elapsedTimeString)
+                            .fontWeight(.semibold)
+
+                        if !audioRecorderManager.isPaused {
+                            WaveformView(samples: audioRecorderManager.waveformSamples)
+                                .frame(height: 35)
+                        } else {
+                            Text("Paused")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+
                         Image(systemName: "stop.fill")
-                        WaveformView(samples: audioRecorderManager.waveformSamples)
-                            .frame(height: 35)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 20)
                     .foregroundColor(.white)
                 }
-                .frame(height: 35)
+                .frame(height: 44)
             }
             .buttonStyle(.plain)
         }
     }
 }
 // --- END OF WAVEFORM CODE ---
-
-/// A button that expands into the RecordingStopBar when pressed.
-struct ExpandingRecordingButton: View {
-    @ObservedObject var audioRecorderManager: AudioRecorderManager
-    @State private var isExpanded = false
-    @Namespace private var buttonTransition
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            if isExpanded {
-                // Removed the semi-transparent black overlay on expanded recording stop bar
-                /*
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                    .zIndex(0)
-                */
-
-                HStack {
-                    Button(action: {
-                        withAnimation(.spring()) {
-                            isExpanded = false
-                        }
-                        audioRecorderManager.stopRecording()
-                    }) {
-                        ZStack {
-                            if #available(iOS 26.0, *) {
-                                RoundedRectangle(cornerRadius: 35)
-                                    .fill(Color.red)
-                                    .shadow(radius: 7)
-                                    .glassEffect()
-                            }
-
-                            HStack(spacing: 12) {
-                                Image(systemName: "stop.fill")
-                                WaveformView(samples: audioRecorderManager.waveformSamples)
-                                    .frame(height: 45)
-                            }
-                            .padding(.horizontal)
-                            .foregroundColor(.white)
-                        }
-                        .frame(height: 45)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 24)
-                    .matchedGeometryEffect(id: "recordButton", in: buttonTransition)
-                }
-                //.padding(.bottom, 30)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-            if !isExpanded {
-                if #available(iOS 26.0, *) {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            isExpanded = true
-                        }
-                        audioRecorderManager.startRecording()
-                    }) {
-                        Image(systemName: "record.circle")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 45, height: 45)
-                            .background(Circle().fill(Color.red))
-                            .foregroundColor(.white)
-                            .shadow(radius: 6)
-                            .glassEffect(.clear)
-
-                    }
-                    .matchedGeometryEffect(id: "recordButton", in: buttonTransition)
-                    .padding(.bottom, 30)
-                }
-            }
-        }
-        .animation(.spring(), value: isExpanded)
-    }
-}
-
 enum SessionDetailSection: String, CaseIterable, Identifiable {
     case session = "Session"
     case metronome = "Metronome"
@@ -549,22 +487,53 @@ enum SessionDetailSection: String, CaseIterable, Identifiable {
     }
 }
 
-enum SessionDetailSection2: String, CaseIterable, Identifiable {
-    case session = "Session"
-    case metronome = "Metronome"
-    case tuner = "Tuner"
+private struct SessionDetailNavButtons: View {
+    @Binding var selectedSection: SessionDetailSection
+    @EnvironmentObject var audioRecorderManager: AudioRecorderManager
+    @EnvironmentObject var usageManager: UsageManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @Environment(\.colorScheme) var colorScheme
 
-    var id: String { self.rawValue }
+    @Binding var showingPaywallView: Bool
 
-    var systemImageName: String {
-        switch self {
-        case .session: "calendar"
-        case .metronome: "metronome"
-        case .tuner: "tuningfork"
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack {
+                ForEach(SessionDetailSection.allCases) { section in
+                    if section != .record {
+                        if #available(iOS 26.0, *) {
+                            Button(action: {
+                                if section == .metronome {
+                                    if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
+                                        showingPaywallView = true
+                                    } else {
+                                        selectedSection = section
+                                    }
+                                } else if section == .tuner {
+                                    if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
+                                        showingPaywallView = true
+                                    } else {
+                                        selectedSection = section
+                                    }
+                                } else {
+                                    selectedSection = section
+                                }
+                            }) {
+                                Text(section.rawValue)
+                                    .font(.callout.weight(.semibold))
+                            }
+                            .padding(.vertical, 5)
+                            .padding(.horizontal)
+                            .foregroundStyle(colorScheme == .dark ? .white : .black)
+                            .glassEffect(selectedSection == section ? .regular.tint(.accentColor).interactive() : .clear.interactive())
+                        }
+                    }
+                }
+            }
+            .padding()
         }
     }
 }
-
 
 struct SessionBottomNavBar: View {
     @Binding var selectedSection: SessionDetailSection
@@ -578,42 +547,43 @@ struct SessionBottomNavBar: View {
     var body: some View {
             HStack {
                 ForEach(SessionDetailSection.allCases) { section in
-                    Button(action: {
-                        if section == .record {
-                            if !audioRecorderManager.isRecording{
-                                audioRecorderManager.startRecording()
-                            } else {
-                                audioRecorderManager.stopRecording()
+                        Button(action: {
+                            if section == .record {
+                                if !audioRecorderManager.isRecording{
+                                    audioRecorderManager.startRecording()
+                                } else {
+                                    audioRecorderManager.stopRecording()
+                                }
                             }
-                        }
-                        else if section == .metronome {
-                            print("Metronome pressed")
-                            if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
-                                showingPaywallView = true
-                            } else {
+                            else if section == .metronome {
+                                print("Metronome pressed")
+                                if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
+                                    showingPaywallView = true
+                                } else {
+                                    selectedSection = section
+                                }
+                            }
+                            else if section == .tuner {
+                                if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
+                                    showingPaywallView = true
+                                } else {
+                                    selectedSection = section
+                                }
+                            }
+                            else {
                                 selectedSection = section
                             }
-                        }
-                        else if section == .tuner {
-                            if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
-                                showingPaywallView = true
-                            } else {
-                                selectedSection = section
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: section.systemImageName)
+                                    .font(.system(size: 22))
+                                Text(section.rawValue)
+                                    .font(.system(size: 10))
                             }
+                            .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
+                            .frame(maxWidth: .infinity)
                         }
-                        else {
-                            selectedSection = section
-                        }
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: section.systemImageName)
-                                .font(.system(size: 22))
-                            Text(section.rawValue)
-                                .font(.system(size: 10))
-                        }
-                        .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
-                        .frame(maxWidth: .infinity)
-                    }
+                        //.disabled((section == .metronome && !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || section == .tuner && usageManager.tunerOpens >= 10)))
                 }
             }
             .padding(.top, 5)
@@ -623,94 +593,8 @@ struct SessionBottomNavBar: View {
                 print("Subscription Status: \(subscriptionManager.isSubscribed)")
                 print("Metronome Count: \(usageManager.metronomeOpens)")
                 print("Tuner Count: \(usageManager.tunerOpens)")
-                
+
             }
-        
     }
 }
 
-private struct SessionDetailNavButtons: View {
-    @Binding var selectedSection: SessionDetailSection
-    @EnvironmentObject var audioRecorderManager: AudioRecorderManager
-    @EnvironmentObject var usageManager: UsageManager
-    @EnvironmentObject var subscriptionManager: SubscriptionManager
-    @Environment(\.colorScheme) var colorScheme
-
-    @Binding var showingPaywallView: Bool
-    
-    var body: some View {
-        ScrollView(.horizontal) {
-            HStack() {
-                ForEach(SessionDetailSection.allCases) { section in
-                    if section != .record {
-                        if #available(iOS 26.0, *) {
-                            Button(action: {
-                                if section == .metronome {
-                                    if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
-                                        showingPaywallView = true
-                                    } else {
-                                        selectedSection = section
-                                    }
-                                }
-                                else if section == .tuner {
-                                    if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
-                                        showingPaywallView = true
-                                    } else {
-                                        selectedSection = section
-                                    }
-                                }
-                                else {
-                                    selectedSection = section
-                                }
-                            }) {
-                                Text(section.rawValue)
-                                    .font(.callout.weight(.semibold))
-                            }
-                            .padding(.vertical, 5)
-                            .padding(.horizontal)
-                            .foregroundStyle(colorScheme == .dark ? .white : .black)
-                            .glassEffect(selectedSection == section ?  .regular.tint(.accentColor).interactive() : .clear.interactive())
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-    }
-}
-
-// MARK: - Inline Rename Sheet (local to this file)
-private struct InlineRenameTitleSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var titleText: String
-    let onSave: (String) -> Void
-    
-    init(title: String, onSave: @escaping (String) -> Void) {
-        _titleText = State(initialValue: title)
-        self.onSave = onSave
-    }
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Title") {
-                    TextField("Title", text: $titleText)
-                        .textInputAutocapitalization(.words)
-                }
-            }
-            .navigationTitle("Rename")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let trimmed = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        onSave(trimmed.isEmpty ? "Recording" : trimmed)
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}

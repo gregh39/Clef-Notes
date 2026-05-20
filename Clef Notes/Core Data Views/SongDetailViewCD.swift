@@ -144,6 +144,9 @@ struct SongDetailViewCD: View {
     @State private var audioRecordingToRename: AudioRecordingCD?
     @State private var newTitleText: String = ""
 
+    // Expanded audio cell tracking
+    @State private var expandedAudioCellID: NSManagedObjectID? = nil
+
     init(song: SongCD, audioManager: AudioManager) {
         self.song = song
         _audioPlayerManager = StateObject(wrappedValue: AudioPlayerManager(audioManager: audioManager))
@@ -617,7 +620,7 @@ struct SongDetailViewCD: View {
                         ForEach(groupedMedia[key] ?? []) { item in
                             switch item {
                             case .mediaReference(let media):
-                                MediaCellCD(media: media, audioPlayerManager: audioPlayerManager)
+                                MediaCellCD(media: media, audioPlayerManager: audioPlayerManager, expandedAudioCellID: $expandedAudioCellID)
                                     .padding(.vertical, 4)
                                     // Leading swipe (right) for Rename
                                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
@@ -649,7 +652,8 @@ struct SongDetailViewCD: View {
                                     data: recording.data,
                                     duration: recording.duration,
                                     id: recording.objectID,
-                                    audioPlayerManager: audioPlayerManager
+                                    audioPlayerManager: audioPlayerManager,
+                                    expandedCellID: $expandedAudioCellID
                                 )
                                 .padding(.vertical, 4)
                                 // Leading swipe (right) for Rename
@@ -938,7 +942,7 @@ struct IdentifiableURL: Identifiable {
 }
 
 // MARK: - ActivityViewController for Share Sheet
-struct ActivityViewController: UIViewControllerRepresentable {
+private struct ActivityViewController: UIViewControllerRepresentable {
     var activityItems: [Any]
     var applicationActivities: [UIActivity]? = nil
     

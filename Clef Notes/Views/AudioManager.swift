@@ -4,28 +4,92 @@ import Combine
 
 @MainActor
 class AudioManager: ObservableObject {
-    
+
+    // Singleton instance
+    static let shared = AudioManager()
+
     enum AudioClient {
-        case recorder, player, tuner, metronome
+        case recorder, player, tuner, metronome, timer
     }
-    
+
     @Published private(set) var activeClient: AudioClient?
-    
+
     // --- THIS IS THE FIX: Separate audio players for the upbeat and downbeat sounds ---
     private var metronomeUpbeatPlayer: AVAudioPlayer?
     private var metronomeDownbeatPlayer: AVAudioPlayer?
 
+    // Silent audio player for background timer
+    private var timerSilentPlayer: AVAudioPlayer?
+    private var timerShouldBeRunning = false
+    private var previousClient: AudioClient?
+
     init() {
         setupMetronomePlayers()
+        setupTimerSilentPlayer()
+        setupAudioInterruptionHandling()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func setupAudioInterruptionHandling() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    @objc private func handleAudioInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            // Another app (like YouTube) started playing audio
+            print("AudioManager: Audio interrupted - client: \(String(describing: activeClient))")
+
+        case .ended:
+            // The other app stopped, we can resume our audio if needed
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+
+            if options.contains(.shouldResume) {
+                print("AudioManager: Interruption ended - should resume, timerShouldBeRunning: \(timerShouldBeRunning)")
+
+                // Resume timer audio if it should be running
+                if timerShouldBeRunning {
+                    do {
+                        try AVAudioSession.sharedInstance().setActive(true)
+                        let hasSession = requestSession(for: .timer, category: .playback, options: .mixWithOthers)
+                        if hasSession {
+                            timerSilentPlayer?.play()
+                            print("AudioManager: Timer audio resumed after interruption")
+                        }
+                    } catch {
+                        print("AudioManager: Failed to resume audio session: \(error)")
+                    }
+                }
+            }
+
+        @unknown default:
+            break
+        }
     }
     
     func requestSession(for client: AudioClient, category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions = []) -> Bool {
         let session = AVAudioSession.sharedInstance()
-        
+
         print("AudioManager: Requesting session for \(client)")
-        
+
         if activeClient != nil && activeClient != client {
             print("AudioManager: Deactivating previous client (\(String(describing: activeClient))) for new client (\(client)).")
+            previousClient = activeClient
         }
         
         do {
@@ -78,11 +142,18 @@ class AudioManager: ObservableObject {
             print("AudioManager: Ignoring release request from inactive client \(client). Active is \(String(describing: activeClient)).")
             return
         }
-        
+
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             self.activeClient = nil
             print("AudioManager: Session released by \(client).")
+
+            // If timer should be running and was interrupted by another client, restart it
+            if timerShouldBeRunning && previousClient == .timer {
+                print("AudioManager: Restarting timer audio after \(client) released session")
+                startTimerAudio()
+                previousClient = nil
+            }
         } catch {
             print("AudioManager: Failed to release session for \(client). Error: \(error.localizedDescription)")
         }
@@ -123,7 +194,87 @@ class AudioManager: ObservableObject {
             metronomeUpbeatPlayer?.play()
         }
     }
-    
+
+    // MARK: - Timer Specific Logic
+
+    private func setupTimerSilentPlayer() {
+        // Create a silent audio file for background timer
+        let silenceURL = createSilentAudioFile()
+
+        do {
+            timerSilentPlayer = try AVAudioPlayer(contentsOf: silenceURL)
+            timerSilentPlayer?.numberOfLoops = -1 // Loop indefinitely
+            timerSilentPlayer?.volume = 0.0 // Silent
+            timerSilentPlayer?.prepareToPlay()
+        } catch {
+            print("Failed to create timer silent audio player: \(error)")
+        }
+    }
+
+    private func createSilentAudioFile() -> URL {
+        // Create a silent audio file (1 second of silence)
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
+        let frameCount = AVAudioFrameCount(44100) // 1 second
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+        buffer.frameLength = frameCount
+
+        // Write to a temporary file
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("timer_silence.m4a")
+
+        // If file already exists, return it
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            return fileURL
+        }
+
+        // Create a simple silent audio file
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 2,
+            AVEncoderBitRateKey: 64000
+        ]
+
+        do {
+            let audioFile = try AVAudioFile(forWriting: fileURL, settings: settings)
+            try audioFile.write(from: buffer)
+        } catch {
+            print("Failed to create silent audio file: \(error)")
+        }
+
+        return fileURL
+    }
+
+    func startTimerAudio() {
+        timerShouldBeRunning = true
+        let hasSession = requestSession(for: .timer, category: .playback, options: .mixWithOthers)
+        guard hasSession else {
+            print("AudioManager: Failed to acquire session for timer")
+            return
+        }
+        timerSilentPlayer?.play()
+        print("AudioManager: Timer silent audio started")
+    }
+
+    func stopTimerAudio() {
+        timerShouldBeRunning = false
+        timerSilentPlayer?.stop()
+        releaseSession(for: .timer)
+        print("AudioManager: Timer silent audio stopped")
+    }
+
+    func pauseTimerAudio() {
+        timerShouldBeRunning = false
+        timerSilentPlayer?.pause()
+        print("AudioManager: Timer silent audio paused")
+    }
+
+    func resumeTimerAudio() {
+        timerShouldBeRunning = true
+        timerSilentPlayer?.play()
+        print("AudioManager: Timer silent audio resumed")
+    }
+
     func playSineWave(frequency: Double, duration: TimeInterval) {
         let hasSession = requestSession(for: .player, category: .playback)
         guard hasSession else { return }

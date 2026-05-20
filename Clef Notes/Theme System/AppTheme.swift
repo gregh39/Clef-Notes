@@ -109,9 +109,6 @@ struct SettingsView: View {
                         }
                     }
                 }
-                NavigationLink("Cloud Sync Status") {
-                    CloudSyncStatusView()
-                }
             }
             
             Section(header: Text("About")) {
