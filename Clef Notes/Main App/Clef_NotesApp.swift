@@ -17,19 +17,20 @@ struct Clef_NotesApp: App {
     @StateObject private var settingsManager = SettingsManager.shared
     
     init() {
+        let config = TelemetryDeck.Config(appID: Clef_NotesApp.getAPIKey(named: "TelemetryDeckAPIKey"))
+        TelemetryDeck.initialize(config: config)
+
         let context = PersistenceController.shared.persistentContainer.viewContext
         _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager(context: context))
         _usageManager = StateObject(wrappedValue: UsageManager(context: context))
         NotificationManager.shared.requestAuthorization()
-        
+
         try? Tips.configure([
             .displayFrequency(.immediate), // Show tips immediately for testing
             .datastoreLocation(.applicationDefault)
         ])
         //try? Tips.resetDatastore()
         //Tips.showAllTipsForTesting()
-        let config = TelemetryDeck.Config(appID: getAPIKey(named: "TelemetryDeckAPIKey"))
-        TelemetryDeck.initialize(config: config)
 
         // Run audio duration migration once
         migrateAudioDurationsIfNeeded(context: context)
@@ -58,7 +59,7 @@ struct Clef_NotesApp: App {
         }
     }
     
-    private func getAPIKey(named keyName: String) -> String {
+    private static func getAPIKey(named keyName: String) -> String {
         guard let value = Bundle.main.object(forInfoDictionaryKey: keyName) as? String else {
             fatalError("API Key '\(keyName)' not found in Info.plist. Make sure it's set in your Keys.xcconfig file.")
         }

@@ -171,7 +171,12 @@ class PersistenceController: NSObject {
                 fatalError("#\(#function): Failed to pin viewContext to the current generation:\(error)")
             }
         }
+        
+        if let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            print("Store path: \(url)")
+        }
+
     }
-    
+
 }
 

@@ -51,6 +51,7 @@ struct ContentView: View {
                    let student = students.first(where: { $0.id?.uuidString == studentID }) {
                     selectedStudent = student
                 }
+                
             }
             .onChange(of: students.count) {
                 // When the student list changes (e.g., after initial sync),

@@ -68,13 +68,14 @@ struct SessionDetailViewCD: View {
                     switch selectedSection {
                     case .session, .record:
                         sessionTab
-
+                            .navigationTitle(session.title ?? "Practice Session")
                     case .metronome:
                         MetronomeSectionView()
+                            .navigationTitle("Metronome")
 
                     case .tuner:
                         TunerTabView()
-                    }
+                            .navigationTitle("Tuner")                    }
                 } else {
                     switch selectedSection {
                     case .session, .record:
@@ -190,7 +191,7 @@ struct SessionDetailViewCD: View {
                                 ZStack {
                                     Circle()
                                         .fill(Color.red)
-                                        .frame(width: 60, height: 60)
+                                        .frame(width: 50, height: 50)
                                         .shadow(radius: 8)
 
                                     Image(systemName: "record.circle")
@@ -198,8 +199,9 @@ struct SessionDetailViewCD: View {
                                         .foregroundColor(.white)
                                 }
                             }
-                            .padding(.trailing, 30)
-                            .padding(.bottom, 65)
+                            .glassEffect(.clear.interactive())
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 100)
                         }
                     }
                 } else {
@@ -216,18 +218,14 @@ struct SessionDetailViewCD: View {
                 }
             }
             .ignoresSafeArea(edges: .bottom)
-
-            if #available(iOS 26.0, *) {
-                // On iOS 26+, RecordingStopBar appears inline at top when recording
-            } else {
                 // On older iOS, RecordingStopBar overlays at bottom when recording
                 if audioRecorderManager.isRecording {
                     RecordingStopBar(audioRecorderManager: audioRecorderManager)
-                        .padding(.bottom, 60)
-                        .padding(.horizontal)
+                        .padding(.bottom, 20)
+                        .padding(.horizontal, 20)
                         .animation(.spring(), value: audioRecorderManager.isRecording)
                 }
-            }
+            
 
         }
     }
@@ -448,7 +446,6 @@ struct RecordingStopBar: View {
                     HStack(spacing: 12) {
                         // Elapsed time
                         Text(audioRecorderManager.elapsedTimeString)
-                            .font(.system(.body, design: .monospaced))
                             .fontWeight(.semibold)
 
                         if !audioRecorderManager.isPaused {
@@ -531,11 +528,6 @@ private struct SessionDetailNavButtons: View {
                             .glassEffect(selectedSection == section ? .regular.tint(.accentColor).interactive() : .clear.interactive())
                         }
                     }
-                }
-
-                // Recording indicator when recording
-                if audioRecorderManager.isRecording {
-                    RecordingStopBar(audioRecorderManager: audioRecorderManager)
                 }
             }
             .padding()
