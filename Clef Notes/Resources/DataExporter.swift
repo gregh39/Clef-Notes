@@ -223,7 +223,7 @@ class DataExporter {
         }
 
         do {
-            try csvText.write(to: path!, atomically: true, encoding: .utf8)
+            try csvText.write(to: path, atomically: true, encoding: .utf8)
             return path
         } catch {
             print("Failed to create file: \(error)")
