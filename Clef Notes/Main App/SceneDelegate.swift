@@ -16,7 +16,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func windowScene(_ windowScene: UIWindowScene, userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {
         print("Starting accepting the share")
         let persistenceController = PersistenceController.shared
-        let sharedStore = persistenceController.sharedPersistentStore
+        guard let sharedStore = persistenceController.sharedPersistentStore else { return }
         let container = persistenceController.persistentContainer
         container.acceptShareInvitations(from: [cloudKitShareMetadata], into: sharedStore) { (_, error) in
             if let error = error {

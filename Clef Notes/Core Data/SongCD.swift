@@ -39,7 +39,7 @@ public class SongCD: NSManagedObject {
         guard let moc = self.managedObjectContext else { return }
         NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave, object: moc)
             .sink { [weak self] notification in
-                guard let self = self else { return }
+                guard let self = self, !self.isDeleted, !self.isFault else { return }
                 // Check if any changed PlayCDs relate to this song
                 if let updated = notification.userInfo?[NSUpdatedObjectsKey] as? Set<NSManagedObject> {
                     if updated.contains(self) {

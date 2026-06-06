@@ -109,8 +109,7 @@ struct AddStudentSheetCD: View {
             try viewContext.save()
             selectedStudent = newStudent
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Failed to save new student: \(error)")
         }
     }
 }

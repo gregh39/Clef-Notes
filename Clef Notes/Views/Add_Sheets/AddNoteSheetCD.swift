@@ -129,7 +129,12 @@ struct AddNoteSheetCD: View {
             .navigationTitle("Edit Note")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        if note.objectID.isTemporaryID {
+                            viewContext.delete(note)
+                        }
+                        dismiss()
+                    }
                 }
             }
             .onAppear {

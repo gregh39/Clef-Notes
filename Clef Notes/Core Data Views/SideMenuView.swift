@@ -236,8 +236,7 @@ struct SideMenuView: View {
                 isPresented = false
             }
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Failed to delete student: \(error)")
         }
     }
 }

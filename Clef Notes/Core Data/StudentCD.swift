@@ -67,7 +67,8 @@ extension StudentCD {
         guard let store = self.objectID.persistentStore else {
             return false
         }
-        return store == PersistenceController.shared.sharedPersistentStore
+        guard let sharedStore = PersistenceController.shared.sharedPersistentStore else { return false }
+        return store == sharedStore
     }
     
     public var songsArray: [SongCD] {

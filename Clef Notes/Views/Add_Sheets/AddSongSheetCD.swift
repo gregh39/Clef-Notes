@@ -205,8 +205,7 @@ struct AddSongSheetCD: View {
             try viewContext.save()
             dismiss()
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Failed to save new song: \(error)")
         }
     }
     

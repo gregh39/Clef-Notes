@@ -200,7 +200,9 @@ class DataExporter {
 
     func exportStudentToCSV(student: StudentCD) -> URL? {
         let fileName = "\(student.name ?? "Student")_Export.csv"
-        let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        guard let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName) else {
+            return nil
+        }
 
         var csvText = "Session Date,Session Title,Duration (min),Song,Plays\n"
 
@@ -221,7 +223,7 @@ class DataExporter {
         }
 
         do {
-            try csvText.write(to: path!, atomically: true, encoding: .utf8)
+            try csvText.write(to: path, atomically: true, encoding: .utf8)
             return path
         } catch {
             print("Failed to create file: \(error)")

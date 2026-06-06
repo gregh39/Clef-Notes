@@ -180,8 +180,6 @@ private struct WebView: UIViewRepresentable {
         var request = URLRequest(url: url)
         request.addValue(referrerUrl.absoluteString, forHTTPHeaderField: "Referer")
         request.addValue(referrerUrl.absoluteString, forHTTPHeaderField: "origin")
-        print(url)
-        print(request)
         uiView.load(request)
     }
 }
