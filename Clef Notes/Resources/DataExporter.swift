@@ -200,7 +200,9 @@ class DataExporter {
 
     func exportStudentToCSV(student: StudentCD) -> URL? {
         let fileName = "\(student.name ?? "Student")_Export.csv"
-        let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        guard let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName) else {
+            return nil
+        }
 
         var csvText = "Session Date,Session Title,Duration (min),Song,Plays\n"
 

@@ -62,13 +62,13 @@ class PersistenceController: NSObject {
     let persistentContainer: NSPersistentCloudKitContainer
     
     private var _privatePersistentStore: NSPersistentStore?
-    var privatePersistentStore: NSPersistentStore {
-        return _privatePersistentStore!
+    var privatePersistentStore: NSPersistentStore? {
+        return _privatePersistentStore
     }
 
     private var _sharedPersistentStore: NSPersistentStore?
-    var sharedPersistentStore: NSPersistentStore {
-        return _sharedPersistentStore!
+    var sharedPersistentStore: NSPersistentStore? {
+        return _sharedPersistentStore
     }
     
     lazy var cloudKitContainer: CKContainer = {

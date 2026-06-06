@@ -84,7 +84,7 @@ struct AddSessionSheetCD: View {
                 }
                 .addDoneButtonToKeyboard()
 
-                SaveButtonView(title: "Add Session", action: addSession)
+                SaveButtonView(title: "Add Session", action: addSession, isDisabled: sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .onAppear {
                 sessionTitle = settingsManager.defaultSessionTitle
@@ -111,7 +111,7 @@ struct AddSessionSheetCD: View {
                 }
                 SaveButtonView(title: "Add Instructor", action: {
                     let instructor = InstructorCD(context: viewContext)
-                    instructor.name = newInstructorName
+                    instructor.name = newInstructorName.trimmingCharacters(in: .whitespacesAndNewlines)
                     instructor.student = student
                     try? viewContext.save()
                     selectedInstructor = instructor

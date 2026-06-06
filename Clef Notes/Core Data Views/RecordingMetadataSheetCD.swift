@@ -35,6 +35,8 @@ struct RecordingMetadataSheetCD: View {
             generateWaveform()
         }
         .onDisappear {
+            playbackTimer?.invalidate()
+            playbackTimer = nil
             stopPlayback()
             audioPlayer = nil
         }
