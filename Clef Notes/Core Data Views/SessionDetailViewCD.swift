@@ -556,7 +556,6 @@ struct SessionBottomNavBar: View {
                                 }
                             }
                             else if section == .metronome {
-                                print("Metronome pressed")
                                 if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
                                     showingPaywallView = true
                                 } else {
@@ -583,18 +582,11 @@ struct SessionBottomNavBar: View {
                             .foregroundColor(selectedSection == section ? .accentColor : (section == .record ? .red : .gray))
                             .frame(maxWidth: .infinity)
                         }
-                        //.disabled((section == .metronome && !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || section == .tuner && usageManager.tunerOpens >= 10)))
                 }
             }
             .padding(.top, 5)
             .padding(.bottom, 35)
             .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemBackground))
-            .onAppear{
-                print("Subscription Status: \(subscriptionManager.isSubscribed)")
-                print("Metronome Count: \(usageManager.metronomeOpens)")
-                print("Tuner Count: \(usageManager.tunerOpens)")
-
-            }
     }
 }
 
