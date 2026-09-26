@@ -42,8 +42,8 @@ struct MetronomeSectionView: View {
 
     @State private var bpm: Double = 60.0
     @State private var isPlaying: Bool = false
-    @State private var timer: Timer?
     @State private var beatCount: Int = 0
+    @StateObject private var engine = MetronomeEngine()
     
     @State private var showingTimeSignatureSheet = false
     
@@ -118,7 +118,8 @@ struct MetronomeSectionView: View {
                     .disabled(bpm >= tempoRange.upperBound)
                 }
                 .onChange(of: bpm) {
-                    if isPlaying { rescheduleTimer(for: bpm) }
+                    // Applies from the next unscheduled beat; no restart needed.
+                    engine.bpm = bpm
                 }
                 
                 Slider(value: $bpm, in: tempoRange, step: 1)
@@ -134,6 +135,10 @@ struct MetronomeSectionView: View {
             })
         }
         .navigationTitle("Metronome")
+        .onAppear(perform: syncEngineSettings)
+        .onChange(of: timeSignatureID) { syncEngineSettings() }
+        .onChange(of: highlightDownbeat) { syncEngineSettings() }
+        .onChange(of: engine.beatPulse) { animateBeat() }
         .onDisappear(perform: stopMetronome)
         .sheet(isPresented: $showingTimeSignatureSheet) {
             TimeSignatureSelectionSheet(selectedID: $timeSignatureID, highlightDownbeat: $highlightDownbeat)
@@ -157,26 +162,23 @@ struct MetronomeSectionView: View {
         }
     }
 
+    private func syncEngineSettings() {
+        engine.bpm = bpm
+        engine.beatsPerBar = selectedTimeSignature.beats
+        engine.accentDownbeat = highlightDownbeat
+    }
+
     private func startMetronome() {
         beatCount = 0
-        let timeInterval = 60.0 / bpm
-        timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
-            self.performTick(with: timeInterval)
-        }
-        timer?.fire()
-    }
-    
-    private func rescheduleTimer(for newBpm: Double) {
-        timer?.invalidate()
-        let timeInterval = 60.0 / newBpm
-        timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
-            self.performTick(with: timeInterval)
+        syncEngineSettings()
+        if !engine.start() {
+            isPlaying = false
+            audioManager.releaseSession(for: .metronome)
         }
     }
 
     private func stopMetronome() {
-        timer?.invalidate()
-        timer = nil
+        engine.stop()
         isPlaying = false
         beatCount = 0
         withAnimation {
@@ -185,16 +187,13 @@ struct MetronomeSectionView: View {
         }
         audioManager.releaseSession(for: .metronome)
     }
-    
-    private func performTick(with timeInterval: TimeInterval) {
-        beatCount = (beatCount % selectedTimeSignature.beats) + 1
-        
-        if beatCount == 1 && highlightDownbeat {
-            audioManager.playMetronomeDownbeat()
-        } else {
-            audioManager.playMetronomeUpbeat()
-        }
-        
+
+    /// Runs when the engine reports that a click has become audible.
+    private func animateBeat() {
+        guard engine.isRunning else { return }
+        beatCount = engine.currentBeat
+        let timeInterval = engine.beatInterval
+
         switch visualizerType {
         case .pulse:
             withAnimation(.easeOut(duration: 0.1)) {

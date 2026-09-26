@@ -26,6 +26,8 @@ Music practice tracker for iOS. Teachers log students, practice sessions, songs,
 - `PersistenceController.shared` holds the CloudKit container. `privatePersistentStore` and `sharedPersistentStore` are **optional** (set asynchronously in the `loadPersistentStores` callback — do not force-unwrap them).
 
 ## Data model (Core Data entities)
+Current model version: `ClefNotesCD_v4`. All `StudentCD` to-many relationships cascade on delete.
+
 `StudentCD` → has many `PracticeSessionCD`, `SongCD`, `NoteCD`, `InstructorCD`, `AudioRecordingCD`, `MediaReferenceCD`, `EarnedAwardCD`  
 `PracticeSessionCD` → has many `PlayCD`, `NoteCD`, `AudioRecordingCD`  
 `PlayCD` → belongs to one `SongCD`  
@@ -40,7 +42,18 @@ The SIL performance inliner (`isCallerAndCalleeLayoutConstraintsCompatible`) cra
 `UsageManager` tracks free-tier limits. `SubscriptionManager` (RevenueCat) tracks pro status. The paywall is shown reactively — the add-session/add-song/add-student save functions do NOT re-check limits at save time (limits are enforced in the UI layer only).
 
 ### Audio session arbitration
-`AudioManager` is the single gatekeeper for `AVAudioSession`. Clients (`.timer`, `.metronome`, `.tuner`, `.recorder`, `.player`) call `requestSession(for:)` and `releaseSession(for:)`. Only one client is active at a time. The timer uses a silent audio file to keep the session alive in the background.
+`AudioManager` is the single gatekeeper for `AVAudioSession`. Clients (`.metronome`, `.tuner`, `.recorder`, `.player`) call `requestSession(for:)` and `releaseSession(for:)`. `requestSession` changes the category on the active session (no `setActive(false)` first — that fails with "busy" while other I/O runs). `releaseSession` always clears ownership, even if deactivation fails. There is **no** timer client and **no** silent audio track — don't reintroduce either (App Review guideline 2.5.4 risk).
+
+### Metronome
+`MetronomeEngine` (Views/) schedules clicks on an `AVAudioPlayerNode` at exact sample times with a ~150 ms lookahead, driven from a private serial queue. It is not driven by `Timer`. It restarts itself after `AVAudioEngineConfigurationChange` and interruptions. UI animations follow `engine.beatPulse`, which fires when each click reaches the speaker.
+
+### Session timer + Live Activity
+`SessionTimerManager.shared` works from timestamps: elapsed = `accumulated` + time since `segmentStart`. There is no per-second timer and no `@Published` clock string. Views show the clock with `TimelineView(.periodic(from:by: 1))` + `elapsed(at:)`. State persists in UserDefaults (`sessionTimer.*`) and is restored at launch. If the app was killed and not reopened for more than 6 h, the timer is restored paused at the last-active time. The Live Activity (`ClefNotesWidgetsExtension` target, `ClefNotesWidgets/PracticeTimerLiveActivity.swift`) renders `Text(_, style: .timer)`. Its Pause/Resume/Stop `LiveActivityIntent`s call into the app via `TimerIntentBridge`.
+- `Clef Notes/Shared/PracticeTimerActivity.swift` is compiled into **both** targets through a `PBXFileSystemSynchronizedBuildFileExceptionSet` in `project.pbxproj`. Put any new shared app/widget file in `Shared/` and add it to that exception set.
+- Keep the widget's `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in sync with the app's.
+
+### Durations
+Model **v4** (current) adds `PracticeSessionCD.durationSeconds`. Always write durations with `setDuration(seconds:)`, which also keeps `durationMinutes` in sync for older app versions and stats. Read them with `totalSeconds`. **Before release:** deploy the CloudKit schema to Production so `durationSeconds` syncs.
 
 ## Patterns to follow
 - Add/Edit sheets use local `@State` copies of fields, write back to Core Data only in the save action.
@@ -66,6 +79,8 @@ Clef Notes/
   Main App/           — App/Scene/AppDelegate entry points
   Resources/          — Managers, helpers, shared components
   Theme System/       — AppTheme
+  Shared/             — Files compiled into both the app and the widget extension
+ClefNotesWidgets/     — Widget extension (practice timer Live Activity)
 ```
 
 ## Session history (what was done in the first big session)

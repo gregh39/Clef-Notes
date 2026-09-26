@@ -132,7 +132,7 @@ struct AddSessionSheetCD: View {
     private func addSession() {
         let newSession = PracticeSessionCD(context: viewContext)
         newSession.day = sessionDate
-        newSession.durationMinutes = Int64(settingsManager.defaultSessionDuration)
+        newSession.setDuration(seconds: Int64(settingsManager.defaultSessionDuration) * 60)
         newSession.studentID = student.id
         newSession.title = sessionTitle
         newSession.student = student

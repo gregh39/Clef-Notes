@@ -13,9 +13,12 @@ struct TimerBarView: View {
                     Text(session.title ?? "Practice Session")
                         .font(.headline)
                         .lineLimit(1)
-                    Text(sessionTimerManager.elapsedTimeString)
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundColor(.secondary)
+                    // Redraws once per second while visible; the time itself comes from timestamps.
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(SessionTimerManager.format(sessionTimerManager.elapsed(at: context.date)))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Spacer()

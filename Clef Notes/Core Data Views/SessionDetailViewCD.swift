@@ -324,9 +324,11 @@ struct SessionDetailViewCD: View {
     
     private var activeTimerControls: some View {
         HStack(spacing: 12) {
-            Label(sessionTimerManager.elapsedTimeString, systemImage: "timer")
-                .font(.body.monospacedDigit())
-                .foregroundColor(.primary)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Label(SessionTimerManager.format(sessionTimerManager.elapsed(at: context.date)), systemImage: "timer")
+                    .font(.body.monospacedDigit())
+                    .foregroundColor(.primary)
+            }
 
             Spacer()
 

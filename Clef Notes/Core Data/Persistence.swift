@@ -71,6 +71,10 @@ class PersistenceController: NSObject {
         return _sharedPersistentStore
     }
     
+    /// Set if a persistent store failed to load. The app shows `StoreLoadErrorView`
+    /// instead of crashing so the user can get help without losing their data.
+    private(set) var loadError: Error?
+
     lazy var cloudKitContainer: CKContainer = {
         return CKContainer(identifier: gCloudKitContainerIdentifier)
     }()
@@ -100,7 +104,8 @@ class PersistenceController: NSObject {
                 do {
                     try fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
                 } catch {
-                    fatalError("#\(#function): Failed to create the store folder: \(error)")
+                    // Loading the store below will fail and be reported through `loadError`.
+                    print("#\(#function): Failed to create the store folder: \(error)")
                 }
             }
 
@@ -145,8 +150,10 @@ class PersistenceController: NSObject {
         )*/
 
         persistentContainer.loadPersistentStores(completionHandler: { (loadedStoreDescription, error) in
-            guard error == nil else {
-                fatalError("#\(#function): Failed to load persistent stores:\(error!)")
+            if let error {
+                print("#\(#function): Failed to load persistent store \(loadedStoreDescription.url?.lastPathComponent ?? "?"): \(error)")
+                self.loadError = error
+                return
             }
             if !inMemory {
                 guard let cloudKitContainerOptions = loadedStoreDescription.cloudKitContainerOptions else {
@@ -168,12 +175,8 @@ class PersistenceController: NSObject {
             do {
                 try persistentContainer.viewContext.setQueryGenerationFrom(.current)
             } catch {
-                fatalError("#\(#function): Failed to pin viewContext to the current generation:\(error)")
+                print("#\(#function): Failed to pin viewContext to the current generation: \(error)")
             }
-        }
-        
-        if let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            print("Store path: \(url)")
         }
 
     }
