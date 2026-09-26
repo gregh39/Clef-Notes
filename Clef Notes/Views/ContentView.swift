@@ -25,7 +25,9 @@ struct ContentView: View {
                 // If a student is selected, show their detail view.
                 if let student = selectedStudent {
                     //NavigationStack {
+                        // .id forces fresh view state (StateObjects, tabs, nav paths) per student.
                         StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
+                            .id(student.objectID)
                     //}
                 } else {
                     // Otherwise, show the appropriate placeholder/selection view.
@@ -71,6 +73,7 @@ struct ContentView: View {
                     NavigationStack {
                         StudentDetailNavigationView(student: student, showingSideMenu: $showingSideMenu)
                     }
+                    .id(student.objectID)
                 } else {
                     // Otherwise, show the appropriate placeholder/selection view.
                     noStudentView

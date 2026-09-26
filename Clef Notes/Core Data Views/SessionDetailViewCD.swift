@@ -42,6 +42,9 @@ struct SessionDetailViewCD: View {
     @State private var selectedSection: SessionDetailSection = .session
     
     @State private var showingPaywallView = false
+    @State private var showingLeaveWhileRecordingDialog = false
+
+    @Environment(\.dismiss) private var dismiss
 
     init(session: PracticeSessionCD, audioManager: AudioManager) {
         self.session = session
@@ -150,7 +153,11 @@ struct SessionDetailViewCD: View {
                 }
             }
             .sheet(item: $recordingURLForSheet, onDismiss: {
-                audioRecorderManager.reset()
+                // "Retake" starts a new recording before the sheet finishes dismissing;
+                // don't tear that new recording down.
+                if !audioRecorderManager.isRecording {
+                    audioRecorderManager.reset()
+                }
                 clearRecordingMetadataFields()
             }) { url in
                 if let songs = session.student?.songsArray {
@@ -172,8 +179,42 @@ struct SessionDetailViewCD: View {
             .onChange(of: audioRecorderManager.finishedRecordingURL) { oldValue, newValue in
                 if let newURL = newValue {
                     DispatchQueue.main.async {
+                        // Skip if the recording was auto-saved and reset in the meantime.
+                        guard audioRecorderManager.finishedRecordingURL == newURL else { return }
                         recordingURLForSheet = newURL
                     }
+                }
+            }
+            // While recording, replace the system Back button so leaving can't silently drop audio.
+            .navigationBarBackButtonHidden(audioRecorderManager.isRecording)
+            .toolbar {
+                if audioRecorderManager.isRecording {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            showingLeaveWhileRecordingDialog = true
+                        } label: {
+                            Label("Back", systemImage: "chevron.backward")
+                        }
+                    }
+                }
+            }
+            .confirmationDialog("You're still recording", isPresented: $showingLeaveWhileRecordingDialog, titleVisibility: .visible) {
+                Button("Save Recording") {
+                    // Stopping publishes finishedRecordingURL, which presents the metadata sheet.
+                    audioRecorderManager.stopRecording()
+                }
+                Button("Discard Recording", role: .destructive) {
+                    audioRecorderManager.discardRecording()
+                    dismiss()
+                }
+                Button("Keep Recording", role: .cancel) { }
+            } message: {
+                Text("Save or discard the recording before leaving this session.")
+            }
+            .onDisappear {
+                // Fallback for other ways of leaving (e.g. switching tabs): never lose the take.
+                if audioRecorderManager.isRecording {
+                    autoSaveInProgressRecording()
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -351,6 +392,15 @@ struct SessionDetailViewCD: View {
         } catch {
             print("Error saving recorded file data: \(error)")
         }
+    }
+
+    /// Stops the current recording and saves it with a default title and no linked songs.
+    private func autoSaveInProgressRecording() {
+        audioRecorderManager.stopRecording()
+        if let url = audioRecorderManager.finishedRecordingURL {
+            saveRecording(url: url, title: "Recording", songs: [])
+        }
+        audioRecorderManager.reset()
     }
 
     private func clearRecordingMetadataFields() {

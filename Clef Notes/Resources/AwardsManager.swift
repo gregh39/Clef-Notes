@@ -11,27 +11,60 @@ class AwardsManager: ObservableObject {
     private let calendar = Calendar.current
     private let notificationManager = NotificationManager.shared
 
-    // Lazily computed properties to avoid redundant calculations
-    private lazy var allSessions: [PracticeSessionCD] = student.sessionsArray
-    private lazy var allSongs: [SongCD] = student.songsArray
-    private lazy var allPlays: [PlayCD] = allSongs.flatMap { $0.playsArray }
-    private lazy var uniqueSessionDays: Set<Date> = Set(allSessions.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
+    // Snapshots of the student's data, refreshed at the start of every check so that
+    // progress reflects sessions/songs added since the manager was created.
+    private var allSessions: [PracticeSessionCD] = []
+    private var allSongs: [SongCD] = []
+    private var allPlays: [PlayCD] = []
+    private var uniqueSessionDays: Set<Date> = []
 
     init(student: StudentCD, context: NSManagedObjectContext) {
         self.student = student
         self.viewContext = context
-        
-        // Load the initial set of earned awards into the dictionary
+
+        // Load the initial set of earned awards into the dictionary. CloudKit sync can produce
+        // duplicate rows for the same award (e.g. earned independently on two devices), so keep
+        // the row with the highest count rather than trapping on duplicate keys.
         let awards = student.earnedAwardsArray
-        self.earnedAwards = Dictionary(uniqueKeysWithValues: awards.compactMap {
-            guard let awardEnum = $0.award else { return nil }
-            return (awardEnum, $0)
-        })
+        self.earnedAwards = Dictionary(awards.compactMap { earned -> (Award, EarnedAwardCD)? in
+            guard let awardEnum = earned.award else { return nil }
+            return (awardEnum, earned)
+        }, uniquingKeysWith: { AwardsManager.preferred($0, $1) })
+    }
+
+    /// Picks the award row to keep when duplicates exist: highest count, then most recent win.
+    private static func preferred(_ a: EarnedAwardCD, _ b: EarnedAwardCD) -> EarnedAwardCD {
+        if a.count != b.count { return a.count > b.count ? a : b }
+        return (a.dateWon ?? .distantPast) >= (b.dateWon ?? .distantPast) ? a : b
+    }
+
+    /// Deletes duplicate EarnedAwardCD rows for this student, keeping one per award.
+    /// Returns true if anything was deleted.
+    private func removeDuplicateAwards() -> Bool {
+        let grouped = Dictionary(grouping: student.earnedAwardsArray.filter { $0.award != nil }, by: { $0.award! })
+        var didDelete = false
+        for (award, rows) in grouped where rows.count > 1 {
+            let keeper = rows.reduce(rows[0]) { AwardsManager.preferred($0, $1) }
+            for row in rows where row != keeper {
+                viewContext.delete(row)
+                didDelete = true
+            }
+            earnedAwards[award] = keeper
+        }
+        return didDelete
+    }
+
+    private func refreshSnapshots() {
+        allSessions = student.sessionsArray
+        allSongs = student.songsArray
+        allPlays = allSongs.flatMap { $0.playsArray }
+        uniqueSessionDays = Set(allSessions.map { calendar.startOfDay(for: $0.day ?? .distantPast) })
     }
 
     // This function now updates the @Published property, triggering a UI refresh.
     func checkAndAwardPrizes() {
-        var didUpdate = false
+        refreshSnapshots()
+        var didUpdate = removeDuplicateAwards()
         for award in Award.allCases {
             let currentProgress = calculateProgress(for: award)
             
@@ -57,7 +90,11 @@ class AwardsManager: ObservableObject {
         }
         
         if didUpdate {
-            try? viewContext.save()
+            do {
+                try viewContext.save()
+            } catch {
+                print("Failed to save awards: \(error)")
+            }
             // Manually trigger a refresh for the view
             objectWillChange.send()
         }

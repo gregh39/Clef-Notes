@@ -54,6 +54,7 @@
     <entity name="PracticeSessionCD" representedClassName="PracticeSessionCD" syncable="YES">
         <attribute name="day" attributeType="Date" defaultDateTimeInterval="774282000" usesScalarValueType="NO"/>
         <attribute name="durationMinutes" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="durationSeconds" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="locationRaw" optional="YES" attributeType="String"/>
         <attribute name="studentID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="title" optional="YES" attributeType="String" defaultValueString="Practice"/>
