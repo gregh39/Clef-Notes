@@ -3,8 +3,8 @@ import CoreData
 
 /// Controls for the session you're practicing in: timer, metronome, tuner, and recorder.
 ///
-/// On iOS 26 it's the tab view's bottom accessory, so it stays reachable on every tab.
-/// On earlier versions it floats above the bottom navigation (see `floatingStyle`).
+/// On iOS 26.1+ it's the tab view's bottom accessory, so it stays reachable on every tab.
+/// On earlier versions it floats at the bottom of the screen (see `floatingPracticeBarStyle()`).
 struct PracticeBarView: View {
     @ObservedObject var session: PracticeSessionCD
     /// Compact layout used when the bar is shown inline next to a minimized tab bar.
@@ -16,7 +16,7 @@ struct PracticeBarView: View {
     @EnvironmentObject private var usageManager: UsageManager
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 2) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.title ?? "Practice Session")
                     .font(.subheadline.weight(.semibold))
@@ -41,8 +41,9 @@ struct PracticeBarView: View {
             }
         }
         .font(.title3)
-        .buttonStyle(.plain)
-        .padding(.horizontal, 16)
+        .buttonStyle(PracticeBarButtonStyle())
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
     }
 
     private var isTimingThisSession: Bool { sessionTimerManager.activeSession == session }
@@ -92,11 +93,21 @@ struct PracticeBarView: View {
     }
 }
 
+/// Gives every bar icon a full 44 pt tap target (Apple's minimum), not just the glyph.
+private struct PracticeBarButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.5 : 1)
+    }
+}
+
 extension View {
     /// Styling for the bar when it isn't hosted by the iOS 26 tab view accessory.
     func floatingPracticeBarStyle() -> some View {
         self
-            .padding(.vertical, 10)
+            .padding(.vertical, 4)
             .background(.bar, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(radius: 6)
             .padding(.horizontal)
@@ -166,23 +177,51 @@ private struct RecordBarButton: View {
     }
 }
 
-/// Dismisses the bar; only offered when nothing is still running for the session.
+/// Dismisses the bar. If a timer or recording is running it asks first, so the bar can
+/// always be closed from any tab (the bar itself has no timer Stop button).
 private struct CloseBarButton: View {
     @ObservedObject var session: PracticeSessionCD
     @ObservedObject var recorder: AudioRecorderManager
     @EnvironmentObject private var manager: PracticeSessionManager
     @EnvironmentObject private var sessionTimerManager: SessionTimerManager
 
+    @State private var showingEndConfirmation = false
+
+    private var isTiming: Bool { sessionTimerManager.activeSession == session }
+
     var body: some View {
-        if !recorder.isRecording && sessionTimerManager.activeSession != session {
-            Button {
+        Button {
+            if manager.hasActivityToEnd {
+                showingEndConfirmation = true
+            } else {
                 manager.close()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
             }
-            .accessibilityLabel("Close Practice Bar")
+        } label: {
+            Image(systemName: "xmark")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityLabel("Close Practice Bar")
+        .confirmationDialog("End practice?", isPresented: $showingEndConfirmation, titleVisibility: .visible) {
+            Button("Stop & Close", role: .destructive) {
+                manager.close(stopTimer: true)
+            }
+            if isTiming && !recorder.isRecording {
+                Button("Close, Keep Timer Running") {
+                    manager.close(stopTimer: false)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text(confirmationMessage)
+        }
+    }
+
+    private var confirmationMessage: String {
+        switch (isTiming, recorder.isRecording) {
+        case (true, true): "The timer will stop and the recording will be saved to this session."
+        case (true, false): "Stopping saves the timed duration to this session."
+        default: "The recording will be saved to this session."
         }
     }
 }
@@ -195,5 +234,23 @@ struct PracticeBarAccessory: View {
 
     var body: some View {
         PracticeBarView(session: session, compact: placement == .inline)
+    }
+}
+
+/// Hosts the practice bar as the tab view's bottom accessory where supported (iOS 26.1+).
+/// On iOS 26.0 the session screen shows the floating bar instead (see SessionDetailViewCD).
+struct PracticeBarAccessoryModifier: ViewModifier {
+    let session: PracticeSessionCD?
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content.tabViewBottomAccessory(isEnabled: session != nil) {
+                if let session {
+                    PracticeBarAccessory(session: session)
+                }
+            }
+        } else {
+            content
+        }
     }
 }

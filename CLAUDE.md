@@ -52,6 +52,12 @@ The SIL performance inliner (`isCallerAndCalleeLayoutConstraintsCompatible`) cra
 - `Clef Notes/Shared/PracticeTimerActivity.swift` is compiled into **both** targets through a `PBXFileSystemSynchronizedBuildFileExceptionSet` in `project.pbxproj`. Put any new shared app/widget file in `Shared/` and add it to that exception set.
 - Keep the widget's `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` in sync with the app's.
 
+### Practice bar (session tools)
+`PracticeSessionManager.shared` (Views/) tracks the session you're in. `SessionDetailViewCD` calls `open(_:)` when it appears, whether or not the session is timed. The manager owns the shared `MetronomeEngine` and the `AudioRecorderManager`, so both keep running across tabs and after their sheets close.
+- `PracticeBarView` shows timer, metronome, tuner, record and close controls. On iOS 26.1+ it's the `TabView` bottom accessory (`PracticeBarAccessoryModifier`; `tabViewBottomAccessory(isEnabled:)` needs 26.1). On earlier versions it floats at the bottom of the session screen and the student screen.
+- `PracticeSessionChrome` (`.practiceSessionChrome(for:)` on `StudentDetailNavigationView`) presents the metronome/tuner half-height sheets, the paywall, and the recording save sheet, from any tab.
+- The session screen is a plain `Form` with a large title. Don't switch its content between sections: swapping the scroll view broke the large title.
+
 ### Durations
 Model **v4** (current) adds `PracticeSessionCD.durationSeconds`. Always write durations with `setDuration(seconds:)`, which also keeps `durationMinutes` in sync for older app versions and stats. Read them with `totalSeconds`. **Before release:** deploy the CloudKit schema to Production so `durationSeconds` syncs.
 

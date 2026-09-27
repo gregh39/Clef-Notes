@@ -59,6 +59,7 @@ struct Clef_NotesApp: App {
             .environment(\.managedObjectContext, PersistenceController.shared.persistentContainer.viewContext)
             .environmentObject(AudioManager.shared)
             .environmentObject(sessionTimerManager)
+            .environmentObject(PracticeSessionManager.shared)
             .environmentObject(subscriptionManager)
             .environmentObject(usageManager)
             .environmentObject(settingsManager)

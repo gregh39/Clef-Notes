@@ -7,6 +7,7 @@ struct StudentDetailNavigationView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var practiceSessionManager: PracticeSessionManager
 
     @State private var selectedSection: StudentDetailSection = .sessions
     @State private var showingAddSongSheet = false
@@ -55,8 +56,21 @@ struct StudentDetailNavigationView: View {
     }
     
     let sample: [Int] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-    
+
+    /// The session the practice bar is attached to, if it belongs to this student.
+    private var practiceSession: PracticeSessionCD? {
+        guard let session = practiceSessionManager.currentSession, session.student == student else { return nil }
+        return session
+    }
+
     var body: some View {
+        content
+            // Tool sheets and the recording save sheet, available from every tab.
+            .practiceSessionChrome(for: student)
+    }
+
+    @ViewBuilder
+    private var content: some View {
             if #available(iOS 26.0, *) {
                 TabView(selection: $selectedTab) {
                     // SESSIONS
@@ -171,6 +185,9 @@ struct StudentDetailNavigationView: View {
                     .tabItem { Label("Notes", systemImage: "note.text") }
                     .tag(4)
                 }
+                // Practice bar: shown once a session has been opened, and stays above the tab
+                // bar while you move between tabs.
+                .modifier(PracticeBarAccessoryModifier(session: practiceSession))
                 // Shared sheets
                 .sheet(isPresented: $showingAddSessionSheet) {
                     AddSessionSheetCD(student: student) { session in
@@ -182,7 +199,6 @@ struct StudentDetailNavigationView: View {
                 .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
                 .sheet(isPresented: $showingPaywall) { PaywallView() }
                 .presentationSizing(.page)
-                //.safeAreaInset(edge: .bottom) { VStack(spacing: 0) { TimerBarView() } }
                 .ignoresSafeArea(edges: .bottom)
             } else if #available(iOS 18.0, *) {
                 NavigationStack(path: $path) {
@@ -257,7 +273,10 @@ struct StudentDetailNavigationView: View {
                     .presentationSizing(.page)
                     .safeAreaInset(edge: .bottom) {
                         VStack(spacing: 0) {
-                            TimerBarView()
+                            if let session = practiceSession {
+                                PracticeBarView(session: session)
+                                    .floatingPracticeBarStyle()
+                            }
                             BottomNavBar(selectedSection: $selectedSection)
                         }
                     }
@@ -331,7 +350,10 @@ struct StudentDetailNavigationView: View {
                     }
                     .safeAreaInset(edge: .bottom) {
                         VStack(spacing: 0) {
-                            TimerBarView()
+                            if let session = practiceSession {
+                                PracticeBarView(session: session)
+                                    .floatingPracticeBarStyle()
+                            }
                             BottomNavBar(selectedSection: $selectedSection)
                         }
                     }

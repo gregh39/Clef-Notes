@@ -17,7 +17,6 @@ struct TunerTabView: View {
     @EnvironmentObject var settingsManager: SettingsManager
 
     var body: some View {
-        Spacer()
         TunerTabContentView(audioManager: audioManager)
             .environmentObject(settingsManager)
             .navigationTitle("Tuner")
@@ -98,17 +97,22 @@ private struct PitchListeningView: View {
                     .foregroundColor(.secondary)
             }
 
-            // The main tuner display
+            // The main tuner display. It fills the leftover height and the note name scales
+            // down when space is tight (e.g. inside the session detail, below the section
+            // buttons), instead of pushing the surrounding layout off screen.
             VStack {
                 Text(tuner.detectedNoteName)
                     .font(.system(size: 120, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
                     .foregroundColor(tuner.isListening ? .primary : .secondary)
-                    
+
                 Text("\(tuner.detectedFrequency, specifier: "%.1f") Hz")
                     .font(.title2)
                     .foregroundColor(.secondary)
             }
-            .padding(.vertical, 40)
+            .padding(.vertical)
+            .frame(maxHeight: .infinity)
 
             // Visual feedback meter
             TunerMeter(distance: $tuner.distance)
@@ -181,74 +185,78 @@ private struct DroneView: View {
 
     var body: some View {
         VStack {
-            Picker("Octave", selection: $selectedOctave) {
-                ForEach(2...5, id: \.self) { octave in
-                    Text("Octave \(octave)").tag(octave)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
-                ForEach(TunerViewModel.availableNotes(for: selectedOctave)) { note in
-                    Button(action: {
-                        viewModel.selectedNote = note
-                    }) {
-                        Text(note.name)
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity, minHeight: 80)
-                            .background(viewModel.selectedNote.name == note.name ? Color.accentColor.opacity(0.2) : Color.clear)
-                            .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(viewModel.selectedNote.name == note.name ? Color.accentColor : Color.secondary, lineWidth: 1)
-                            )
+            // Scrolls only when it doesn't fit (e.g. inside the session detail or on small
+            // phones), so the fixed-size note grid can't push the surrounding layout off screen.
+            ScrollView {
+                VStack {
+                    Picker("Octave", selection: $selectedOctave) {
+                        ForEach(2...5, id: \.self) { octave in
+                            Text("Octave \(octave)").tag(octave)
+                        }
                     }
-                }
-            }
-            .padding(.horizontal)
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+            
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                        ForEach(TunerViewModel.availableNotes(for: selectedOctave)) { note in
+                            Button(action: {
+                                viewModel.selectedNote = note
+                            }) {
+                                Text(note.name)
+                                    .fontWeight(.semibold)
+                                    .frame(maxWidth: .infinity, minHeight: 80)
+                                    .background(viewModel.selectedNote.name == note.name ? Color.accentColor.opacity(0.2) : Color.clear)
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(viewModel.selectedNote.name == note.name ? Color.accentColor : Color.secondary, lineWidth: 1)
+                                    )
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
 /*
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Volume")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                Slider(value: $viewModel.droneVolume, in: 0...1)
-            }
-            .padding(.horizontal)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Volume")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Slider(value: $viewModel.droneVolume, in: 0...1)
+                    }
+                    .padding(.horizontal)
 */
-            Spacer()
-            
-            // Visual feedback for drone
-            ZStack {
-                Circle()
-                    .stroke(lineWidth: 8)
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.accentColor.opacity(viewModel.isPlayingDrone ? 0.3 : 0.1))
-                    .scaleEffect(viewModel.isPlayingDrone ? 1.1 : 1.0)
-                    .animation(
-                        viewModel.isPlayingDrone ?
-                        .easeInOut(duration: 1.0).repeatForever(autoreverses: true) :
-                        .default,
-                        value: viewModel.isPlayingDrone
-                    )
+                    // Visual feedback for drone
+                    ZStack {
+                        Circle()
+                            .stroke(lineWidth: 8)
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.accentColor.opacity(viewModel.isPlayingDrone ? 0.3 : 0.1))
+                            .scaleEffect(viewModel.isPlayingDrone ? 1.1 : 1.0)
+                            .animation(
+                                viewModel.isPlayingDrone ?
+                                .easeInOut(duration: 1.0).repeatForever(autoreverses: true) :
+                                .default,
+                                value: viewModel.isPlayingDrone
+                            )
 
-                VStack(spacing: 4) {
-                    Image(systemName: viewModel.isPlayingDrone ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                        .font(.title)
-                        .foregroundColor(viewModel.isPlayingDrone ? .accentColor : .secondary)
+                        VStack(spacing: 4) {
+                            Image(systemName: viewModel.isPlayingDrone ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                                .font(.title)
+                                .foregroundColor(viewModel.isPlayingDrone ? .accentColor : .secondary)
                     
-                    Text(viewModel.selectedNote.name)
-                        .font(.title2.bold())
-                        .foregroundColor(.primary)
+                            Text(viewModel.selectedNote.name)
+                                .font(.title2.bold())
+                                .foregroundColor(.primary)
                         
-                    Text("\(viewModel.targetFrequency, specifier: "%.1f") Hz")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                            Text("\(viewModel.targetFrequency, specifier: "%.1f") Hz")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 24)
                 }
             }
-            
-            Spacer()
-            
+            .scrollBounceBehavior(.basedOnSize)
+
             SaveButtonView(
                 title: viewModel.isPlayingDrone ? "Stop Drone" : "Start Drone",
                 action: {

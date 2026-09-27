@@ -62,14 +62,23 @@ final class PracticeSessionManager: ObservableObject {
         }
     }
 
-    /// The bar can only be dismissed when nothing is still running for its session.
-    var canClose: Bool {
+    /// True when closing the bar would affect something still running (timer or recording),
+    /// so the bar asks before closing.
+    var hasActivityToEnd: Bool {
         guard let session = currentSession else { return false }
-        return !recorder.isRecording && SessionTimerManager.shared.activeSession != session
+        return recorder.isRecording || SessionTimerManager.shared.activeSession == session
     }
 
-    func close() {
-        guard canClose else { return }
+    /// Dismisses the bar. An in-progress recording is always saved first; the timer is
+    /// stopped (saving its duration) only if `stopTimer` is true, otherwise it keeps running
+    /// (the Live Activity still shows it, and reopening the session brings the bar back).
+    func close(stopTimer: Bool = true) {
+        if recorder.isRecording {
+            autoSaveRecording()
+        }
+        if stopTimer, let session = currentSession, SessionTimerManager.shared.activeSession == session {
+            SessionTimerManager.shared.stop()
+        }
         stopMetronome()
         presentedTool = nil
         currentSession = nil

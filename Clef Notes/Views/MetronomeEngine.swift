@@ -22,8 +22,12 @@ final class MetronomeEngine: ObservableObject {
     @Published private(set) var beatPulse = 0
     @Published private(set) var isRunning = false
 
-    var bpm: Double = 60 {
-        didSet { scheduler.update { $0.bpm = self.bpm } }
+    /// Published so the metronome screen and the practice bar stay in sync across reopenings.
+    @Published var bpm: Double = 60 {
+        didSet {
+            let bpm = bpm
+            scheduler.update { $0.bpm = bpm }
+        }
     }
     var beatsPerBar: Int = 4 {
         didSet { scheduler.update { $0.beatsPerBar = max(1, self.beatsPerBar) } }
