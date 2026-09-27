@@ -6,7 +6,6 @@ struct StudentDetailNavigationView: View {
     @Binding var showingSideMenu: Bool
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
-    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var practiceSessionManager: PracticeSessionManager
 
     @State private var selectedSection: StudentDetailSection = .sessions
@@ -14,7 +13,6 @@ struct StudentDetailNavigationView: View {
     @State private var showingAddSessionSheet = false
     @State private var showingEditStudentSheet = false
     @State private var isSharePresented = false
-    @State private var showingPaywall = false
     @State private var triggerAddNote = false
 
     @State private var path = NavigationPath()
@@ -89,10 +87,7 @@ struct StudentDetailNavigationView: View {
                                 onMenu: { showingSideMenu = true },
                                 onAddSong: { showingAddSongSheet = true },
                                 onAddSession: { showingAddSessionSheet = true },
-                                onAddNote: { triggerAddNote = true },
-                                canCreateSong: { subscriptionManager.isAllowedToCreateSong() },
-                                canCreateSession: { subscriptionManager.isAllowedToCreateSession() },
-                                showPaywall: { showingPaywall = true }
+                                onAddNote: { triggerAddNote = true }
                             )
                         }
                     }
@@ -112,10 +107,7 @@ struct StudentDetailNavigationView: View {
                                 onMenu: { showingSideMenu = true },
                                 onAddSong: { showingAddSongSheet = true },
                                 onAddSession: { showingAddSessionSheet = true },
-                                onAddNote: { triggerAddNote = true },
-                                canCreateSong: { subscriptionManager.isAllowedToCreateSong() },
-                                canCreateSession: { subscriptionManager.isAllowedToCreateSession() },
-                                showPaywall: { showingPaywall = true }
+                                onAddNote: { triggerAddNote = true }
                             )
                         }
                     }
@@ -133,10 +125,7 @@ struct StudentDetailNavigationView: View {
                                     onMenu: { showingSideMenu = true },
                                     onAddSong: {},
                                     onAddSession: {},
-                                    onAddNote: {},
-                                    canCreateSong: { false },
-                                    canCreateSession: { false },
-                                    showPaywall: {}
+                                    onAddNote: {}
                                 )
                             }
                     }
@@ -154,10 +143,7 @@ struct StudentDetailNavigationView: View {
                                     onMenu: { showingSideMenu = true },
                                     onAddSong: {},
                                     onAddSession: {},
-                                    onAddNote: {},
-                                    canCreateSong: { false },
-                                    canCreateSession: { false },
-                                    showPaywall: {}
+                                    onAddNote: {}
                                 )
                             }
                     }
@@ -175,10 +161,7 @@ struct StudentDetailNavigationView: View {
                                     onMenu: { showingSideMenu = true },
                                     onAddSong: {},
                                     onAddSession: {},
-                                    onAddNote: { triggerAddNote = true },
-                                    canCreateSong: { false },
-                                    canCreateSession: { false },
-                                    showPaywall: {}
+                                    onAddNote: { triggerAddNote = true }
                                 )
                             }
                     }
@@ -197,7 +180,6 @@ struct StudentDetailNavigationView: View {
                 .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
                 .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
                 .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
-                .sheet(isPresented: $showingPaywall) { PaywallView() }
                 .presentationSizing(.page)
                 .ignoresSafeArea(edges: .bottom)
             } else if #available(iOS 18.0, *) {
@@ -237,21 +219,13 @@ struct StudentDetailNavigationView: View {
                         ToolbarItemGroup(placement: .navigationBarTrailing) {
                             if selectedSection == .sessions || selectedSection == .songs {
                                 Button {
-                                    if subscriptionManager.isAllowedToCreateSong() {
-                                        showingAddSongSheet = true
-                                    } else {
-                                        showingPaywall = true
-                                    }
+                                    showingAddSongSheet = true
                                 } label: {
                                     Label("Add Song", image: "add.song")
                                 }
                                 
                                 Button {
-                                    if subscriptionManager.isAllowedToCreateSession() {
-                                        showingAddSessionSheet = true
-                                    } else {
-                                        showingPaywall = true
-                                    }
+                                    showingAddSessionSheet = true
                                 } label: {
                                     Label("Add Session", systemImage: "calendar.badge.plus")
                                 }
@@ -267,9 +241,6 @@ struct StudentDetailNavigationView: View {
                     .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
                     .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
                     .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
-                    .sheet(isPresented: $showingPaywall) {
-                        PaywallView()
-                    }
                     .presentationSizing(.page)
                     .safeAreaInset(edge: .bottom) {
                         VStack(spacing: 0) {
@@ -315,21 +286,13 @@ struct StudentDetailNavigationView: View {
                         ToolbarItemGroup(placement: .navigationBarTrailing) {
                             if selectedSection == .sessions || selectedSection == .songs {
                                 Button {
-                                    if subscriptionManager.isAllowedToCreateSong() {
-                                        showingAddSongSheet = true
-                                    } else {
-                                        showingPaywall = true
-                                    }
+                                    showingAddSongSheet = true
                                 } label: {
                                     Label("Add Song", image: "add.song")
                                 }
                                 
                                 Button {
-                                    if subscriptionManager.isAllowedToCreateSession() {
-                                        showingAddSessionSheet = true
-                                    } else {
-                                        showingPaywall = true
-                                    }
+                                    showingAddSessionSheet = true
                                 } label: {
                                     Label("Add Session", systemImage: "calendar.badge.plus")
                                 }
@@ -345,9 +308,6 @@ struct StudentDetailNavigationView: View {
                     .sheet(isPresented: $showingAddSongSheet) { AddSongSheetCD(student: student) }
                     .sheet(isPresented: $showingEditStudentSheet) { EditStudentSheetCD(student: student) }
                     .sheet(isPresented: $isSharePresented) { CloudSharingView(student: student) }
-                    .sheet(isPresented: $showingPaywall) {
-                        PaywallView()
-                    }
                     .safeAreaInset(edge: .bottom) {
                         VStack(spacing: 0) {
                             if let session = practiceSession {

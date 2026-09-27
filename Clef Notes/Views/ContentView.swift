@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var showingAddSheet = false
 
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var showingStudentPaywall = false
 
     @State private var selectedStudent: StudentCD?
     @AppStorage("selectedStudentID") private var selectedStudentID: String?
@@ -150,7 +152,12 @@ struct ContentView: View {
                         HStack(spacing: 12) {
                             // "Add New" button, styled like in SideMenuView
                             Button(action: {
-                                showingAddSheet = true
+                                // Free tier includes one student; Pro unlocks more.
+                                if subscriptionManager.canAddStudent() {
+                                    showingAddSheet = true
+                                } else {
+                                    showingStudentPaywall = true
+                                }
                             }) {
                                 VStack {
                                     Image(systemName: "plus")
@@ -181,6 +188,9 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("ClefNotes")
+            .sheet(isPresented: $showingStudentPaywall) {
+                PaywallView()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingSideMenu = true }) {

@@ -16,9 +16,6 @@ struct CommonToolbar: ToolbarContent {
     let onAddSong: () -> Void
     let onAddSession: () -> Void
     let onAddNote: () -> Void
-    let canCreateSong: () -> Bool
-    let canCreateSession: () -> Bool
-    let showPaywall: () -> Void
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .navigationBarLeading) {
@@ -29,14 +26,10 @@ struct CommonToolbar: ToolbarContent {
         ToolbarItemGroup(placement: .navigationBarTrailing) {
             switch context {
             case .sessions, .songs:
-                Button {
-                    canCreateSong() ? onAddSong() : showPaywall()
-                } label: {
+                Button(action: onAddSong) {
                     Label("Add Song", image: "add.song")
                 }
-                Button {
-                    canCreateSession() ? onAddSession() : showPaywall()
-                } label: {
+                Button(action: onAddSession) {
                     Label("Add Session", systemImage: "calendar.badge.plus")
                 }
 

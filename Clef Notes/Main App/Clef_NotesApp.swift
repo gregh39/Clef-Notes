@@ -13,7 +13,6 @@ struct Clef_NotesApp: App {
     
     @StateObject private var sessionTimerManager: SessionTimerManager
     @StateObject private var subscriptionManager = SubscriptionManager.shared
-    @StateObject private var usageManager: UsageManager
     @StateObject private var settingsManager = SettingsManager.shared
     
     init() {
@@ -23,7 +22,6 @@ struct Clef_NotesApp: App {
         let context = PersistenceController.shared.persistentContainer.viewContext
         // Shared so Live Activity button intents can reach the running timer.
         _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager.shared)
-        _usageManager = StateObject(wrappedValue: UsageManager(context: context))
         // Notification permission is requested lazily by NotificationManager when a feature needs it.
 
         try? Tips.configure([
@@ -61,7 +59,6 @@ struct Clef_NotesApp: App {
             .environmentObject(sessionTimerManager)
             .environmentObject(PracticeSessionManager.shared)
             .environmentObject(subscriptionManager)
-            .environmentObject(usageManager)
             .environmentObject(settingsManager)
             .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
             .tint(settingsManager.activeAccentColor)

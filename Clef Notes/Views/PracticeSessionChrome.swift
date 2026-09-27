@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreData
 
-/// Presentations driven by the practice bar: the metronome/tuner sheets, the paywall, and the
+/// Presentations driven by the practice bar: the metronome/tuner sheets and the
 /// "save recording" sheet. Applied once, to the whole student detail screen, so they work
 /// from any tab.
 struct PracticeSessionChrome: ViewModifier {
@@ -37,9 +37,6 @@ struct PracticeSessionChrome: ViewModifier {
                 // Half height by default so the session (plays, notes) stays usable behind it.
                 .presentationDetents([.medium, .large])
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
-            }
-            .sheet(isPresented: $manager.showingPaywall) {
-                PaywallView()
             }
             .sheet(item: $recordingURLForSheet, onDismiss: {
                 // "Retake" starts a new recording before the sheet finishes dismissing;

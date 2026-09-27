@@ -31,7 +31,6 @@ struct AddSongSheetCD: View {
 
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var usageManager: UsageManager
 
     let student: StudentCD
 
@@ -199,7 +198,6 @@ struct AddSongSheetCD: View {
         newSong.setValue(archived, forKey: "archived")
         newSong.collection = selectedCollection
         
-        usageManager.incrementSongCreations()
 
         do {
             try viewContext.save()

@@ -8,14 +8,32 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
     
     static let shared = SubscriptionManager()
 
-    @Published var isSubscribed = false
+    /// The real entitlement state from RevenueCat.
+    @Published private var hasProEntitlement = false
     @Published var isPurchasing = false
 
-    private var usageManager: UsageManager
+    /// What the app gates on. In DEBUG builds it can be forced to the free tier from
+    /// Settings (see `debugSimulateFreeTier`) to test free-user behavior on a Pro account.
+    var isSubscribed: Bool {
+        #if DEBUG
+        if debugSimulateFreeTier { return false }
+        #endif
+        return hasProEntitlement
+    }
+
+    #if DEBUG
+    private static let debugSimulateFreeTierKey = "debugSimulateFreeTier"
+
+    /// DEBUG only: treat this device as a free user regardless of the real subscription.
+    @Published var debugSimulateFreeTier = UserDefaults.standard.bool(forKey: SubscriptionManager.debugSimulateFreeTierKey) {
+        didSet { UserDefaults.standard.set(debugSimulateFreeTier, forKey: Self.debugSimulateFreeTierKey) }
+    }
+
+    /// DEBUG only: the real RevenueCat entitlement, shown next to the switch.
+    var debugHasRealProEntitlement: Bool { hasProEntitlement }
+    #endif
 
     private override init() {
-        let context = PersistenceController.shared.persistentContainer.viewContext
-        self.usageManager = UsageManager(context: context)
         super.init()
         updateSubscriptionStatus()
     }
@@ -24,7 +42,7 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
     func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
         // --- THIS IS THE FIX ---
         // Changed "pro" to "ClefNotes Pro" to match your RevenueCat setup.
-        self.isSubscribed = customerInfo.entitlements["ClefNotes Pro"]?.isActive == true
+        self.hasProEntitlement = customerInfo.entitlements["ClefNotes Pro"]?.isActive == true
     }
 
     func updateSubscriptionStatus() {
@@ -35,7 +53,7 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
             }
             // --- THIS IS THE FIX ---
             // Changed "pro" to "ClefNotes Pro" here as well for consistency.
-            self.isSubscribed = customerInfo?.entitlements["ClefNotes Pro"]?.isActive == true
+            self.hasProEntitlement = customerInfo?.entitlements["ClefNotes Pro"]?.isActive == true
         }
     }
     
@@ -48,7 +66,7 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
 
         // This check is now more direct and happens right after the purchase result
         if result.customerInfo.entitlements["ClefNotes Pro"]?.isActive == true {
-            self.isSubscribed = true
+            self.hasProEntitlement = true
         }
     }
 
@@ -59,41 +77,39 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
         let customerInfo = try await Purchases.shared.restorePurchases()
 
         if customerInfo.entitlements["ClefNotes Pro"]?.isActive == true {
-            self.isSubscribed = true
+            self.hasProEntitlement = true
         }
     }
 
 
-    func isAllowedToCreateStudent() -> Bool {
-        if isSubscribed { return true }
-        return usageManager.studentCreations < 2
+    // MARK: - Free tier
+    //
+    // Free: one student, with sessions, songs, notes, and everything else unlimited. The
+    // metronome and tuner are available inside a practice session (the practice bar).
+    // Pro: unlimited students, and the metronome/tuner anywhere without opening a session.
+
+    /// Whether another student can be added. Counts the students the user currently owns
+    /// (private store), so students shared with them don't count, and deleting a student
+    /// frees the slot. Existing students are never locked, only adding new ones.
+    func canAddStudent() -> Bool {
+        isSubscribed || ownedStudentCount() == 0
     }
 
-    func isAllowedToCreateSession() -> Bool {
-        if isSubscribed { return true }
-        return usageManager.sessionCreations < 3
-    }
+    /// Metronome and tuner outside a session (side menu). Inside a session they're always free.
+    var canUseToolsOutsideSession: Bool { isSubscribed }
 
-    func isAllowedToCreateSong() -> Bool {
-        if isSubscribed { return true }
-        return usageManager.songCreations < 3
-    }
-    
-    func isAllowedToOpenMetronome() -> Bool {
-        if isSubscribed { return true }
-        return usageManager.metronomeOpens < 11
-    }
-
-    func isAllowedToOpenTuner() -> Bool {
-        if isSubscribed { return true }
-        return usageManager.tunerOpens < 11
-    }
-
-    var canAccessPaidFeatures: Bool {
-        if isSubscribed { return true }
-        return usageManager.studentCreations <= 2 &&
-               usageManager.sessionCreations <= 3 &&
-               usageManager.songCreations <= 3
+    private func ownedStudentCount() -> Int {
+        let persistence = PersistenceController.shared
+        let request = StudentCD.fetchRequest()
+        if let privateStore = persistence.privatePersistentStore {
+            request.affectedStores = [privateStore]
+        }
+        do {
+            return try persistence.persistentContainer.viewContext.count(for: request)
+        } catch {
+            print("Failed to count students: \(error)")
+            return 0
+        }
     }
 }
 
