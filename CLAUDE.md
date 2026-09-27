@@ -41,7 +41,8 @@ The SIL performance inliner (`isCallerAndCalleeLayoutConstraintsCompatible`) cra
 ### Subscription gate
 `SubscriptionManager` (RevenueCat entitlement "ClefNotes Pro", $10/year set in App Store Connect) holds all the rules:
 - **Free:** one student, with sessions, songs, notes and everything else unlimited. The metronome and tuner are free inside a session (practice bar).
-- **Pro:** unlimited students, plus the metronome and tuner from the side menu without a session.
+- **Pro:** unlimited students, plus the metronome and tuner from the side menu without a session, plus accent colors beyond blue, a custom color, and alternate app icons. Appearance mode (light/dark) stays free.
+- Appearance lock: `SubscriptionManager` calls `SettingsManager.setProAppearanceUnlocked(_:)` with confirmed RevenueCat results. Use `activeAccentColor` / `effectiveAccentColor` / `effectiveAppIcon`, never the raw stored `accentColor` / `appIcon`. The user's choice is kept while locked.
 - `canAddStudent()` counts owned students (private store) live, so shared-with-me students don't count and deleting frees the slot. Existing students are never locked.
 - `canUseToolsOutsideSession` gates the side-menu Metronome/Tuner.
 - Gates are UI-only: the Add New buttons in `SideMenuView` and `ContentView`. Save functions don't re-check.

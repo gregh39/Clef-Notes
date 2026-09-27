@@ -8,8 +8,11 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
     
     static let shared = SubscriptionManager()
 
-    /// The real entitlement state from RevenueCat.
-    @Published private var hasProEntitlement = false
+    /// The real entitlement state from RevenueCat. Only set from confirmed RevenueCat results,
+    /// so Pro-only appearance is applied/reverted once the status is actually known.
+    @Published private var hasProEntitlement = false {
+        didSet { applyProAppearance() }
+    }
     @Published var isPurchasing = false
 
     /// What the app gates on. In DEBUG builds it can be forced to the free tier from
@@ -26,7 +29,10 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
 
     /// DEBUG only: treat this device as a free user regardless of the real subscription.
     @Published var debugSimulateFreeTier = UserDefaults.standard.bool(forKey: SubscriptionManager.debugSimulateFreeTierKey) {
-        didSet { UserDefaults.standard.set(debugSimulateFreeTier, forKey: Self.debugSimulateFreeTierKey) }
+        didSet {
+            UserDefaults.standard.set(debugSimulateFreeTier, forKey: Self.debugSimulateFreeTierKey)
+            applyProAppearance()
+        }
     }
 
     /// DEBUG only: the real RevenueCat entitlement, shown next to the switch.
@@ -82,11 +88,17 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
     }
 
 
+    /// Pro unlocks accent colors beyond the default and the alternate app icons.
+    private func applyProAppearance() {
+        SettingsManager.shared.setProAppearanceUnlocked(isSubscribed)
+    }
+
     // MARK: - Free tier
     //
     // Free: one student, with sessions, songs, notes, and everything else unlimited. The
     // metronome and tuner are available inside a practice session (the practice bar).
-    // Pro: unlimited students, and the metronome/tuner anywhere without opening a session.
+    // Pro: unlimited students, the metronome/tuner anywhere without opening a session, and
+    // extra accent colors and app icons.
 
     /// Whether another student can be added. Counts the students the user currently owns
     /// (private store), so students shared with them don't count, and deleting a student

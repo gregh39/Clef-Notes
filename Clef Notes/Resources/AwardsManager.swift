@@ -123,8 +123,9 @@ class AwardsManager: ObservableObject {
             return 0
             
         case .perfectWeek:
-            // Counts how many unique calendar weeks had 7 practice days
-            let weeksWith7Days = Dictionary(grouping: uniqueSessionDays, by: { calendar.component(.weekOfYear, from: $0) })
+            // Counts calendar weeks with a practice day on all 7 days. Grouping by the week's
+            // start date (not the week number) keeps weeks from different years separate.
+            let weeksWith7Days = Dictionary(grouping: uniqueSessionDays, by: { calendar.dateInterval(of: .weekOfYear, for: $0)?.start ?? $0 })
                 .values
                 .filter { $0.count == 7 }
             return weeksWith7Days.count
@@ -187,27 +188,14 @@ class AwardsManager: ObservableObject {
         return longestStreak
     }
     
-    private func checkPerfectWeek() -> Bool {
-        let sessionWeekdays = Dictionary(grouping: uniqueSessionDays, by: { calendar.component(.weekOfYear, from: $0) })
-        
-        for (_, daysInWeek) in sessionWeekdays {
-            if Set(daysInWeek.map { calendar.component(.weekday, from: $0) }).count == 7 {
-                return true
-            }
-        }
-        return false
-    }
-    
+    /// A Saturday practice day followed by a Sunday practice day (the same weekend).
+    /// Checking the next day avoids pairing a Sunday with the Saturday six days later, which
+    /// is what grouping by week did in calendars where weeks start on Sunday.
     private func checkWeekendWarrior() -> Bool {
-        let sessionWeekdays = Dictionary(grouping: uniqueSessionDays, by: { calendar.component(.weekOfYear, from: $0) })
-        
-        for (_, daysInWeek) in sessionWeekdays {
-            let weekdays = Set(daysInWeek.map { calendar.component(.weekday, from: $0) })
-            // 1 = Sunday, 7 = Saturday in Gregorian calendar
-            if weekdays.contains(1) && weekdays.contains(7) {
-                return true
-            }
+        uniqueSessionDays.contains { day in
+            guard calendar.component(.weekday, from: day) == 7, // 7 = Saturday (Gregorian)
+                  let sunday = calendar.date(byAdding: .day, value: 1, to: day) else { return false }
+            return uniqueSessionDays.contains(calendar.startOfDay(for: sunday))
         }
-        return false
     }
 }

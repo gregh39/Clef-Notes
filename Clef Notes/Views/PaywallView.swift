@@ -82,6 +82,7 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: 15) {
             FeatureRow(icon: "person.3.fill", title: "Unlimited Students", description: "Add as many students as you need.")
             FeatureRow(icon: "metronome.fill", title: "Tools Anytime", description: "Open the metronome and tuner from the menu, without starting a session.")
+            FeatureRow(icon: "paintpalette.fill", title: "Colors & App Icons", description: "Personalize the app with more accent colors and alternate icons.")
             //FeatureRow(icon: "wand.and.stars", title: "Support Indie Dev", description: "Support independent app development and continued updates to ClefNotes.")
         }
         .padding()

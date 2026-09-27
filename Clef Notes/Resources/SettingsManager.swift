@@ -43,8 +43,34 @@ class SettingsManager: ObservableObject {
         willSet { objectWillChange.send() }
     }
 
+    /// Accent colors other than the default and alternate app icons are Pro features.
+    /// `SubscriptionManager` sets this once the subscription status is known. While locked,
+    /// the defaults are shown but the user's choice is kept, so it returns if they resubscribe.
+    /// Starts unlocked so Pro users don't flash back to the defaults at launch.
+    @Published private(set) var proAppearanceUnlocked = true
+
+    static let freeAccentColor: AccentColor = .blue
+    static let freeAppIcon: AppIcon = .bassClef
+
+    func setProAppearanceUnlocked(_ unlocked: Bool) {
+        guard unlocked != proAppearanceUnlocked else { return }
+        proAppearanceUnlocked = unlocked
+        setAppIcon()
+    }
+
+    /// The accent color actually in use (the default while Pro appearance is locked).
+    var effectiveAccentColor: AccentColor {
+        proAppearanceUnlocked ? accentColor : Self.freeAccentColor
+    }
+
+    /// The app icon actually in use (the default while Pro appearance is locked).
+    var effectiveAppIcon: AppIcon {
+        proAppearanceUnlocked ? appIcon : Self.freeAppIcon
+    }
+
     /// A computed property that returns the currently active accent color.
     var activeAccentColor: Color {
+        guard proAppearanceUnlocked else { return Self.freeAccentColor.color ?? .blue }
         if accentColor == .custom {
             return customAccentColor
         }
@@ -109,8 +135,11 @@ class SettingsManager: ObservableObject {
             .store(in: &cancellables)
     }
     
+    /// Applies `effectiveAppIcon` to the home screen (no-op if it's already set).
     func setAppIcon() {
-        UIApplication.shared.setAlternateIconName(appIcon.iconName) { error in
+        let iconName = effectiveAppIcon.iconName
+        guard UIApplication.shared.alternateIconName != iconName else { return }
+        UIApplication.shared.setAlternateIconName(iconName) { error in
             if let error = error {
                 print("Error setting alternate app icon: \(error.localizedDescription)")
             }
