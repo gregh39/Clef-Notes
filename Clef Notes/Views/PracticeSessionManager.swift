@@ -23,7 +23,6 @@ final class PracticeSessionManager: ObservableObject {
     @Published private(set) var currentSession: PracticeSessionCD?
     /// Tool sheet currently presented from the practice bar.
     @Published var presentedTool: Tool?
-    @Published var showingPaywall = false
 
     /// Shared so it keeps playing after its sheet is dismissed.
     let metronome = MetronomeEngine()

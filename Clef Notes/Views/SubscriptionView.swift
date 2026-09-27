@@ -12,7 +12,7 @@ struct SubscriptionView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(subscriptionManager.isSubscribed ? "Clef Notes Pro" : "Free Version")
                             .font(.headline)
-                        Text(subscriptionManager.isSubscribed ? "You have access to all features." : "Limited features available.")
+                        Text(subscriptionManager.isSubscribed ? "You have access to all features." : "One student, with unlimited sessions, songs, and notes.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -26,9 +26,8 @@ struct SubscriptionView: View {
             }
 
             Section(header: Text("Pro Features")) {
-                FeatureRow(icon: "person.3.fill", title: "Unlimited Students", description: "Manage as many students as you need.")
-                FeatureRow(icon: "calendar.badge.plus", title: "Unlimited Sessions", description: "Log every practice session without limits.")
-                FeatureRow(icon: "music.note.list", title: "Unlimited Songs", description: "Keep track of your entire repertoire.")
+                FeatureRow(icon: "person.3.fill", title: "Unlimited Students", description: "Add as many students as you need.")
+                FeatureRow(icon: "metronome.fill", title: "Tools Anytime", description: "Open the metronome and tuner from the menu, without starting a session.")
             }
 
             Section {

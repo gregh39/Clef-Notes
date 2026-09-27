@@ -12,8 +12,6 @@ struct PracticeBarView: View {
 
     @EnvironmentObject private var manager: PracticeSessionManager
     @EnvironmentObject private var sessionTimerManager: SessionTimerManager
-    @EnvironmentObject private var subscriptionManager: SubscriptionManager
-    @EnvironmentObject private var usageManager: UsageManager
 
     var body: some View {
         HStack(spacing: 2) {
@@ -75,21 +73,13 @@ struct PracticeBarView: View {
         return sessionTimerManager.isPaused ? "Resume Timer" : "Pause Timer"
     }
 
-    // Free-tier checks match the rest of the app (UsageManager counts, SubscriptionManager).
+    // The metronome and tuner are free inside a session (Pro unlocks them outside one).
     private func openMetronome() {
-        if !subscriptionManager.isSubscribed && usageManager.metronomeOpens >= 10 {
-            manager.showingPaywall = true
-        } else {
-            manager.presentedTool = .metronome
-        }
+        manager.presentedTool = .metronome
     }
 
     private func openTuner() {
-        if !subscriptionManager.isSubscribed && usageManager.tunerOpens >= 10 {
-            manager.showingPaywall = true
-        } else {
-            manager.presentedTool = .tuner
-        }
+        manager.presentedTool = .tuner
     }
 }
 

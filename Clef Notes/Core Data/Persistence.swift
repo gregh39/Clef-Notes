@@ -164,7 +164,6 @@ class PersistenceController: NSObject {
                 } else if cloudKitContainerOptions.databaseScope  == .shared {
                     self._sharedPersistentStore = self.persistentContainer.persistentStoreCoordinator.persistentStore(for: loadedStoreDescription.url!)
                 }
-                UsageManager.cleanupDuplicateTrackersIfNeeded(context: self.persistentContainer.viewContext)
             }
         })
 

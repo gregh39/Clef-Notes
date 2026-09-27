@@ -34,7 +34,6 @@ private struct TimeSignature: Hashable, Identifiable {
 struct MetronomeSectionView: View {
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var settingsManager: SettingsManager // <<< USE THEME FROM ENVIRONMENT
-    @EnvironmentObject var usageManager: UsageManager
 
     @AppStorage("metronomeVisualizerType") private var visualizerType: MetronomeVisualizerType = .pulse
     @AppStorage("metronomeTimeSignatureID") private var timeSignatureID: String = "4/4"
@@ -132,7 +131,6 @@ struct MetronomeSectionView: View {
             //Spacer()
             
             SaveButtonView(title: isPlaying ? "Stop" : "Start", action: {
-                usageManager.incrementMetronomeOpens()
                 toggleMetronome()
             })
         }

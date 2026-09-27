@@ -66,11 +66,11 @@ struct PaywallView: View {
             Text("Unlock Clef Notes Pro")
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
-            Text("Get unlimited access to all features and take your practice to the next level.")
+            Text("Track every student you teach, and keep your tools one tap away.")
                 .font(.headline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            Text("With the free version of ClefNotes you can add 2 students, 3 songs, 3 sessions, and have 10 uses of the tuner and metronome.")
+            Text("The free version includes one student with unlimited sessions, songs, and notes, plus the metronome and tuner in any practice session.")
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -80,10 +80,8 @@ struct PaywallView: View {
 
     private var features: some View {
         VStack(alignment: .leading, spacing: 15) {
-            FeatureRow(icon: "person.3.fill", title: "Unlimited Students", description: "Manage as many students as you need.")
-            FeatureRow(icon: "calendar.badge.plus", title: "Unlimited Sessions", description: "Log every practice session without limits.")
-            FeatureRow(icon: "music.note.list", title: "Unlimited Songs", description: "Keep track of your entire repertoire.")
-            FeatureRow(icon: "metronome.fill", title: "Full Tool Access", description: "Use the metronome and tuner anytime.")
+            FeatureRow(icon: "person.3.fill", title: "Unlimited Students", description: "Add as many students as you need.")
+            FeatureRow(icon: "metronome.fill", title: "Tools Anytime", description: "Open the metronome and tuner from the menu, without starting a session.")
             //FeatureRow(icon: "wand.and.stars", title: "Support Indie Dev", description: "Support independent app development and continued updates to ClefNotes.")
         }
         .padding()

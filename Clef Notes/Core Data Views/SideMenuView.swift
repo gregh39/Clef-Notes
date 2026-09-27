@@ -50,7 +50,6 @@ struct SideMenuView: View {
 
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var settingsManager: SettingsManager // <<< ADD THIS LINE
-    @EnvironmentObject var usageManager: UsageManager
 
 
     @State private var showingEditStudentSheet = false
@@ -59,6 +58,7 @@ struct SideMenuView: View {
     @State private var sharingStudent: StudentCD? = nil
     @State private var showingPrivacyPolicy = false
     @State private var showingMailComposer = false
+    @State private var showingPaywall = false
 
     // Computed property to sort students with the selected one first
     private var sortedStudents: [StudentCD] {
@@ -80,6 +80,11 @@ struct SideMenuView: View {
                     HStack(spacing: 12) {
                         // Add new student button
                         Button(action: {
+                            // Free tier includes one student; Pro unlocks more.
+                            guard subscriptionManager.canAddStudent() else {
+                                showingPaywall = true
+                                return
+                            }
                             isPresented = false
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 showingAddStudentSheet = true
@@ -141,9 +146,8 @@ struct SideMenuView: View {
                         }
                     }
                     
-                    ToolsSectionView()
+                    ToolsSectionView(showingPaywall: $showingPaywall)
                         .environmentObject(subscriptionManager)
-                        .environmentObject(usageManager)
                     
                     AppSettingsView(student: student)
                     
@@ -203,6 +207,9 @@ struct SideMenuView: View {
                 if let student = student {
                     CloudSharingView(student: student)
                 }
+            }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
             }
             .alert("Delete \(studentToDelete?.name ?? "Student")?",
                    isPresented: Binding(get: { studentToDelete != nil }, set: { if !$0 { studentToDelete = nil } }),
@@ -303,11 +310,12 @@ private struct AppSettingsView: View {
 
 private struct ToolsSectionView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
-    @EnvironmentObject var usageManager: UsageManager
     @EnvironmentObject var settingsManager: SettingsManager
 
-    @State private var showPaywallView = false
-        
+    /// Presented by SideMenuView: a sheet attached inside the List gets torn down when the
+    /// list re-renders, which dismissed the paywall on its own after a moment.
+    @Binding var showingPaywall: Bool
+
     var body: some View {
         if !subscriptionManager.isSubscribed {
             Section {
@@ -319,38 +327,48 @@ private struct ToolsSectionView: View {
 
             }
         }
-                
+
         Section{
             NavigationLink(destination: PitchGameView()) {
                 Label("Pitch Game", systemImage: "gamecontroller")
             }
 
-            NavigationLink(destination:
-                MetronomeSectionView()
-                   // .onAppear { usageManager.incrementMetronomeOpens() }
-            ) {
-                Label("Metronome", systemImage: "metronome")
-            }
-            .disabled(!subscriptionManager.isAllowedToOpenMetronome())
+            // The metronome and tuner are always free inside a practice session (practice
+            // bar). Opening them from here, without a session, is a Pro feature.
+            if subscriptionManager.canUseToolsOutsideSession {
+                NavigationLink(destination: MetronomeSectionView()) {
+                    Label("Metronome", systemImage: "metronome")
+                }
 
-            NavigationLink(destination:
-                TunerTabView()
-                   // .onAppear { usageManager.incrementTunerOpens() }
-            ) {
-                Label("Tuner", systemImage: "tuningfork")
+                NavigationLink(destination: TunerTabView()) {
+                    Label("Tuner", systemImage: "tuningfork")
+                }
+            } else {
+                Button { showingPaywall = true } label: {
+                    Label("Metronome", systemImage: "metronome")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())   // whole row is tappable
+                }
+                .buttonStyle(.plain)
+
+                Button { showingPaywall = true } label: {
+                    Label("Tuner", systemImage: "tuningfork")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .disabled(!subscriptionManager.isAllowedToOpenTuner())
 
         } header: {
             Text("Tools")
         }
         footer: {
-            if !subscriptionManager.isSubscribed && (usageManager.metronomeOpens >= 10 || usageManager.tunerOpens >= 10) {
-                Text("You've reached the free limit for these tools. Please subscribe for unlimited access.")
+            if !subscriptionManager.canUseToolsOutsideSession {
+                Text("The metronome and tuner are free in any practice session. Subscribe to ClefNotes Pro to use them anytime.")
                     .font(.caption)
             }
         }
-        
+
         Section(header: Text("Practice Reminders")) {
             Toggle("Practice Reminders", isOn: $settingsManager.practiceRemindersEnabled)
 

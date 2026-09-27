@@ -22,7 +22,7 @@ Music practice tracker for iOS. Teachers log students, practice sessions, songs,
 - **Core Data** for all persistence. Managed object subclasses live in `Core Data/` (suffix `CD`).
 - **Views** split into `Core Data Views/` (views that take CD objects directly) and `Views/` (feature views, add/edit sheets, etc.).
 - **No third-party UI framework** — pure SwiftUI throughout.
-- Shared singletons: `AudioManager` (audio session arbitration), `SettingsManager`, `UsageManager`, `SubscriptionManager`, `SessionTimerManager` — all passed via `.environmentObject`.
+- Shared singletons: `AudioManager` (audio session arbitration), `SettingsManager`, `SubscriptionManager`, `SessionTimerManager`, `PracticeSessionManager` — all passed via `.environmentObject`.
 - `PersistenceController.shared` holds the CloudKit container. `privatePersistentStore` and `sharedPersistentStore` are **optional** (set asynchronously in the `loadPersistentStores` callback — do not force-unwrap them).
 
 ## Data model (Core Data entities)
@@ -39,7 +39,13 @@ Current model version: `ClefNotesCD_v4`. All `StudentCD` to-many relationships c
 The SIL performance inliner (`isCallerAndCalleeLayoutConstraintsCompatible`) crashes with infinite recursion under whole-module optimization. **Workaround:** `SWIFT_OPTIMIZATION_LEVEL = "-Onone"` is set in the Release build configuration in `project.pbxproj`. This should be revisited after an Xcode update. Do not remove this without verifying archive succeeds.
 
 ### Subscription gate
-`UsageManager` tracks free-tier limits. `SubscriptionManager` (RevenueCat) tracks pro status. The paywall is shown reactively — the add-session/add-song/add-student save functions do NOT re-check limits at save time (limits are enforced in the UI layer only).
+`SubscriptionManager` (RevenueCat entitlement "ClefNotes Pro", $10/year set in App Store Connect) holds all the rules:
+- **Free:** one student, with sessions, songs, notes and everything else unlimited. The metronome and tuner are free inside a session (practice bar).
+- **Pro:** unlimited students, plus the metronome and tuner from the side menu without a session.
+- `canAddStudent()` counts owned students (private store) live, so shared-with-me students don't count and deleting frees the slot. Existing students are never locked.
+- `canUseToolsOutsideSession` gates the side-menu Metronome/Tuner.
+- Gates are UI-only: the Add New buttons in `SideMenuView` and `ContentView`. Save functions don't re-check.
+- `UsageManager` and its counters were removed. The `UsageTrackerCD` entity remains in the model but is unused.
 
 ### Audio session arbitration
 `AudioManager` is the single gatekeeper for `AVAudioSession`. Clients (`.metronome`, `.tuner`, `.recorder`, `.player`) call `requestSession(for:)` and `releaseSession(for:)`. `requestSession` changes the category on the active session (no `setActive(false)` first — that fails with "busy" while other I/O runs). `releaseSession` always clears ownership, even if deactivation fails. There is **no** timer client and **no** silent audio track — don't reintroduce either (App Review guideline 2.5.4 risk).

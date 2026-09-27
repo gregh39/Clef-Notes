@@ -28,6 +28,7 @@ enum AccentColor: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \StudentCD.name, ascending: true)],
@@ -86,6 +87,19 @@ struct SettingsView: View {
                 Link("Privacy Policy", destination: URL(string: "https://www.clefnotes.app/privacy")!)
                 Link("Feedback", destination: URL(string: "mailto:feedback@clefnotes.app")!)
             }
+
+            #if DEBUG
+            // Not compiled into Release/TestFlight/App Store builds.
+            Section {
+                Toggle("Simulate Free Tier", isOn: $subscriptionManager.debugSimulateFreeTier)
+                LabeledContent("Real Pro Entitlement", value: subscriptionManager.debugHasRealProEntitlement ? "Active" : "None")
+                LabeledContent("App Treats Device As", value: subscriptionManager.isSubscribed ? "Pro" : "Free")
+            } header: {
+                Text("Debug")
+            } footer: {
+                Text("Forces free-tier behavior (one student, tools only inside a session) even with an active subscription. Debug builds only.")
+            }
+            #endif
         }
         .navigationTitle("Settings")
         .sheet(isPresented: $showingExportSheet) {
