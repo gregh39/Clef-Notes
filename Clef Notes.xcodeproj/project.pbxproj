@@ -14,10 +14,40 @@
 		37DB4EBF2E3FA0E20022AAC8 /* ReceiptParser in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EBE2E3FA0E20022AAC8 /* ReceiptParser */; };
 		37DB4EC12E3FA0E20022AAC8 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EC02E3FA0E20022AAC8 /* RevenueCat */; };
 		37DB4EC32E3FA0E20022AAC8 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 37DB4EC22E3FA0E20022AAC8 /* RevenueCatUI */; };
+		37F582923067650A006BF280 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F582913067650A006BF280 /* WidgetKit.framework */; };
+		37F582943067650A006BF280 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F582933067650A006BF280 /* SwiftUI.framework */; };
+		37F5829F3067650C006BF280 /* ClefNotesWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37F582903067650A006BF280 /* ClefNotesWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		37F5829D3067650C006BF280 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 37F171652DF91DFF009C3656 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 37F5828F3067650A006BF280;
+			remoteInfo = ClefNotesWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		37F582A43067650C006BF280 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				37F5829F3067650C006BF280 /* ClefNotesWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		37F1716D2DF91DFF009C3656 /* Clef Notes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Clef Notes.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		37F582903067650A006BF280 /* ClefNotesWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClefNotesWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		37F582913067650A006BF280 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = /System/Library/Frameworks/WidgetKit.framework; sourceTree = "<absolute>"; };
+		37F582933067650A006BF280 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -28,6 +58,20 @@
 			);
 			target = 37F1716C2DF91DFF009C3656 /* Clef Notes */;
 		};
+		37F582A33067650C006BF280 /* Exceptions for "ClefNotesWidgets" folder in "ClefNotesWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 37F5828F3067650A006BF280 /* ClefNotesWidgetsExtension */;
+		};
+		37F5A1C0A0B0C0D0E0F00001 /* Exceptions for "Clef Notes" folder in "ClefNotesWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Shared/PracticeTimerActivity.swift,
+			);
+			target = 37F5828F3067650A006BF280 /* ClefNotesWidgetsExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -35,8 +79,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				37F1717A2DF91E00009C3656 /* Exceptions for "Clef Notes" folder in "Clef Notes" target */,
+				37F5A1C0A0B0C0D0E0F00001 /* Exceptions for "Clef Notes" folder in "ClefNotesWidgetsExtension" target */,
 			);
 			path = "Clef Notes";
+			sourceTree = "<group>";
+		};
+		37F582953067650A006BF280 /* ClefNotesWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				37F582A33067650C006BF280 /* Exceptions for "ClefNotesWidgets" folder in "ClefNotesWidgetsExtension" target */,
+			);
+			path = ClefNotesWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -56,12 +109,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37F5828D3067650A006BF280 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37F582943067650A006BF280 /* SwiftUI.framework in Frameworks */,
+				37F582923067650A006BF280 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		3712E1942E348DBD005E3518 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				37F582913067650A006BF280 /* WidgetKit.framework */,
+				37F582933067650A006BF280 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -70,6 +134,7 @@
 			isa = PBXGroup;
 			children = (
 				37F1716F2DF91DFF009C3656 /* Clef Notes */,
+				37F582953067650A006BF280 /* ClefNotesWidgets */,
 				3712E1942E348DBD005E3518 /* Frameworks */,
 				37F1716E2DF91DFF009C3656 /* Products */,
 			);
@@ -79,6 +144,7 @@
 			isa = PBXGroup;
 			children = (
 				37F1716D2DF91DFF009C3656 /* Clef Notes.app */,
+				37F582903067650A006BF280 /* ClefNotesWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -93,10 +159,12 @@
 				37F171692DF91DFF009C3656 /* Sources */,
 				37F1716A2DF91DFF009C3656 /* Frameworks */,
 				37F1716B2DF91DFF009C3656 /* Resources */,
+				37F582A43067650C006BF280 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				37F5829E3067650C006BF280 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				37F1716F2DF91DFF009C3656 /* Clef Notes */,
@@ -115,6 +183,28 @@
 			productReference = 37F1716D2DF91DFF009C3656 /* Clef Notes.app */;
 			productType = "com.apple.product-type.application";
 		};
+		37F5828F3067650A006BF280 /* ClefNotesWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 37F582A03067650C006BF280 /* Build configuration list for PBXNativeTarget "ClefNotesWidgetsExtension" */;
+			buildPhases = (
+				37F5828C3067650A006BF280 /* Sources */,
+				37F5828D3067650A006BF280 /* Frameworks */,
+				37F5828E3067650A006BF280 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				37F582953067650A006BF280 /* ClefNotesWidgets */,
+			);
+			name = ClefNotesWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = ClefNotesWidgetsExtension;
+			productReference = 37F582903067650A006BF280 /* ClefNotesWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -122,11 +212,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2600;
+				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					37F1716C2DF91DFF009C3656 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					37F5828F3067650A006BF280 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -151,12 +244,20 @@
 			projectRoot = "";
 			targets = (
 				37F1716C2DF91DFF009C3656 /* Clef Notes */,
+				37F5828F3067650A006BF280 /* ClefNotesWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		37F1716B2DF91DFF009C3656 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		37F5828E3067650A006BF280 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -173,7 +274,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37F5828C3067650A006BF280 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		37F5829E3067650C006BF280 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 37F5828F3067650A006BF280 /* ClefNotesWidgetsExtension */;
+			targetProxy = 37F5829D3067650C006BF280 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		37F1717C2DF91E00009C3656 /* Debug */ = {
@@ -197,6 +313,7 @@
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "ClefNotes needs to access your Apple Music account to play songs in the app.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "ClefNotes would like to access your camera to take a photo for the student avatar.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ClefNotes needs to access your microphone to record audio within the app.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -244,6 +361,7 @@
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "ClefNotes needs to access your Apple Music account to play songs in the app.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "ClefNotes would like to access your camera to take a photo for the student avatar.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ClefNotes needs to access your microphone to record audio within the app.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -394,6 +512,90 @@
 			};
 			name = Release;
 		};
+		37F582A13067650C006BF280 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = K7Q9GG27V6;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ClefNotesWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Clef Notes";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.6;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.clefnotesapp.Clef-Notes.ClefNotesWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		37F582A23067650C006BF280 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = K7Q9GG27V6;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ClefNotesWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Clef Notes";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.6;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.clefnotesapp.Clef-Notes.ClefNotesWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -411,6 +613,15 @@
 			buildConfigurations = (
 				37F1717C2DF91E00009C3656 /* Debug */,
 				37F1717D2DF91E00009C3656 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		37F582A03067650C006BF280 /* Build configuration list for PBXNativeTarget "ClefNotesWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				37F582A13067650C006BF280 /* Debug */,
+				37F582A23067650C006BF280 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -42,24 +42,25 @@ class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
     // Encapsulated async purchase function
     func purchase(package: Package) async throws {
         isPurchasing = true
+        // Reset even when the purchase throws (including user cancellation).
+        defer { isPurchasing = false }
         let result = try await Purchases.shared.purchase(package: package)
-        
+
         // This check is now more direct and happens right after the purchase result
         if result.customerInfo.entitlements["ClefNotes Pro"]?.isActive == true {
             self.isSubscribed = true
         }
-        isPurchasing = false
     }
 
     // Encapsulated async restore function
     func restorePurchases() async throws {
         isPurchasing = true
+        defer { isPurchasing = false }
         let customerInfo = try await Purchases.shared.restorePurchases()
-        
+
         if customerInfo.entitlements["ClefNotes Pro"]?.isActive == true {
             self.isSubscribed = true
         }
-        isPurchasing = false
     }
 
 

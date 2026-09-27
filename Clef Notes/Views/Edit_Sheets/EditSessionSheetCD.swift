@@ -5,6 +5,7 @@ import TelemetryDeck
 struct EditSessionSheetCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var sessionTimerManager: SessionTimerManager
 
     @ObservedObject var session: PracticeSessionCD
 
@@ -128,7 +129,11 @@ struct EditSessionSheetCD: View {
         session.day = sessionDate
         session.location = selectedLocation
         session.instructor = selectedInstructor
-        session.durationMinutes = Int64(durationMinutes)
+        // Only overwrite when the minutes actually changed, so timed seconds aren't lost.
+        if Int64(durationMinutes) != session.durationMinutes {
+            session.setDuration(seconds: Int64(durationMinutes) * 60)
+            sessionTimerManager.durationWasEdited(for: session)
+        }
 
         do {
             try viewContext.save()

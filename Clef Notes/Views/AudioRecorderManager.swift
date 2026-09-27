@@ -34,6 +34,10 @@ class AudioRecorderManager: ObservableObject {
         elapsedTimer = nil
         audioRecorder?.stop()
         audioRecorder = nil
+        // Always hand the audio session back; otherwise AudioManager stays stuck on .recorder.
+        Task { @MainActor [audioManager] in
+            audioManager?.releaseSession(for: .recorder)
+        }
     }
 
     private func cleanup() {
@@ -162,8 +166,28 @@ class AudioRecorderManager: ObservableObject {
         audioManager?.releaseSession(for: .recorder)
     }
 
+    /// Stops any in-progress recording and throws the audio away.
+    func discardRecording() {
+        if isRecording {
+            stopRecording()
+        }
+        // reset() deletes the finished temp file.
+        reset()
+    }
+
+    /// Removes a finished recording's temporary file once its data has been saved or discarded.
+    static func deleteTemporaryFile(at url: URL) {
+        guard url.path.hasPrefix(FileManager.default.temporaryDirectory.path) else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Clears recorder state. Any finished recording has either been copied into Core Data
+    /// or abandoned by this point, so its temporary file is deleted.
     func reset() {
         cleanup()
+        if let url = finishedRecordingURL {
+            Self.deleteTemporaryFile(at: url)
+        }
         waveformSamples = []
         finishedRecordingURL = nil
         elapsedTime = 0

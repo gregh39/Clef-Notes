@@ -26,6 +26,10 @@ class NotificationManager {
     
     // Schedules a repeating daily reminder at the user-specified time.
     @MainActor func schedulePracticeReminder() {
+        // Permission is requested lazily, the first time a feature actually needs it.
+        // After the user has answered once, this call returns without prompting.
+        requestAuthorization()
+
         let content = UNMutableNotificationContent()
         content.title = "Practice Reminder"
         content.body = "Time for your daily practice session!"
@@ -52,6 +56,8 @@ class NotificationManager {
     }
     
     func sendAwardNotification(award: Award) {
+        requestAuthorization()
+
         let content = UNMutableNotificationContent()
         content.title = "Award Earned!"
         content.body = "You've earned the \(award.rawValue) award. Keep up the great work!"

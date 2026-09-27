@@ -21,16 +21,15 @@ struct Clef_NotesApp: App {
         TelemetryDeck.initialize(config: config)
 
         let context = PersistenceController.shared.persistentContainer.viewContext
-        _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager(context: context))
+        // Shared so Live Activity button intents can reach the running timer.
+        _sessionTimerManager = StateObject(wrappedValue: SessionTimerManager.shared)
         _usageManager = StateObject(wrappedValue: UsageManager(context: context))
-        NotificationManager.shared.requestAuthorization()
+        // Notification permission is requested lazily by NotificationManager when a feature needs it.
 
         try? Tips.configure([
-            .displayFrequency(.immediate), // Show tips immediately for testing
+            .displayFrequency(.daily),
             .datastoreLocation(.applicationDefault)
         ])
-        //try? Tips.resetDatastore()
-        //Tips.showAllTipsForTesting()
 
         // Run audio duration migration once
         migrateAudioDurationsIfNeeded(context: context)
@@ -47,16 +46,25 @@ struct Clef_NotesApp: App {
         
     var body: some Scene {
         WindowGroup {
-            ContentView()
-               .environment(\.managedObjectContext, PersistenceController.shared.persistentContainer.viewContext)
-               .environmentObject(AudioManager.shared)
-               .environmentObject(sessionTimerManager)
-               .environmentObject(subscriptionManager)
-               .environmentObject(usageManager)
-               .environmentObject(settingsManager)
-               .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
-               .tint(settingsManager.activeAccentColor) // <<< CHANGE THIS LINE
+            if let loadError = PersistenceController.shared.loadError {
+                StoreLoadErrorView(error: loadError)
+            } else {
+                mainContent
+            }
         }
+    }
+
+    private var mainContent: some View {
+        ContentView()
+            .environment(\.managedObjectContext, PersistenceController.shared.persistentContainer.viewContext)
+            .environmentObject(AudioManager.shared)
+            .environmentObject(sessionTimerManager)
+            .environmentObject(PracticeSessionManager.shared)
+            .environmentObject(subscriptionManager)
+            .environmentObject(usageManager)
+            .environmentObject(settingsManager)
+            .preferredColorScheme(settingsManager.colorSchemeSetting.colorScheme)
+            .tint(settingsManager.activeAccentColor)
     }
     
     private static func getAPIKey(named keyName: String) -> String {

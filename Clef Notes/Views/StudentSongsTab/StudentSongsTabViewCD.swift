@@ -7,6 +7,20 @@ struct StudentSongsTabViewCD: View {
     
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var audioManager: AudioManager
+
+    // Fetched (rather than read from `student.songs`) so the list regroups as soon as any
+    // song changes, e.g. when its status is edited. Observing the student alone only
+    // refreshes when the student object itself changes.
+    @FetchRequest private var songs: FetchedResults<SongCD>
+
+    init(student: StudentCD, onAddSong: @escaping () -> Void) {
+        self.student = student
+        self.onAddSong = onAddSong
+        _songs = FetchRequest<SongCD>(
+            sortDescriptors: [NSSortDescriptor(keyPath: \SongCD.title, ascending: true)],
+            predicate: NSPredicate(format: "student == %@", student)
+        )
+    }
     
     // State for sorting and filtering
     @State private var selectedSort: SongSortOption = .title
@@ -26,12 +40,12 @@ struct StudentSongsTabViewCD: View {
 
     // Computed property for available piece types to build the filter bar
     private var availablePieceTypes: [PieceType] {
-        let allTypes = student.songsArray.compactMap { $0.pieceType }
+        let allTypes = songs.compactMap { $0.pieceType }
         return Array(Set(allTypes)).sorted { $0.rawValue < $1.rawValue }
     }
     
     private var availableCollections: [CollectionCD] {
-        let allCollections = student.songsArray.compactMap { $0.collection }
+        let allCollections = songs.compactMap { $0.collection }
         return Array(Set(allCollections)).sorted { ($0.name ?? "") < ($1.name ?? "") }
     }
     
@@ -47,7 +61,7 @@ struct StudentSongsTabViewCD: View {
     // Computed property that handles sorting AND filtering
     private var filteredAndSortedSongs: [SongCD] {
         // Start with the base array
-        var filteredSongs = Array(student.songs as? Set<SongCD> ?? [])
+        var filteredSongs = Array(songs)
         
         if !showArchived {
             filteredSongs = filteredSongs.filter { !$0.archived }
@@ -88,7 +102,7 @@ struct StudentSongsTabViewCD: View {
     
     var body: some View {
         Group {
-            if student.songsArray.isEmpty {
+            if songs.isEmpty {
                 ContentUnavailableView {
                     Label("No Songs Added", image: "add.song")
                 } description: {
@@ -113,6 +127,10 @@ struct StudentSongsTabViewCD: View {
                 },
                 secondaryButton: .cancel()
             )
+        }
+        // Presents the swipe-action "Edit" (rows set editingSongForEditSheet).
+        .sheet(item: $editingSongForEditSheet) { song in
+            EditSongSheetCD(song: song)
         }
         .sheet(isPresented: $showingFilterSheet) {
             SongFilterSheet(

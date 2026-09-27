@@ -40,10 +40,15 @@ struct MetronomeSectionView: View {
     @AppStorage("metronomeTimeSignatureID") private var timeSignatureID: String = "4/4"
     @AppStorage("metronomeHighlightDownbeat") private var highlightDownbeat: Bool = true
 
-    @State private var bpm: Double = 60.0
-    @State private var isPlaying: Bool = false
-    @State private var timer: Timer?
     @State private var beatCount: Int = 0
+    /// Shared engine, so tempo is remembered and it can keep playing after this screen closes.
+    @ObservedObject private var engine = PracticeSessionManager.shared.metronome
+
+    /// When false (practice bar sheet), the metronome keeps playing after this view goes away;
+    /// the practice bar shows that it's on and can reopen it.
+    var stopsOnDisappear: Bool = true
+
+    private var isPlaying: Bool { engine.isRunning }
     
     @State private var showingTimeSignatureSheet = false
     
@@ -98,30 +103,28 @@ struct MetronomeSectionView: View {
                 .padding(.bottom)
 
                 HStack {
-                    Button(action: { if bpm > tempoRange.lowerBound { bpm -= 1 } }) {
+                    Button(action: { if engine.bpm > tempoRange.lowerBound { engine.bpm -= 1 } }) {
                         Image(systemName: "minus.circle.fill")
                     }
                     .font(.system(size: 40))
-                    .foregroundColor(bpm > tempoRange.lowerBound ? settingsManager.activeAccentColor : .gray) // <<< USE THEME COLOR
-                    .disabled(bpm <= tempoRange.lowerBound)
+                    .foregroundColor(engine.bpm > tempoRange.lowerBound ? settingsManager.activeAccentColor : .gray) // <<< USE THEME COLOR
+                    .disabled(engine.bpm <= tempoRange.lowerBound)
                     
-                    Text("\(Int(bpm)) BPM")
+                    Text("\(Int(engine.bpm)) BPM")
                         .font(.system(size: 24, weight: .semibold, design: .monospaced))
                         .foregroundColor(.primary)
                         .frame(width: 130)
 
-                    Button(action: { if bpm < tempoRange.upperBound { bpm += 1 } }) {
+                    Button(action: { if engine.bpm < tempoRange.upperBound { engine.bpm += 1 } }) {
                         Image(systemName: "plus.circle.fill")
                     }
                     .font(.system(size: 40))
-                    .foregroundColor(bpm < tempoRange.upperBound ? settingsManager.activeAccentColor : .gray) // <<< USE THEME COLOR
-                    .disabled(bpm >= tempoRange.upperBound)
+                    .foregroundColor(engine.bpm < tempoRange.upperBound ? settingsManager.activeAccentColor : .gray) // <<< USE THEME COLOR
+                    .disabled(engine.bpm >= tempoRange.upperBound)
                 }
-                .onChange(of: bpm) {
-                    if isPlaying { rescheduleTimer(for: bpm) }
-                }
-                
-                Slider(value: $bpm, in: tempoRange, step: 1)
+
+                // Tempo changes apply from the next unscheduled beat; no restart needed.
+                Slider(value: $engine.bpm, in: tempoRange, step: 1)
                     .tint(settingsManager.activeAccentColor) // <<< USE THEME COLOR
                     .padding(.horizontal)
             }
@@ -134,7 +137,13 @@ struct MetronomeSectionView: View {
             })
         }
         .navigationTitle("Metronome")
-        .onDisappear(perform: stopMetronome)
+        .onAppear(perform: syncEngineSettings)
+        .onChange(of: timeSignatureID) { syncEngineSettings() }
+        .onChange(of: highlightDownbeat) { syncEngineSettings() }
+        .onChange(of: engine.beatPulse) { animateBeat() }
+        .onDisappear {
+            if stopsOnDisappear { stopMetronome() }
+        }
         .sheet(isPresented: $showingTimeSignatureSheet) {
             TimeSignatureSelectionSheet(selectedID: $timeSignatureID, highlightDownbeat: $highlightDownbeat)
                 .presentationDetents([.medium])
@@ -142,42 +151,32 @@ struct MetronomeSectionView: View {
     }
 
     private func toggleMetronome() {
-        isPlaying.toggle()
-        if isPlaying {
+        if !isPlaying {
             let hasSession = audioManager.requestSession(for: .metronome, category: .playback, options: .mixWithOthers)
-            guard hasSession else {
-                isPlaying = false
-                return
-            }
-            TelemetryDeck.signal("metronome_started", parameters: ["bpm": "\(Int(bpm))"])
+            guard hasSession else { return }
+            TelemetryDeck.signal("metronome_started", parameters: ["bpm": "\(Int(engine.bpm))"])
             startMetronome()
         } else {
-            TelemetryDeck.signal("metronome_stopped", parameters: ["bpm": "\(Int(bpm))"])
+            TelemetryDeck.signal("metronome_stopped", parameters: ["bpm": "\(Int(engine.bpm))"])
             stopMetronome()
         }
     }
 
+    private func syncEngineSettings() {
+        engine.beatsPerBar = selectedTimeSignature.beats
+        engine.accentDownbeat = highlightDownbeat
+    }
+
     private func startMetronome() {
         beatCount = 0
-        let timeInterval = 60.0 / bpm
-        timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
-            self.performTick(with: timeInterval)
-        }
-        timer?.fire()
-    }
-    
-    private func rescheduleTimer(for newBpm: Double) {
-        timer?.invalidate()
-        let timeInterval = 60.0 / newBpm
-        timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
-            self.performTick(with: timeInterval)
+        syncEngineSettings()
+        if !engine.start() {
+            audioManager.releaseSession(for: .metronome)
         }
     }
 
     private func stopMetronome() {
-        timer?.invalidate()
-        timer = nil
-        isPlaying = false
+        engine.stop()
         beatCount = 0
         withAnimation {
             pulseRadius = 0
@@ -185,16 +184,13 @@ struct MetronomeSectionView: View {
         }
         audioManager.releaseSession(for: .metronome)
     }
-    
-    private func performTick(with timeInterval: TimeInterval) {
-        beatCount = (beatCount % selectedTimeSignature.beats) + 1
-        
-        if beatCount == 1 && highlightDownbeat {
-            audioManager.playMetronomeDownbeat()
-        } else {
-            audioManager.playMetronomeUpbeat()
-        }
-        
+
+    /// Runs when the engine reports that a click has become audible.
+    private func animateBeat() {
+        guard engine.isRunning else { return }
+        beatCount = engine.currentBeat
+        let timeInterval = engine.beatInterval
+
         switch visualizerType {
         case .pulse:
             withAnimation(.easeOut(duration: 0.1)) {
@@ -289,17 +285,33 @@ private struct PulseVisualizer: View {
     
     private var isDownbeat: Bool { beatCount == 1 && highlightDownbeat }
 
+    /// Radius of the pulse at full size; `pulseRadius` animates between 0 and this value.
+    private let maxRadius: CGFloat = 150
+
+    /// 0 at rest, 1 at the peak of a beat.
+    private var progress: CGFloat { min(max(pulseRadius / maxRadius, 0), 1) }
+
     var body: some View {
+        // The gradient itself stays fixed. Only scale and opacity change, because SwiftUI
+        // animates those smoothly; animating the gradient's endRadius directly doesn't
+        // interpolate and can leave a solid disc on screen.
+        let color = isDownbeat ? Color.red : accentColor
+        // EllipticalGradient sizes itself to the shape, so the glow can shrink to fit
+        // smaller layouts (e.g. inside the session detail) without clipping.
         Circle()
             .fill(
-                RadialGradient(
-                    gradient: Gradient(colors: [isDownbeat ? .red : accentColor, .clear]),
+                EllipticalGradient(
+                    colors: [color, color.opacity(0)],
                     center: .center,
-                    startRadius: 0,
-                    endRadius: pulseRadius
+                    startRadiusFraction: 0,
+                    endRadiusFraction: 0.5
                 )
             )
-            //.frame(width: , height: 200)
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: maxRadius * 2, maxHeight: maxRadius * 2)
+            .scaleEffect(progress)
+            .opacity(progress)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

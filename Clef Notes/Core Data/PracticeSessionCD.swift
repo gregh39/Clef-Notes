@@ -37,7 +37,23 @@ extension PracticeSessionCD {
     @NSManaged public var plays: NSSet?
     @NSManaged public var recordings: NSSet?
     @NSManaged public var student: StudentCD?
-    
+    /// Precise duration (added in model v4). `durationMinutes` is kept in sync for display,
+    /// stats, and older app versions that only know about minutes.
+    @NSManaged public var durationSeconds: Int64
+
+    /// Session length in seconds. Falls back to `durationMinutes` for records created before v4,
+    /// or edited by an older app version (minutes no longer agree with seconds).
+    public var totalSeconds: Int64 {
+        durationSeconds / 60 == durationMinutes ? durationSeconds : durationMinutes * 60
+    }
+
+    /// Writes both duration fields.
+    public func setDuration(seconds: Int64) {
+        let clamped = max(0, seconds)
+        durationSeconds = clamped
+        durationMinutes = clamped / 60
+    }
+
     public var location: LessonLocation? {
         get {
             guard let rawValue = locationRaw else { return nil }
