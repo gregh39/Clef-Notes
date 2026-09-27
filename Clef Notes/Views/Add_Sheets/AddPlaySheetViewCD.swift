@@ -24,8 +24,15 @@ struct AddPlaySheetViewCD: View {
         self._showingAddPlaySheet = showingAddPlaySheet
         self._showingAddSongSheet = showingAddSongSheet
         
-        let studentID = session.student?.id
-        let predicate = NSPredicate(format: "student.id == %@", (studentID ?? UUID()) as NSUUID)
+        // Match on the student object itself, not its UUID. Duplicate students sharing an id
+        // could otherwise surface songs from another CloudKit zone, and linking a play to one
+        // corrupts the share's object graph.
+        let predicate: NSPredicate
+        if let student = session.student {
+            predicate = NSPredicate(format: "student == %@", student)
+        } else {
+            predicate = NSPredicate(value: false)
+        }
         
         self._songs = FetchRequest<SongCD>(
             sortDescriptors: [NSSortDescriptor(keyPath: \SongCD.title, ascending: true)],
