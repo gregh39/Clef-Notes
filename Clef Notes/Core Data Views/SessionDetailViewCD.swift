@@ -14,7 +14,7 @@ struct SessionDetailViewCD: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var sessionTimerManager: SessionTimerManager
     @EnvironmentObject var practiceSessionManager: PracticeSessionManager
-    @AppStorage("selectedAccentColor") private var accentColor: AccentColor = .blue
+    @EnvironmentObject var settingsManager: SettingsManager
 
     @State private var showingAddPlaySheet = false
     @State private var showingAddSongSheet = false
@@ -190,8 +190,8 @@ struct SessionDetailViewCD: View {
                 Image(systemName: sessionTimerManager.isPaused ? "play.fill" : "pause.fill")
                     .font(.title3)
                     .frame(width: 40, height: 40)
-                    .background(accentColor.color.opacity(0.2))
-                    .foregroundColor(accentColor.color)
+                    .background(settingsManager.activeAccentColor.opacity(0.2))
+                    .foregroundColor(settingsManager.activeAccentColor)
                     .cornerRadius(8)
             }
             .buttonStyle(.plain)

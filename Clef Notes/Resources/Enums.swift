@@ -67,7 +67,7 @@ public enum Award: String, CaseIterable, Identifiable {
         case .hundredPlays: "Accumulate 100 total plays across all songs."
         case .songMastery: "Complete the play goal for any song."
         case .perfectWeek: "Practice every day of a calendar week."
-        case .weekendWarrior: "Practice on both Saturday and Sunday in the same week."
+        case .weekendWarrior: "Practice on both Saturday and Sunday of the same weekend."
         case .dedicatedHour: "Log a single session that lasts 60 minutes or more."
         case .marathonMusician: "Accumulate 10 hours of total practice time."
         case .repertoireBuilder: "Add 10 different songs to a student's list."

@@ -5,6 +5,11 @@ import SwiftUI
 struct ThemeView: View {
     @EnvironmentObject var settingsManager: SettingsManager
 
+    /// Appearance mode is free. Accent colors beyond the default, the custom color, and the
+    /// alternate app icons are Pro; while locked, tapping them shows the paywall.
+    @State private var showingPaywall = false
+
+    private var isLocked: Bool { !settingsManager.proAppearanceUnlocked }
 
     // Define adaptive columns for the grids
     private let colorColumns = [GridItem(.adaptive(minimum: 60))]
@@ -41,10 +46,18 @@ struct ThemeView: View {
                         ForEach(AccentColor.allCases.filter { $0 != .custom }) { color in
                             colorSwatch(for: color)
                         }
-                        
-                        customColorSwatch()
+
+                        if isLocked {
+                            lockedCustomColorSwatch()
+                        } else {
+                            customColorSwatch()
+                        }
                     }
                     .padding(.horizontal)
+
+                    if isLocked {
+                        proFooter
+                    }
                 }
                 
                 Divider()
@@ -68,6 +81,9 @@ struct ThemeView: View {
             }
             .padding(.vertical)
         }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+        }
         .navigationTitle("Theme & Appearance")
         .navigationBarTitleDisplayMode(.inline)
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
@@ -75,15 +91,20 @@ struct ThemeView: View {
 
     /// A view for a single predefined color swatch.
     private func colorSwatch(for color: AccentColor) -> some View {
-        Button {
-            settingsManager.accentColor = color
+        let requiresPro = isLocked && color != SettingsManager.freeAccentColor
+        return Button {
+            if requiresPro {
+                showingPaywall = true
+            } else {
+                settingsManager.accentColor = color
+            }
         } label: {
             ZStack {
                 Circle()
                     .fill(color.color ?? .clear)
                     .frame(width: 50, height: 50)
-                
-                if settingsManager.accentColor == color {
+
+                if settingsManager.effectiveAccentColor == color {
                     Image(systemName: "checkmark")
                         .font(.headline.bold())
                         .foregroundColor(.white)
@@ -93,7 +114,37 @@ struct ThemeView: View {
                 Circle()
                     .stroke(Color.secondary.opacity(0.5), lineWidth: 1)
             )
+            .overlay(alignment: .bottomTrailing) {
+                if requiresPro { ProLockBadge() }
+            }
         }
+        .accessibilityLabel(requiresPro ? "\(color.rawValue), requires ClefNotes Pro" : color.rawValue)
+    }
+
+    /// Custom color entry point shown while Pro appearance is locked.
+    private func lockedCustomColorSwatch() -> some View {
+        Button {
+            showingPaywall = true
+        } label: {
+            Image(systemName: "eyedropper.halffull")
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .frame(width: 50, height: 50)
+                .background(Color(UIColor.secondarySystemGroupedBackground), in: Circle())
+                .overlay(Circle().stroke(Color.secondary.opacity(0.5), lineWidth: 1))
+                .overlay(alignment: .bottomTrailing) { ProLockBadge() }
+        }
+        .accessibilityLabel("Custom color, requires ClefNotes Pro")
+    }
+
+    private var proFooter: some View {
+        Button {
+            showingPaywall = true
+        } label: {
+            Label("More colors and app icons with ClefNotes Pro", systemImage: "crown.fill")
+                .font(.footnote)
+        }
+        .padding(.horizontal)
     }
     
     /// A view that acts as a color swatch but is actually a `ColorPicker`.
@@ -130,8 +181,14 @@ struct ThemeView: View {
     
     /// A view for a single app icon swatch.
     private func iconSwatch(for icon: AppIcon) -> some View {
-        Button {
-            settingsManager.appIcon = icon
+        let requiresPro = isLocked && icon != SettingsManager.freeAppIcon
+        let isSelected = settingsManager.effectiveAppIcon == icon
+        return Button {
+            if requiresPro {
+                showingPaywall = true
+            } else {
+                settingsManager.appIcon = icon
+            }
         } label: {
             VStack(spacing: 8) {
                 Image(icon.preview)
@@ -141,8 +198,11 @@ struct ThemeView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(settingsManager.appIcon == icon ? settingsManager.activeAccentColor : Color.secondary.opacity(0.5), lineWidth: settingsManager.appIcon == icon ? 3 : 1)
+                            .stroke(isSelected ? settingsManager.activeAccentColor : Color.secondary.opacity(0.5), lineWidth: isSelected ? 3 : 1)
                     )
+                    .overlay(alignment: .bottomTrailing) {
+                        if requiresPro { ProLockBadge().offset(x: 4, y: 4) }
+                    }
                 
               /*  Text(icon.rawValue)
                     .font(.caption)
@@ -150,6 +210,18 @@ struct ThemeView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(requiresPro ? "App icon, requires ClefNotes Pro" : "App icon")
+    }
+}
+
+/// Small lock shown on Pro-only swatches.
+private struct ProLockBadge: View {
+    var body: some View {
+        Image(systemName: "lock.fill")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(4)
+            .background(Color.black.opacity(0.6), in: Circle())
     }
 }
 
