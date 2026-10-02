@@ -110,6 +110,9 @@ struct SessionDetailViewCD: View {
                 // Opening a session attaches the practice bar to it, timed or not.
                 practiceSessionManager.open(session)
             }
+            .onDisappear {
+                practiceSessionManager.sessionScreenDidDisappear(session)
+            }
             .safeAreaInset(edge: .bottom) {
                 // On iOS 26.1+ the bar is the tab view's bottom accessory instead.
                 if #unavailable(iOS 26.1) {

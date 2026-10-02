@@ -23,6 +23,9 @@ final class PracticeSessionManager: ObservableObject {
     @Published private(set) var currentSession: PracticeSessionCD?
     /// Tool sheet currently presented from the practice bar.
     @Published var presentedTool: Tool?
+    /// The session whose detail screen is on screen right now, if any. The practice bar uses
+    /// it to decide whether tapping it should navigate back to the session.
+    @Published private(set) var visibleSessionScreen: PracticeSessionCD?
 
     /// Shared so it keeps playing after its sheet is dismissed.
     let metronome = MetronomeEngine()
@@ -58,6 +61,14 @@ final class PracticeSessionManager: ObservableObject {
     func open(_ session: PracticeSessionCD) {
         if currentSession != session {
             currentSession = session
+        }
+        visibleSessionScreen = session
+    }
+
+    /// Call when a session screen goes away (popped, or its tab was switched away from).
+    func sessionScreenDidDisappear(_ session: PracticeSessionCD) {
+        if visibleSessionScreen == session {
+            visibleSessionScreen = nil
         }
     }
 
@@ -106,6 +117,9 @@ final class PracticeSessionManager: ObservableObject {
         if let recordingSession, deleted.contains(recordingSession) {
             recorder.discardRecording()
             self.recordingSession = nil
+        }
+        if let visibleSessionScreen, deleted.contains(visibleSessionScreen) {
+            self.visibleSessionScreen = nil
         }
         if let session = currentSession, deleted.contains(session) {
             stopMetronome()
