@@ -9,19 +9,16 @@ struct PracticeBarView: View {
     @ObservedObject var session: PracticeSessionCD
     /// Compact layout used when the bar is shown inline next to a minimized tab bar.
     var compact: Bool = false
+    /// Navigates back to the session screen. Nil when there's nowhere to go (you're already
+    /// on it), which leaves the title area non-interactive.
+    var onOpenSession: (() -> Void)? = nil
 
     @EnvironmentObject private var manager: PracticeSessionManager
     @EnvironmentObject private var sessionTimerManager: SessionTimerManager
 
     var body: some View {
         HStack(spacing: 2) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.title ?? "Practice Session")
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                PracticeBarStatusLine(session: session, recorder: manager.recorder)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            titleArea
 
             if !compact {
                 timerButton
@@ -42,6 +39,27 @@ struct PracticeBarView: View {
         .buttonStyle(PracticeBarButtonStyle())
         .padding(.leading, 16)
         .padding(.trailing, 8)
+    }
+
+    @ViewBuilder
+    private var titleArea: some View {
+        let label = VStack(alignment: .leading, spacing: 2) {
+            Text(session.title ?? "Practice Session")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+            PracticeBarStatusLine(session: session, recorder: manager.recorder)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        if let onOpenSession {
+            Button(action: onOpenSession) {
+                label
+            }
+            .buttonStyle(PracticeBarTitleButtonStyle())
+            .accessibilityHint("Opens the session")
+        } else {
+            label
+        }
     }
 
     private var isTimingThisSession: Bool { sessionTimerManager.activeSession == session }
@@ -88,6 +106,16 @@ private struct PracticeBarButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.5 : 1)
+    }
+}
+
+/// The title area fills the bar's spare width, so the whole region is tappable.
+private struct PracticeBarTitleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.5 : 1)
     }
@@ -220,10 +248,11 @@ private struct CloseBarButton: View {
 @available(iOS 26.0, *)
 struct PracticeBarAccessory: View {
     @ObservedObject var session: PracticeSessionCD
+    var onOpenSession: (() -> Void)?
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
 
     var body: some View {
-        PracticeBarView(session: session, compact: placement == .inline)
+        PracticeBarView(session: session, compact: placement == .inline, onOpenSession: onOpenSession)
     }
 }
 
@@ -231,12 +260,14 @@ struct PracticeBarAccessory: View {
 /// On iOS 26.0 the session screen shows the floating bar instead (see SessionDetailViewCD).
 struct PracticeBarAccessoryModifier: ViewModifier {
     let session: PracticeSessionCD?
+    /// Tapping the bar's title area brings the session back up (nil while it's on screen).
+    var onOpenSession: (() -> Void)? = nil
 
     func body(content: Content) -> some View {
         if #available(iOS 26.1, *) {
             content.tabViewBottomAccessory(isEnabled: session != nil) {
                 if let session {
-                    PracticeBarAccessory(session: session)
+                    PracticeBarAccessory(session: session, onOpenSession: onOpenSession)
                 }
             }
         } else {

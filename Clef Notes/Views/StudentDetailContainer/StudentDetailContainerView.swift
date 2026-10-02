@@ -61,6 +61,27 @@ struct StudentDetailNavigationView: View {
         return session
     }
 
+    /// Tap action for the tab view's practice bar: switches to the Sessions tab and shows the
+    /// session. Nil while the session screen is already showing.
+    private var openPracticeSessionTab: (() -> Void)? {
+        guard let session = practiceSession,
+              practiceSessionManager.visibleSessionScreen != session else { return nil }
+        return {
+            selectedTab = 0
+            sessionsPath = NavigationPath([session])
+        }
+    }
+
+    /// Tap action for the floating bar before iOS 26. That bar only shows on the
+    /// student's root screen, so the session is never on screen when it's tapped.
+    private var openPracticeSessionSection: (() -> Void)? {
+        guard let session = practiceSession else { return nil }
+        return {
+            selectedSection = .sessions
+            path = NavigationPath([session])
+        }
+    }
+
     var body: some View {
         content
             // Tool sheets and the recording save sheet, available from every tab.
@@ -170,7 +191,7 @@ struct StudentDetailNavigationView: View {
                 }
                 // Practice bar: shown once a session has been opened, and stays above the tab
                 // bar while you move between tabs.
-                .modifier(PracticeBarAccessoryModifier(session: practiceSession))
+                .modifier(PracticeBarAccessoryModifier(session: practiceSession, onOpenSession: openPracticeSessionTab))
                 // Shared sheets
                 .sheet(isPresented: $showingAddSessionSheet) {
                     AddSessionSheetCD(student: student) { session in
@@ -245,7 +266,7 @@ struct StudentDetailNavigationView: View {
                     .safeAreaInset(edge: .bottom) {
                         VStack(spacing: 0) {
                             if let session = practiceSession {
-                                PracticeBarView(session: session)
+                                PracticeBarView(session: session, onOpenSession: openPracticeSessionSection)
                                     .floatingPracticeBarStyle()
                             }
                             BottomNavBar(selectedSection: $selectedSection)
@@ -311,7 +332,7 @@ struct StudentDetailNavigationView: View {
                     .safeAreaInset(edge: .bottom) {
                         VStack(spacing: 0) {
                             if let session = practiceSession {
-                                PracticeBarView(session: session)
+                                PracticeBarView(session: session, onOpenSession: openPracticeSessionSection)
                                     .floatingPracticeBarStyle()
                             }
                             BottomNavBar(selectedSection: $selectedSection)
