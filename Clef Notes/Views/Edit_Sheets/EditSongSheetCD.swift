@@ -13,7 +13,10 @@ struct EditSongSheetCD: View {
     
     @ObservedObject var song: SongCD
     
-    @FetchRequest(entity: CollectionCD.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CollectionCD.name, ascending: true)]) var collections: FetchedResults<CollectionCD>
+    /// The song's student's collections, plus the song's current collection so the picker can
+    /// still show it if it's an older collection with no student. Linking a song to another
+    /// student's collection would put related records in two CloudKit zones and stop sync.
+    @FetchRequest var collections: FetchedResults<CollectionCD>
     @State private var archived: Bool = false
     @State private var selectedCollection: CollectionCD? = nil
 
@@ -33,6 +36,22 @@ struct EditSongSheetCD: View {
 
     @State private var showingAddCollectionSheet = false
     @State private var newCollectionName = ""
+
+    init(song: SongCD) {
+        self.song = song
+
+        var predicates: [NSPredicate] = []
+        if let student = song.student {
+            predicates.append(NSPredicate(format: "student == %@", student))
+        }
+        if let current = song.collection {
+            predicates.append(NSPredicate(format: "SELF == %@", current))
+        }
+        _collections = FetchRequest<CollectionCD>(
+            sortDescriptors: [NSSortDescriptor(keyPath: \CollectionCD.name, ascending: true)],
+            predicate: predicates.isEmpty ? NSPredicate(value: false) : NSCompoundPredicate(orPredicateWithSubpredicates: predicates)
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -114,6 +133,7 @@ struct EditSongSheetCD: View {
                             }
                         }
                         Button("Add New Collection") { showingAddCollectionSheet = true }
+                            .disabled(song.student == nil)
                     }
                     
                     Section("Practice Goals") {
@@ -185,9 +205,13 @@ struct EditSongSheetCD: View {
                     TextField("Collection Name", text: $newCollectionName)
                 }
                 SaveButtonView(title: "Add Collection", action: {
-                    let newCollection = CollectionCD(context: viewContext)
-                    newCollection.name = newCollectionName
-                    try? viewContext.save()
+                    guard let student = song.student else { return }
+                    let newCollection = CollectionCD.create(named: newCollectionName, for: student, in: viewContext)
+                    do {
+                        try viewContext.save()
+                    } catch {
+                        print("Failed to save new collection: \(error)")
+                    }
                     selectedCollection = newCollection
                     showingAddCollectionSheet = false
                     newCollectionName = ""

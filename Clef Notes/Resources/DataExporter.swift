@@ -50,6 +50,7 @@ class DataExporter {
             var d: [String: Any] = [:]
             d["objectID"]  = col.objectID.uriRepresentation().absoluteString
             d["name"]      = col.name ?? ""
+            d["studentID"] = col.student?.objectID.uriRepresentation().absoluteString ?? NSNull()
             d["songIDs"]   = (col.songs as? Set<SongCD>)?.map {
                 $0.objectID.uriRepresentation().absoluteString
             } ?? []

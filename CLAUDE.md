@@ -4,7 +4,7 @@
 Music practice tracker for iOS. Teachers log students, practice sessions, songs, plays, notes, and recordings. Includes a metronome, pitch tuner, pitch ear-training game, stats/streaks, awards, and CloudKit sharing.
 
 - **Bundle ID:** `com.clefnotesapp.Clef-Notes`
-- **Current version:** 1.2 (build 5)
+- **Current version:** 1.3.1 (build 5)
 - **Deployment target:** iOS 17.0 (project setting); some views use `#available(iOS 18, *)` / `#available(iOS 26, *)` guards
 - **Previous App Store version:** 1.1 — this codebase is a large update not yet released
 
@@ -26,9 +26,10 @@ Music practice tracker for iOS. Teachers log students, practice sessions, songs,
 - `PersistenceController.shared` holds the CloudKit container. `privatePersistentStore` and `sharedPersistentStore` are **optional** (set asynchronously in the `loadPersistentStores` callback — do not force-unwrap them).
 
 ## Data model (Core Data entities)
-Current model version: `ClefNotesCD_v4`. All `StudentCD` to-many relationships cascade on delete.
+Current model version: `ClefNotesCD_v5`. All `StudentCD` to-many relationships cascade on delete.
 
-`StudentCD` → has many `PracticeSessionCD`, `SongCD`, `NoteCD`, `InstructorCD`, `AudioRecordingCD`, `MediaReferenceCD`, `EarnedAwardCD`  
+`StudentCD` → has many `PracticeSessionCD`, `SongCD`, `NoteCD`, `InstructorCD`, `AudioRecordingCD`, `MediaReferenceCD`, `EarnedAwardCD`, `CollectionCD`  
+`CollectionCD` → belongs to one `StudentCD` (v5; older collections may have none), has many `SongCD`  
 `PracticeSessionCD` → has many `PlayCD`, `NoteCD`, `AudioRecordingCD`  
 `PlayCD` → belongs to one `SongCD`  
 `SongCD` → has many `PlayCD`; observes context saves via Combine in `observeContext()`
@@ -66,7 +67,10 @@ The SIL performance inliner (`isCallerAndCalleeLayoutConstraintsCompatible`) cra
 - The session screen is a plain `Form` with a large title. Don't switch its content between sections: swapping the scroll view broke the large title.
 
 ### Durations
-Model **v4** (current) adds `PracticeSessionCD.durationSeconds`. Always write durations with `setDuration(seconds:)`, which also keeps `durationMinutes` in sync for older app versions and stats. Read them with `totalSeconds`. **Before release:** deploy the CloudKit schema to Production so `durationSeconds` syncs.
+Model **v4** adds `PracticeSessionCD.durationSeconds`. Always write durations with `setDuration(seconds:)`, which also keeps `durationMinutes` in sync for older app versions and stats. Read them with `totalSeconds`. **Before release:** deploy the CloudKit schema to Production so `durationSeconds` syncs.
+
+### CloudKit zones and collections
+Every record linked to a shared student must live in that student's share zone. A record whose related records span two zones makes `NSCloudKitMirroringDelegate` fail with "Object graph corruption … assigned to multiple zones" and **all** private-store sync stops. Model **v5** adds `CollectionCD.student`: always create collections with `CollectionCD.create(named:for:in:)`, which sets the student and assigns the student's store before the first save, and only offer a student's own collections in pickers. Never save a collection or any other student-owned object before it's linked to its student. `CollectionCD.assignOwnersToLegacyCollections(in:)` runs every launch to backfill older collections. Side menu → Manage Collections (`CollectionsListView(student:)`) deletes collections; songs are kept. **Before release:** deploy the CloudKit schema to Production so `CollectionCD.student` syncs.
 
 ## Patterns to follow
 - Add/Edit sheets use local `@State` copies of fields, write back to Core Data only in the save action.
