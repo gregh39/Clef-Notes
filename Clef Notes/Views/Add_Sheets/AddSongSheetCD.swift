@@ -48,13 +48,23 @@ struct AddSongSheetCD: View {
     @State private var selectedImageItem: PhotosPickerItem?
     @State private var selectedImageData: Data?
     
-    @FetchRequest(entity: CollectionCD.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CollectionCD.name, ascending: true)]) var collections: FetchedResults<CollectionCD>
+    /// Only this student's collections. Linking a song to another student's collection would put
+    /// related records in two CloudKit zones and stop sync.
+    @FetchRequest var collections: FetchedResults<CollectionCD>
     
     @State private var archived: Bool = false
     @State private var selectedCollection: CollectionCD? = nil
 
     @State private var showingAddCollectionSheet = false
     @State private var newCollectionName = ""
+
+    init(student: StudentCD) {
+        self.student = student
+        _collections = FetchRequest<CollectionCD>(
+            sortDescriptors: [NSSortDescriptor(keyPath: \CollectionCD.name, ascending: true)],
+            predicate: NSPredicate(format: "student == %@", student)
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -214,9 +224,12 @@ struct AddSongSheetCD: View {
                     TextField("Collection Name", text: $newCollectionName)
                 }
                 SaveButtonView(title: "Add Collection", action: {
-                    let newCollection = CollectionCD(context: viewContext)
-                    newCollection.name = newCollectionName
-                    try? viewContext.save()
+                    let newCollection = CollectionCD.create(named: newCollectionName, for: student, in: viewContext)
+                    do {
+                        try viewContext.save()
+                    } catch {
+                        print("Failed to save new collection: \(error)")
+                    }
                     selectedCollection = newCollection
                     showingAddCollectionSheet = false
                     newCollectionName = ""

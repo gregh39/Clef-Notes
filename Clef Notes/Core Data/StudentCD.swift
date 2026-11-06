@@ -35,6 +35,7 @@ extension StudentCD {
     @NSManaged public var sessionCreations: Int64
     @NSManaged public var songCreations: Int64
     @NSManaged public var earnedAwards: NSSet?
+    @NSManaged public var collections: NSSet?
 
     @NSManaged public var suzukiStudent: NSNumber? // Optional Bool
     @NSManaged public var suzukiBookRaw: String? // Optional raw SuzukiBook enum value

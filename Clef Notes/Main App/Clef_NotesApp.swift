@@ -31,6 +31,10 @@ struct Clef_NotesApp: App {
 
         // Run audio duration migration once
         migrateAudioDurationsIfNeeded(context: context)
+
+        // Every launch: collections created before model v5 (or by an older version on
+        // another device) have no student yet.
+        CollectionCD.assignOwnersToLegacyCollections(in: context)
     }
 
     private func migrateAudioDurationsIfNeeded(context: NSManagedObjectContext) {

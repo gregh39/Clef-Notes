@@ -303,6 +303,9 @@ private struct AppSettingsView: View {
                 NavigationLink(destination: InstructorListView(student: s)) {
                     Label("Manage Instructors", systemImage: "person.2.fill")
                 }
+                NavigationLink(destination: CollectionsListView(student: s)) {
+                    Label("Manage Collections", systemImage: "rectangle.stack.fill")
+                }
             }
         }
     }
