@@ -4,7 +4,7 @@
 Music practice tracker for iOS. Teachers log students, practice sessions, songs, plays, notes, and recordings. Includes a metronome, pitch tuner, pitch ear-training game, stats/streaks, awards, and CloudKit sharing.
 
 - **Bundle ID:** `com.clefnotesapp.Clef-Notes`
-- **Current version:** 1.2 (build 5)
+- **Current version:** 1.3.1 (build 5)
 - **Deployment target:** iOS 17.0 (project setting); some views use `#available(iOS 18, *)` / `#available(iOS 26, *)` guards
 - **Previous App Store version:** 1.1 — this codebase is a large update not yet released
 
